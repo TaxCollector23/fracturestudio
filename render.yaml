@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: fracturestudiofinal
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-oss-120b:free
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: SITE_URL
+        sync: false
