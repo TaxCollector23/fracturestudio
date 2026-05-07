@@ -6,7 +6,3 @@ services:
     buildCommand: yarn && yarn build
     startCommand: yarn start
     staticPublishPath: ./dist
-    routes:
-      - type: rewrite
-        src: /*
-        dest: /index.html

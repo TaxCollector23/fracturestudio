@@ -1,5 +1,5 @@
 {
-  "name": "fracture-studio-deploy",
+  "name": "fracture-studio-prod",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "start": "serve -s dist"
+    "start": "serve -s dist -p $PORT"
   },
   "dependencies": {
     "framer-motion": "^10.16.4",
