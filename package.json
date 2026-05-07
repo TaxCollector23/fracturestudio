@@ -1,24 +1,24 @@
 {
-  "name": "fracture-studio-prod",
+  "name": "fracture-studio-vercel",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "start": "serve -s dist -p $PORT"
+    "preview": "vite preview"
   },
   "dependencies": {
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.292.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "serve": "^14.2.3"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+    "@types/node": "^20.10.0",
+    "@vercel/node": "^3.0.0",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
