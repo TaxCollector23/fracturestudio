@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-zinc-50 bg-zinc-950 selection:bg-zinc-800;
+  }
+}
+
+.font-serif { font-family: 'Instrument Serif', serif; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
