@@ -1,32 +1,36 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { parseMessages, requestOpenRouter } from '../server/chat';
+
+function getHeaderValue(header: string | string[] | undefined): string | undefined {
+  return Array.isArray(header) ? header[0] : header;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Use the environment variable set in Vercel Dashboard
-  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
   }
 
-  const { messages } = req.body;
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://fracture-studio-redesign.vercel.app", // Optional for OpenRouter
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001", // Or your preferred model
-        "messages": messages,
-      })
-    });
+    const payload =
+      typeof req.body === 'string'
+        ? JSON.parse(req.body || '{}')
+        : req.body && typeof req.body === 'object'
+          ? req.body
+          : {};
 
-    const data = await response.json();
-    return res.status(200).json(data);
+    const messages = parseMessages((payload as { messages?: unknown }).messages);
+    if (!messages) {
+      return res.status(400).json({ error: 'Request body must include a non-empty messages array.' });
+    }
+
+    const result = await requestOpenRouter(messages, getHeaderValue(req.headers.origin) || getHeaderValue(req.headers.referer));
+    return res.status(result.status).json(result.body);
   } catch (error) {
-    return res.status(500).json({ error: 'Internal Server Error' });
+    const message = error instanceof Error ? error.message : 'Failed to reach OpenRouter.';
+    return res.status(500).json({ error: message });
   }
 }
