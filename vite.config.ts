@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-import { parseMessages, requestOpenRouter } from './server/chat';
+import { processChatPost } from './server/chat';
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -33,6 +33,9 @@ function createLocalApiPlugin(): Plugin {
     void (async () => {
       if (req.method === 'OPTIONS') {
         res.statusCode = 204;
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         res.end();
         return;
       }
@@ -44,16 +47,21 @@ function createLocalApiPlugin(): Plugin {
 
       try {
         const rawBody = await readBody(req);
-        const payload = rawBody ? (JSON.parse(rawBody) as { messages?: unknown }) : {};
-        const messages = parseMessages(payload.messages);
-
-        if (!messages) {
-          sendJson(res, 400, { error: 'Request body must include a non-empty messages array.' });
-          return;
+        let payload: unknown = {};
+        if (rawBody) {
+          try {
+            payload = JSON.parse(rawBody) as unknown;
+          } catch {
+            sendJson(res, 400, { error: 'Invalid JSON body.' });
+            return;
+          }
         }
 
         const origin = req.headers.origin || `http://${req.headers.host || 'localhost'}`;
-        const result = await requestOpenRouter(messages, origin);
+        const result = await processChatPost(payload, origin);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         sendJson(res, result.status, result.body);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Local API proxy failed.';

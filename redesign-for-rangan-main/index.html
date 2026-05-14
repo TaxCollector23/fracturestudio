@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fracture Studio | AI Debate & Speech</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- CDNs for Standalone Preview -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/framer-motion@10.16.4/dist/framer-motion.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['"Instrument Serif"', 'serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    backgroundImage: {
+                        'grid-pattern': 'linear-gradient(to right, #27272a 1px, transparent 1px), linear-gradient(to bottom, #27272a 1px, transparent 1px)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background-color: #09090b;
+            color: #fafafa;
+            overflow-x: hidden;
+        }
+        .font-serif { font-family: 'Instrument Serif', serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        
+        .editor-content p { margin-bottom: 1.5em; line-height: 1.8; }
+        .editor-content [contenteditable]:empty:before {
+            content: attr(placeholder);
+            pointer-events: none;
+            color: #52525b;
+            display: block; 
+        }
+        [contenteditable]:focus { outline: none; }
+        ::selection { background: #27272a; }
+
+        /* Mask for carousel fade out */
+        .mask-edge {
+            mask-image: linear-gradient(to right, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react">
+        const { useState, useEffect, useRef } = React;
+
+        // Safe fallback for Framer Motion
+        const createMockMotion = (Tag) => ({ initial, animate, exit, transition, style, drag, dragConstraints, whileInView, viewport, ...props }) => <Tag {...props} />;
+        const mockMotion = { div: createMockMotion('div'), span: createMockMotion('span'), h1: createMockMotion('h1'), p: createMockMotion('p'), button: createMockMotion('button') };
+        
+        const motion = window.FramerMotion?.motion || window.Motion?.motion || mockMotion;
+        const AnimatePresence = window.FramerMotion?.AnimatePresence || window.Motion?.AnimatePresence || (({ children }) => <>{children}</>);
+
+        // --- ICONS ---
+        const Icon = ({ name, size = 18, className = "" }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (window.lucide && iconRef.current) {
+                    window.lucide.createIcons({
+                        icons: { [name]: window.lucide.icons[name] },
+                        nameAttr: 'data-lucide',
+                        root: iconRef.current.parentNode
+                    });
+                }
+            }, [name]);
+            return <i ref={iconRef} data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+
+        // --- DUMMY DATA ---
+        const initialCases = [
+            {
+                id: 1,
+                title: "The Case for AI in Academic Discourse",
+                topic: "Tech Ethics",
+                lastModified: "2 hours ago",
+                content: "The assertion that artificial intelligence will inevitably homogenize human thought fundamentally misunderstands the nature of cognitive tooling.\n\nHistorically, every major shift in information technology—from the printing press to the search engine—has initially been met with accusations of intellectual degradation.\n\nHowever, the reality is that these tools do not replace thought; they elevate the baseline from which thought begins."
+            },
+            {
+                id: 2,
+                title: "Universal Basic Income Feasibility",
+                topic: "Economics",
+                lastModified: "1 day ago",
+                content: "Universal Basic Income (UBI) is often dismissed as a utopian fantasy, yet empirical data from recent micro-trials suggests it functions as a profound economic stabilizer.\n\nThe primary fracture in the opposition's argument is the assumption that financial security disincentivizes labor. We must dismantle this by looking at intrinsic vs extrinsic motivation."
+            }
+        ];
+
+        const aiInsights = [
+            { type: 'counter', title: 'Anticipated Rebuttal', content: 'Opponents will argue that unlike a calculator, AI generates semantic content, not just numeric results, leading to a reliance on AI-generated premises.', impact: 'High' },
+            { type: 'fallacy', title: 'Potential Weakness', content: 'Paragraph 3 relies on a false equivalence. Mathematics has objective truths; rhetoric is subjective.', impact: 'Medium' },
+            { type: 'structure', title: 'Missing Warrant', content: 'You claim AI acts as an adversarial sparring partner, but haven\'t provided a mechanism of HOW this forces rigor.', impact: 'Critical' }
+        ];
+
+        // --- REUSABLE COMPONENTS ---
+        const PageTransition = ({ children }) => (
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="h-full w-full"
+            >
+                {children}
+            </motion.div>
+        );
+
+        const InsightCard = ({ insight, index }) => {
+            const colors = {
+                counter: 'bg-blue-900/10 border-l-blue-500',
+                fallacy: 'bg-red-900/10 border-l-red-500',
+                structure: 'bg-amber-900/10 border-l-amber-500'
+            };
+            const icons = { counter: 'ShieldAlert', fallacy: 'Zap', structure: 'Layers' };
+
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1, duration: 0.5 }}
+                    className={`p-5 border-y border-r border-y-zinc-800/50 border-r-zinc-800/50 border-l-2 mb-4 ${colors[insight.type]}`}
+                >
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 text-xs font-mono font-medium uppercase tracking-wider text-zinc-100">
+                            <Icon name={icons[insight.type]} size={14} />
+                            {insight.title}
+                        </div>
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                            insight.impact === 'Critical' ? 'bg-red-900/30 text-red-400' :
+                            insight.impact === 'High' ? 'bg-amber-900/30 text-amber-400' :
+                            'bg-zinc-800 text-zinc-400'
+                        }`}>
+                            {insight.impact}
+                        </span>
+                    </div>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{insight.content}</p>
+                </motion.div>
+            );
+        };
+
+        // --- PAGES ---
+
+        // 1. Landing Page
+        const Landing = ({ navigate }) => (
+            <div className="min-h-screen flex flex-col overflow-y-auto bg-[#09090b]">
+                
+                {/* Navigation */}
+                <nav className="h-20 border-b border-zinc-900 flex items-center justify-between px-12 shrink-0 sticky top-0 bg-[#09090b]/80 backdrop-blur-md z-50">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-zinc-100 rounded-sm flex items-center justify-center text-zinc-950 font-serif text-xl italic font-bold">f</div>
+                        <span className="font-serif italic text-xl tracking-wide">Fracture Studio</span>
+                    </div>
+                    <div className="flex gap-6 items-center text-sm font-medium">
+                        <button className="text-zinc-400 hover:text-zinc-50 transition-colors">Methodology</button>
+                        <button className="text-zinc-400 hover:text-zinc-50 transition-colors">Manifesto</button>
+                        <button onClick={() => navigate('auth')} className="px-5 py-2 bg-zinc-100 text-zinc-950 rounded-sm hover:bg-white transition-colors">Enter Studio</button>
+                    </div>
+                </nav>
+
+                {/* Hero Section */}
+                <section className="relative pt-32 pb-48 px-12 flex flex-col items-center text-center overflow-hidden">
+                    <div className="absolute inset-0 bg-grid-pattern bg-[size:40px_40px] opacity-[0.03] pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#09090b]/80 to-[#09090b] pointer-events-none"></div>
+                    
+                    <div className="relative z-10 max-w-5xl mx-auto flex flex-col items-center">
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/50 text-xs font-mono text-zinc-400 mb-8">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                            Fracture Engine v2.0 is live
+                        </motion.div>
+                        
+                        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }} className="text-7xl md:text-[8vw] leading-[0.9] font-serif tracking-tight mb-8">
+                            Construct logic <br/>
+                            <span className="text-zinc-600 italic">that cannot break.</span>
+                        </motion.h1>
+                        
+                        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="text-lg text-zinc-400 max-w-2xl mb-12 leading-relaxed">
+                            An elite workspace for debaters, litigators, and rhetoricians. Fracture Studio uses adversarial AI to dismantle your logic before your opponents can.
+                        </motion.p>
+                        
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }}>
+                            <button onClick={() => navigate('auth')} className="px-8 py-4 bg-zinc-100 text-zinc-950 text-sm font-medium rounded-sm hover:bg-white transition-all flex items-center gap-3">
+                                Start Drafting <Icon name="ArrowRight" size={16} />
+                            </button>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Pinned Scroll Section */}
+                <section className="relative border-t border-zinc-900">
+                    <div className="max-w-7xl mx-auto px-12 flex relative">
+                        {/* Left: Sticky Text */}
+                        <div className="w-1/2 sticky top-0 h-screen flex flex-col justify-center pr-24">
+                            <h2 className="text-[4vw] leading-[1] font-serif mb-6 text-zinc-50">Dismantle before <br/><span className="italic text-zinc-500">you deliver.</span></h2>
+                            <p className="text-zinc-400 text-lg leading-relaxed mb-8">
+                                Our engine doesn't just check grammar. It reads your argument, maps its structural dependencies, and actively attacks your premises. As you scroll, witness how Fracture dissects a weak claim.
+                            </p>
+                            <div className="flex gap-4">
+                                <div className="w-12 h-1 bg-zinc-800"></div>
+                                <div className="w-12 h-1 bg-zinc-800"></div>
+                                <div className="w-12 h-1 bg-zinc-100"></div>
+                            </div>
+                        </div>
+
+                        {/* Right: Scrolling Content */}
+                        <div className="w-1/2 py-[20vh] flex flex-col gap-[30vh]">
+                            {/* Scroll Card 1 */}
+                            <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ margin: "-20%" }} className="bg-[#0c0c0e] border border-zinc-800 p-8 shadow-2xl">
+                                <div className="text-xs font-mono text-zinc-500 mb-4 uppercase flex items-center gap-2"><Icon name="PenTool" size={14}/> Step 1: The Draft</div>
+                                <p className="text-xl font-serif text-zinc-300 leading-relaxed border-l-2 border-zinc-800 pl-6">
+                                    "Universal Basic Income is necessary because automation will displace millions of workers in the next decade."
+                                </p>
+                            </motion.div>
+
+                            {/* Scroll Card 2 */}
+                            <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ margin: "-20%" }} className="bg-[#0c0c0e] border border-zinc-800 p-8 shadow-2xl relative">
+                                <div className="absolute -left-12 top-1/2 w-12 h-px bg-zinc-800"></div>
+                                <div className="text-xs font-mono text-amber-500 mb-4 uppercase flex items-center gap-2"><Icon name="Zap" size={14}/> Step 2: The Fracture</div>
+                                <InsightCard insight={{ type: 'structure', title: 'Missing Warrant', content: 'You claim automation displaces workers, but fail to warrant why UBI is the ONLY or BEST solution compared to job retraining programs.', impact: 'Critical' }} index={0} />
+                            </motion.div>
+
+                            {/* Scroll Card 3 */}
+                            <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ margin: "-20%" }} className="bg-[#0c0c0e] border border-zinc-800 p-8 shadow-2xl relative border-l-2 border-l-green-500">
+                                <div className="text-xs font-mono text-green-500 mb-4 uppercase flex items-center gap-2"><Icon name="CheckCircle" size={14}/> Step 3: The Resolution</div>
+                                <p className="text-xl font-serif text-zinc-100 leading-relaxed border-l-2 border-zinc-800 pl-6">
+                                    "While job retraining is often proposed, historical data shows a 15% success rate for displaced industrial workers. UBI is necessary because it is the only mechanism that provides immediate, unconditional stabilization."
+                                </p>
+                            </motion.div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Asymmetrical Bento Grid */}
+                <section className="border-t border-zinc-900 bg-[#0c0c0e] py-32 px-12">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="mb-16">
+                            <h2 className="font-serif text-5xl mb-4">Engine Architecture</h2>
+                            <p className="text-zinc-500 font-mono text-sm uppercase tracking-wider">Tools built for rigor.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[250px]">
+                            {/* Block 1: Large */}
+                            <div className="md:col-span-2 md:row-span-2 bg-[#09090b] border border-zinc-800 p-8 flex flex-col justify-between group hover:border-zinc-600 transition-colors">
+                                <div>
+                                    <h3 className="font-serif text-3xl text-zinc-50 mb-2">Live Fallacy Detection</h3>
+                                    <p className="text-zinc-400 text-sm">Our engine highlights false equivalences, ad hominems, and strawmen as you type.</p>
+                                </div>
+                                <div className="mt-8 bg-[#0c0c0e] border border-zinc-800 p-4 rounded-sm">
+                                    <p className="text-sm text-zinc-500 line-through decoration-red-500/50">"If we ban this book, next they will ban all books."</p>
+                                    <div className="mt-2 text-xs font-mono text-red-400 flex items-center gap-2"><Icon name="AlertTriangle" size={12}/> Slippery Slope Fallacy</div>
+                                </div>
+                            </div>
+
+                            {/* Block 2: Tall */}
+                            <div className="md:col-span-1 md:row-span-2 bg-[#09090b] border border-zinc-800 p-8 flex flex-col justify-between group hover:border-zinc-600 transition-colors">
+                                <div>
+                                    <h3 className="font-serif text-2xl text-zinc-50 mb-2">Node Mapping</h3>
+                                    <p className="text-zinc-400 text-sm">Visualize your argument's dependency tree.</p>
+                                </div>
+                                <div className="flex-1 flex flex-col items-center justify-center gap-4 mt-8">
+                                    <div className="w-full h-8 border border-zinc-800 rounded-sm bg-zinc-900/50"></div>
+                                    <div className="w-px h-8 bg-zinc-800"></div>
+                                    <div className="w-full h-8 border border-zinc-800 rounded-sm bg-zinc-900/50"></div>
+                                </div>
+                            </div>
+
+                            {/* Block 3: Small */}
+                            <div className="md:col-span-1 md:row-span-1 bg-[#09090b] border border-zinc-800 p-8 flex flex-col justify-center group hover:border-zinc-600 transition-colors">
+                                <Icon name="BookOpen" size={24} className="text-zinc-500 mb-4 group-hover:text-zinc-100 transition-colors"/>
+                                <h3 className="font-serif text-xl text-zinc-50">Citation Engine</h3>
+                            </div>
+
+                            {/* Block 4: Small */}
+                            <div className="md:col-span-1 md:row-span-1 bg-[#09090b] border border-zinc-800 p-8 flex flex-col justify-center group hover:border-zinc-600 transition-colors">
+                                <Icon name="Clock" size={24} className="text-zinc-500 mb-4 group-hover:text-zinc-100 transition-colors"/>
+                                <h3 className="font-serif text-xl text-zinc-50">Version History</h3>
+                            </div>
+
+                            {/* Block 5: Wide */}
+                            <div className="md:col-span-2 md:row-span-1 bg-[#09090b] border border-zinc-800 p-8 flex items-center justify-between group hover:border-zinc-600 transition-colors">
+                                <div className="max-w-xs">
+                                    <h3 className="font-serif text-2xl text-zinc-50 mb-2">Export to Podium</h3>
+                                    <p className="text-zinc-400 text-sm">Generate clean, formatted PDFs tailored for live reading.</p>
+                                </div>
+                                <button className="w-12 h-12 rounded-full border border-zinc-800 flex items-center justify-center group-hover:bg-zinc-100 group-hover:text-zinc-950 transition-colors">
+                                    <Icon name="ArrowRight" size={20} />
+                                </button>
+                            </div>
+
+                            {/* Block 6: Wide */}
+                            <div className="md:col-span-2 md:row-span-1 bg-zinc-100 p-8 flex items-center justify-between group cursor-pointer" onClick={() => navigate('auth')}>
+                                <div>
+                                    <h3 className="font-serif text-3xl text-zinc-950 mb-1">Start your draft</h3>
+                                    <p className="text-zinc-600 text-sm font-mono uppercase tracking-wider">Access the studio</p>
+                                </div>
+                                <Icon name="ArrowUpRight" size={32} className="text-zinc-950" />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Carousel Section */}
+                <section className="py-32 border-t border-zinc-900 overflow-hidden relative">
+                    <div className="max-w-7xl mx-auto px-12 mb-16 flex justify-between items-end">
+                        <h2 className="font-serif text-5xl text-zinc-50">Adopted by the Elite</h2>
+                        <div className="flex gap-2">
+                            <button className="w-10 h-10 rounded-full border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-100 hover:border-zinc-600"><Icon name="ChevronLeft" size={18}/></button>
+                            <button className="w-10 h-10 rounded-full border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-100 hover:border-zinc-600"><Icon name="ChevronRight" size={18}/></button>
+                        </div>
+                    </div>
+
+                    <div className="mask-edge pl-12 md:pl-[calc((100vw-80rem)/2+3rem)]">
+                        <motion.div 
+                            drag="x" 
+                            dragConstraints={{ right: 0, left: -1200 }} 
+                            className="flex gap-6 cursor-grab active:cursor-grabbing w-max pb-8"
+                        >
+                            {[
+                                { quote: "Fracture Studio is the only tool that actually makes me think harder, rather than doing the thinking for me.", author: "Dr. Elena Rostova", role: "Professor of Rhetoric" },
+                                { quote: "I run all my opening statements through the engine. It finds the holes opposing counsel is looking for.", author: "Marcus Vance", role: "Litigation Partner" },
+                                { quote: "The node mapping feature completely changed how our debate team structures impact calculus.", author: "Sarah Jenkins", role: "Collegiate Debate Champion" },
+                                { quote: "A structural calculator for words. It removes the friction of formatting and forces pure logical rigor.", author: "David Chen", role: "Policy Analyst" },
+                                { quote: "If you are writing anything meant to persuade, drafting without Fracture is a liability.", author: "A. Mercer", role: "Speechwriter" }
+                            ].map((item, i) => (
+                                <div key={i} className="w-[400px] h-[250px] bg-[#0c0c0e] border border-zinc-800 p-8 flex flex-col justify-between shrink-0 hover:bg-[#0f0f12] transition-colors">
+                                    <p className="font-serif text-xl text-zinc-300 leading-relaxed">"{item.quote}"</p>
+                                    <div className="flex items-center gap-4 border-t border-zinc-900 pt-4">
+                                        <div className="w-8 h-8 rounded-full bg-zinc-800"></div>
+                                        <div>
+                                            <div className="text-sm font-medium text-zinc-100">{item.author}</div>
+                                            <div className="text-xs font-mono text-zinc-500">{item.role}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Footer */}
+                <footer className="border-t border-zinc-900 bg-[#09090b] pt-32 pb-12 px-12">
+                    <div className="max-w-7xl mx-auto flex flex-col gap-24">
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-16">
+                            <div className="max-w-sm">
+                                <h2 className="font-serif text-6xl italic text-zinc-50 mb-6">Fracture</h2>
+                                <p className="text-zinc-500 text-sm leading-relaxed">
+                                    An elite workspace for those who understand that a strong argument is built, not born. Dismantle your logic.
+                                </p>
+                            </div>
+                            
+                            <div className="flex gap-16">
+                                <div className="flex flex-col gap-4">
+                                    <span className="font-mono text-xs text-zinc-600 uppercase tracking-wider mb-2">Product</span>
+                                    <a href="#" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">The Engine</a>
+                                    <a href="#" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Pricing</a>
+                                    <a href="#" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Changelog</a>
+                                </div>
+                                <div className="flex flex-col gap-4">
+                                    <span className="font-mono text-xs text-zinc-600 uppercase tracking-wider mb-2">Company</span>
+                                    <a href="#" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Manifesto</a>
+                                    <a href="#" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Careers</a>
+                                    <a href="#" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Contact</a>
+                                </div>
+                                <div className="flex flex-col gap-4">
+                                    <span className="font-mono text-xs text-zinc-600 uppercase tracking-wider mb-2">Legal</span>
+                                    <a href="#" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Privacy</a>
+                                    <a href="#" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Terms</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center text-xs font-mono text-zinc-600 border-t border-zinc-900 pt-8">
+                            <span>© 2024 Fracture Studio. All rights reserved.</span>
+                            <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-zinc-600"></span> Designed for the rigorous.</span>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        );
+
+        // 2. Auth Page
+        const Auth = ({ navigate }) => (
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#09090b]">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(39,39,42,0.3)_0,transparent_100%)]"></div>
+                
+                <div className="w-full max-w-md p-12 border border-zinc-800 bg-[#0c0c0e] relative z-10">
+                    <button onClick={() => navigate('landing')} className="absolute top-6 right-6 text-zinc-600 hover:text-zinc-300"><Icon name="X" size={20}/></button>
+                    <div className="w-10 h-10 bg-zinc-100 rounded-sm flex items-center justify-center text-zinc-950 font-serif text-2xl italic font-bold mb-8">f</div>
+                    
+                    <h2 className="font-serif text-4xl mb-2 text-zinc-50">Access Studio</h2>
+                    <p className="text-zinc-500 text-sm mb-8">Enter your credentials to continue drafting.</p>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-2">Email Address</label>
+                            <input type="email" placeholder="scholar@institution.edu" className="w-full bg-[#09090b] border border-zinc-800 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-zinc-500 transition-colors text-zinc-100" />
+                        </div>
+                        <button onClick={() => navigate('dashboard')} className="w-full py-3 bg-zinc-100 text-zinc-950 text-sm font-medium rounded-sm hover:bg-white transition-colors mt-4">
+                            Continue with Email
+                        </button>
+                        
+                        <div className="relative py-4 flex items-center">
+                            <div className="flex-grow border-t border-zinc-800"></div>
+                            <span className="flex-shrink-0 mx-4 text-xs font-mono text-zinc-600 uppercase">Or</span>
+                            <div className="flex-grow border-t border-zinc-800"></div>
+                        </div>
+                        
+                        <button onClick={() => navigate('dashboard')} className="w-full py-3 bg-transparent border border-zinc-800 text-zinc-300 text-sm font-medium rounded-sm hover:bg-zinc-900 transition-colors flex items-center justify-center gap-2">
+                            <Icon name="Github" size={16} /> Continue with Github
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // 3. Dashboard Page
+        const Dashboard = ({ navigate, cases, onNewCase, onOpenCase }) => (
+            <div className="min-h-screen flex flex-col bg-[#09090b]">
+                <header className="h-16 border-b border-zinc-900 flex items-center justify-between px-8 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 bg-zinc-100 rounded-sm flex items-center justify-center text-zinc-950 font-serif text-sm italic font-bold">f</div>
+                        <span className="font-serif italic text-lg tracking-wide text-zinc-50">Fracture Studio</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => navigate('landing')} className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors">Sign Out</button>
+                        <img src="https://picsum.photos/seed/user1/100/100" className="w-8 h-8 rounded-full grayscale opacity-80 border border-zinc-800" alt="User" referrerPolicy="no-referrer" />
+                    </div>
+                </header>
+
+                <main className="flex-1 p-12 max-w-7xl mx-auto w-full">
+                    <div className="flex items-end justify-between mb-12">
+                        <div>
+                            <h1 className="font-serif text-5xl mb-2 text-zinc-50">Your Cases</h1>
+                            <p className="text-zinc-500 font-mono text-xs uppercase tracking-wider">Active Arguments & Drafts</p>
+                        </div>
+                        <button onClick={onNewCase} className="px-5 py-2.5 bg-zinc-100 text-zinc-950 text-sm font-medium rounded-sm hover:bg-white transition-colors flex items-center gap-2">
+                            <Icon name="Plus" size={16} /> New Case
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {cases.map((c) => (
+                            <div key={c.id} onClick={() => onOpenCase(c)} className="group p-6 border border-zinc-800 bg-[#0c0c0e] hover:border-zinc-600 transition-colors cursor-pointer flex flex-col h-64">
+                                <div className="flex justify-between items-start mb-4">
+                                    <span className="px-2 py-1 bg-[#09090b] text-zinc-400 text-[10px] font-mono uppercase tracking-wider rounded border border-zinc-800">{c.topic}</span>
+                                    <button className="text-zinc-600 hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="MoreVertical" size={16}/></button>
+                                </div>
+                                <h3 className="font-serif text-2xl mb-3 text-zinc-100 group-hover:text-zinc-50 transition-colors line-clamp-2">{c.title}</h3>
+                                <p className="text-zinc-500 text-sm line-clamp-3 mb-auto">{c.content || "Empty draft..."}</p>
+                                <div className="mt-4 pt-4 border-t border-zinc-900 flex justify-between items-center text-xs text-zinc-500 font-mono">
+                                    <span>Edited {c.lastModified}</span>
+                                    <Icon name="ArrowRight" size={14} className="opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </main>
+            </div>
+        );
+
+        // 4. Workspace Components
+        const WorkspaceHeader = ({ currentCase, navigate }) => (
+            <header className="h-16 border-b border-zinc-800/50 flex items-center justify-between px-8 shrink-0 bg-[#09090b]">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => navigate('dashboard')} className="text-zinc-500 hover:text-zinc-100 transition-colors mr-4">
+                        <Icon name="ArrowLeft" size={18} />
+                    </button>
+                    <span className="text-xs font-mono tracking-wider text-zinc-500 uppercase">{currentCase.topic}</span>
+                    <span className="text-zinc-700">/</span>
+                    <h1 className="text-sm font-medium text-zinc-100">{currentCase.title}</h1>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 ml-2">Draft</span>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 mr-4">
+                        <span className="w-2 h-2 rounded-full bg-green-500/50 animate-pulse"></span>
+                        Engine Active
+                    </div>
+                    <button className="px-4 py-1.5 bg-zinc-100 text-zinc-950 text-sm font-medium rounded-sm hover:bg-white transition-colors">
+                        Export
+                    </button>
+                </div>
+            </header>
+        );
+
+        const Sidebar = ({ activeTab, setActiveTab }) => (
+            <div className="w-16 h-screen border-r border-zinc-800/50 flex flex-col items-center py-6 gap-8 bg-[#09090b] z-10 shrink-0">
+                <div className="w-8 h-8 bg-zinc-100 rounded-sm flex items-center justify-center text-zinc-950 font-serif text-xl italic font-bold">f</div>
+                <nav className="flex flex-col gap-6 mt-4">
+                    {[
+                        { id: 'write', icon: 'PenTool', tooltip: 'Draft' },
+                        { id: 'structure', icon: 'Network', tooltip: 'Architecture' },
+                        { id: 'research', icon: 'BookOpen', tooltip: 'Fractures & Edit' },
+                    ].map(item => (
+                        <button 
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            title={item.tooltip}
+                            className={`p-2 rounded-md transition-all duration-200 ${activeTab === item.id ? 'text-zinc-50 bg-zinc-800/50' : 'text-zinc-600 hover:text-zinc-300'}`}
+                        >
+                            <Icon name={item.icon} size={20} />
+                        </button>
+                    ))}
+                </nav>
+                <div className="mt-auto flex flex-col gap-6 items-center">
+                    <button className="text-zinc-600 hover:text-zinc-300"><Icon name="Settings" size={20} /></button>
+                </div>
+            </div>
+        );
+
+        const EditorArea = ({ content, setContent, title }) => (
+            <div className="flex-1 overflow-y-auto relative bg-[#0c0c0e]">
+                <div className="max-w-3xl mx-auto px-12 py-24">
+                    <h1 className="text-[4vw] leading-[1.1] font-serif text-zinc-50 mb-12 tracking-tight outline-none" contentEditable suppressContentEditableWarning>
+                        {title}
+                    </h1>
+                    <div 
+                        className="editor-content text-lg text-zinc-300 outline-none min-h-[50vh]"
+                        contentEditable
+                        suppressContentEditableWarning
+                        placeholder="Begin constructing your argument..."
+                        onInput={(e) => setContent(e.currentTarget.innerText)}
+                    >
+                        {content.split('\n\n').map((paragraph, i) => (
+                            <p key={i}>{paragraph}</p>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const AssistantPanel = () => (
+            <div className="w-[400px] border-l border-zinc-800/50 bg-[#09090b] flex flex-col shrink-0">
+                <div className="p-6 border-b border-zinc-800/50 flex justify-between items-center sticky top-0 z-10">
+                    <h2 className="font-serif text-2xl italic text-zinc-50">Fracture Engine</h2>
+                    <button className="text-zinc-500 hover:text-zinc-100"><Icon name="MoreHorizontal" size={18} /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6">
+                    <div className="mb-8">
+                        <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-4">Structural Health</h3>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Claim Clarity</span>
+                                <div className="w-32 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-zinc-100 w-[85%]"></div></div>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Warrant Strength</span>
+                                <div className="w-32 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-amber-500 w-[40%]"></div></div>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Impact Resolution</span>
+                                <div className="w-32 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-zinc-100 w-[70%]"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mb-6">
+                        <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-4">Active Fractures</h3>
+                        <div className="space-y-4">
+                            {aiInsights.map((insight, i) => <InsightCard key={i} insight={insight} index={i} />)}
+                        </div>
+                    </div>
+                </div>
+                <div className="p-4 border-t border-zinc-800/50">
+                    <div className="relative">
+                        <input type="text" placeholder="Ask Fracture to generate a warrant..." className="w-full bg-[#121214] border border-zinc-800 rounded-md py-3 pl-4 pr-10 text-sm focus:outline-none focus:border-zinc-600 transition-colors text-zinc-100" />
+                        <button className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-100"><Icon name="CornerDownLeft" size={16} /></button>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const StructureView = () => (
+            <div className="flex-1 bg-[#0c0c0e] p-12 overflow-auto flex items-center justify-center">
+                <div className="max-w-2xl w-full">
+                    <h2 className="font-serif text-4xl mb-12 text-center text-zinc-50">Argument Architecture</h2>
+                    <div className="relative border-l border-zinc-800 ml-6 space-y-12 pb-12">
+                        <div className="relative">
+                            <div className="absolute -left-[5px] top-4 w-2.5 h-2.5 rounded-full bg-zinc-100 ring-4 ring-[#0c0c0e]"></div>
+                            <div className="ml-8 bg-zinc-900 border border-zinc-800/50 p-6 rounded-sm">
+                                <div className="text-xs font-mono text-zinc-500 mb-2 uppercase">Claim</div>
+                                <p className="text-lg font-medium text-zinc-50">AI tools elevate the baseline of thought rather than replace it.</p>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <div className="absolute -left-[5px] top-4 w-2.5 h-2.5 rounded-full bg-zinc-700 ring-4 ring-[#0c0c0e]"></div>
+                            <div className="ml-8 bg-zinc-900 border border-zinc-800/50 p-6 rounded-sm relative">
+                                <div className="absolute -left-8 top-1/2 w-8 h-px bg-zinc-800"></div>
+                                <div className="text-xs font-mono text-zinc-500 mb-2 uppercase flex justify-between">
+                                    <span>Warrant (Analogy)</span>
+                                    <span className="text-amber-500">Weakness Detected</span>
+                                </div>
+                                <p className="text-zinc-300">Just as a calculator removes arithmetic friction allowing focus on higher math, AI removes structural friction in rhetoric.</p>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <div className="absolute -left-[5px] top-4 w-2.5 h-2.5 rounded-full bg-zinc-700 ring-4 ring-[#0c0c0e]"></div>
+                            <div className="ml-8 bg-zinc-900 border border-zinc-800/50 p-6 rounded-sm border-l-2 border-l-red-500">
+                                <div className="text-xs font-mono text-zinc-500 mb-2 uppercase">Impact (Missing)</div>
+                                <p className="text-zinc-500 italic">No impact defined. Why does elevating the baseline matter in the context of academic discourse?</p>
+                                <button className="mt-4 text-xs font-mono bg-zinc-800 px-3 py-1.5 rounded text-zinc-300 hover:bg-zinc-700 transition-colors">+ Generate Impact</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const ResearchView = ({ content, setContent, title }) => (
+            <div className="flex-1 flex h-full overflow-hidden bg-[#0c0c0e]">
+                <div className="w-1/3 min-w-[350px] max-w-[500px] border-r border-zinc-800/50 overflow-y-auto bg-[#09090b] p-8">
+                    <h2 className="font-serif text-3xl mb-2 text-zinc-50">Fracture Analysis</h2>
+                    <p className="text-zinc-500 text-sm mb-8">Review structural weaknesses alongside your draft.</p>
+                    
+                    <div className="space-y-6">
+                        {aiInsights.map((insight, i) => (
+                            <InsightCard key={i} insight={insight} index={i} />
+                        ))}
+                        
+                        <div className="mt-12">
+                            <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-4 border-b border-zinc-800 pb-2">Suggested Sources</h3>
+                            <div className="p-4 border border-zinc-800 bg-[#0c0c0e] rounded-sm mb-3 cursor-pointer hover:border-zinc-600 transition-colors">
+                                <div className="text-xs font-mono text-zinc-500 mb-1">Journal of Rhetoric (2023)</div>
+                                <div className="text-sm text-zinc-200">"Cognitive Offloading in the Age of Generative AI"</div>
+                            </div>
+                            <div className="p-4 border border-zinc-800 bg-[#0c0c0e] rounded-sm cursor-pointer hover:border-zinc-600 transition-colors">
+                                <div className="text-xs font-mono text-zinc-500 mb-1">Tech Ethics Review</div>
+                                <div className="text-sm text-zinc-200">"The Calculator Analogy: Limits and Applications"</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-12">
+                    <div className="max-w-2xl mx-auto">
+                        <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                            <Icon name="Edit3" size={14} /> Live Editing Mode
+                        </div>
+                        <h1 className="text-3xl font-serif text-zinc-50 mb-8 outline-none" contentEditable suppressContentEditableWarning>
+                            {title}
+                        </h1>
+                        <div 
+                            className="editor-content text-lg text-zinc-300 outline-none"
+                            contentEditable
+                            suppressContentEditableWarning
+                            onInput={(e) => setContent(e.currentTarget.innerText)}
+                        >
+                            {content.split('\n\n').map((paragraph, i) => (
+                                <p key={i}>{paragraph}</p>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const Workspace = ({ currentCase, updateCase, navigate }) => {
+            const [activeTab, setActiveTab] = useState('write');
+            
+            const handleContentChange = (newContent) => {
+                updateCase(currentCase.id, { content: newContent });
+            };
+
+            return (
+                <div className="flex h-screen w-full overflow-hidden">
+                    <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <div className="flex-1 flex flex-col min-w-0">
+                        <WorkspaceHeader currentCase={currentCase} navigate={navigate} />
+                        <div className="flex-1 flex overflow-hidden relative">
+                            <AnimatePresence mode="wait">
+                                {activeTab === 'write' && (
+                                    <motion.div key="write" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex">
+                                        <EditorArea content={currentCase.content} setContent={handleContentChange} title={currentCase.title} />
+                                        <AssistantPanel />
+                                    </motion.div>
+                                )}
+                                {activeTab === 'structure' && (
+                                    <motion.div key="structure" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex">
+                                        <StructureView />
+                                        <AssistantPanel />
+                                    </motion.div>
+                                )}
+                                {activeTab === 'research' && (
+                                    <motion.div key="research" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex w-full">
+                                        <ResearchView content={currentCase.content} setContent={handleContentChange} title={currentCase.title} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP (ROUTING & STATE) ---
+        const App = () => {
+            const [view, setView] = useState('landing');
+            const [cases, setCases] = useState(initialCases);
+            const [activeCaseId, setActiveCaseId] = useState(null);
+
+            const handleNewCase = () => {
+                const newCase = {
+                    id: Date.now(),
+                    title: "Untitled Argument",
+                    topic: "Uncategorized",
+                    lastModified: "Just now",
+                    content: ""
+                };
+                setCases([newCase, ...cases]);
+                setActiveCaseId(newCase.id);
+                setView('workspace');
+            };
+
+            const handleOpenCase = (c) => {
+                setActiveCaseId(c.id);
+                setView('workspace');
+            };
+
+            const updateCase = (id, updates) => {
+                setCases(cases.map(c => c.id === id ? { ...c, ...updates, lastModified: "Just now" } : c));
+            };
+
+            const currentCase = cases.find(c => c.id === activeCaseId) || cases[0];
+
+            return (
+                <AnimatePresence mode="wait">
+                    {view === 'landing' && <PageTransition key="landing"><Landing navigate={setView} /></PageTransition>}
+                    {view === 'auth' && <PageTransition key="auth"><Auth navigate={setView} /></PageTransition>}
+                    {view === 'dashboard' && <PageTransition key="dashboard"><Dashboard navigate={setView} cases={cases} onNewCase={handleNewCase} onOpenCase={handleOpenCase} /></PageTransition>}
+                    {view === 'workspace' && <PageTransition key="workspace"><Workspace currentCase={currentCase} updateCase={updateCase} navigate={setView} /></PageTransition>}
+                </AnimatePresence>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
