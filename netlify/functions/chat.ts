@@ -25,7 +25,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: 400,
           headers: cors,
-          body: JSON.stringify({ error: 'Invalid JSON body.' }),
+          body: JSON.stringify({ error: 'Invalid JSON body.', code: 'INVALID_JSON' }),
         };
       }
     }

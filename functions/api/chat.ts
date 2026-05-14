@@ -9,11 +9,30 @@ type CfContext = {
   env: { OPENROUTER_API_KEY?: string };
 };
 
-export async function onRequestPost(context: CfContext): Promise<Response> {
+export async function onRequest(context: CfContext): Promise<Response> {
   const cors = jsonCorsHeaders();
 
+  if (context.request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: cors });
+  }
+
+  if (context.request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method Not Allowed', code: 'METHOD_NOT_ALLOWED' }), {
+      status: 405,
+      headers: cors,
+    });
+  }
+
   try {
-    const payload = (await context.request.json()) as unknown;
+    let payload: unknown = {};
+    try {
+      payload = (await context.request.json()) as unknown;
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body.', code: 'INVALID_JSON' }), {
+        status: 400,
+        headers: cors,
+      });
+    }
     const origin = context.request.headers.get('Origin') || undefined;
     const key = context.env.OPENROUTER_API_KEY;
     const result = await processChatPost(payload, origin, key);
@@ -28,8 +47,4 @@ export async function onRequestPost(context: CfContext): Promise<Response> {
       headers: cors,
     });
   }
-}
-
-export async function onRequestOptions(): Promise<Response> {
-  return new Response(null, { status: 204, headers: jsonCorsHeaders() });
 }

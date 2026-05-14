@@ -50,13 +50,13 @@ describe('processChatPost', () => {
     expect((r.body as { code?: string }).code).toBe('INVALID_BODY');
   });
 
-  it('returns OPENROUTER_KEY_MISSING without key', async () => {
+  it('returns local fracture completion without key', async () => {
     const r = await processChatPost({ messages: [{ role: 'user', content: 'a' }] }, undefined, undefined);
-    expect(r.status).toBe(500);
-    expect((r.body as { code?: string }).code).toBe('OPENROUTER_KEY_MISSING');
+    expect(r.status).toBe(200);
+    expect(extractAssistantText(r.body)).toContain('Local Fracture engine used');
   });
 
-  it('returns EMPTY_COMPLETION when upstream returns blank assistant', async () => {
+  it('falls back to local fracture completion when upstream returns blank assistant', async () => {
     process.env.OPENROUTER_API_KEY = 'sk-test';
     vi.stubGlobal(
       'fetch',
@@ -70,8 +70,8 @@ describe('processChatPost', () => {
     );
 
     const r = await processChatPost({ messages: [{ role: 'user', content: 'x' }] }, 'http://localhost');
-    expect(r.status).toBe(502);
-    expect((r.body as { code?: string }).code).toBe('EMPTY_COMPLETION');
+    expect(r.status).toBe(200);
+    expect(extractAssistantText(r.body)).toContain('remote model returned no assistant text');
   });
 
   it('validates citations sourcesText', async () => {

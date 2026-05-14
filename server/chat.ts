@@ -1,9 +1,14 @@
+import { buildCitationReport, renderCitationReport } from '../src/lib/citationEngine';
+import { analyzeArgument, renderFractureAnalysis } from '../src/lib/fractureEngine';
+import { generateRebuttalReport, type OpponentPersona } from '../src/lib/rebuttalEngine';
+import { searchCitationSources } from './citationSearch';
+
 export type ChatMessage = {
   content: string;
   role: 'assistant' | 'system' | 'user';
 };
 
-export type ChatAction = 'critique' | 'citations' | 'rebuttals';
+export type ChatAction = 'critique' | 'fracture' | 'citations' | 'rebuttals';
 
 export const OPENROUTER_MODEL = 'google/gemini-2.0-flash-001';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
@@ -17,36 +22,52 @@ export const MAX_TEXT_FIELD_CHARS = 60_000;
 export const CRITIQUE_SYSTEM_PROMPT = `You are Fracture Studio's adversarial argument critic. Rules:
 - Be direct and unsentimental. No generic praise, no filler empathy, no "great job" padding.
 - Quote or paraphrase the user's text in short snippets when attacking a weakness (quote-backed).
+- Apply Fracture Studio's ten-model writing flow: Toulmin, Rogerian, Stock Issues, Pragma-Dialectics, Syllogism, Enthymeme, Monroe's Motivated Sequence, Dependency Model, Casuistry, and Evolutionary Conceptual Change.
+- Include claim detection, unsupported claim flags, warrant analysis, burden of proof, rebuttal vulnerability, crossfire questions, judge questions, and revision missions.
 - Output MUST use this exact section structure and headings (markdown):
 
-## Quote-backed weaknesses
-(Bullet list; each bullet starts with a short quoted fragment or clear paraphrase in italics, then the flaw.)
+## Fracture Verdict
+(Survives, Shaky, Cracked, or Collapsed with the single biggest reason.)
 
-## Assumption audit
+## Argument Strength Score
+(0-100 overall, then logic, evidence, clarity, originality, and rebuttal strength.)
+
+## Claim Map
+(Major claims, evidence status, warrant status, and vulnerability.)
+
+## Hidden Assumptions
 (Explicit hidden premises; label each as unsupported, contestable, or needing evidence.)
 
-## Steelmanned counter
-(State the strongest version of the opposing view that still fits the facts the user gave.)
+## Rebuttal Vulnerability Scanner
+(Weakest claim, easiest counterexample, likely judge objection, best opponent response.)
+
+## Ten-Model Speaking Pass
+(One useful diagnosis each for the ten named models.)
 
 ## Line-level fixes
 (Numbered, concrete rewrites or replacement sentences—not vague advice.)
 
-If the draft is too short to critique meaningfully, say so in one sentence under Quote-backed weaknesses and stop other sections with "N/A—expand the draft first."
+If the draft is too short to critique meaningfully, say so under Fracture Verdict and give one concrete next input to add.
 If the user only pastes slogans or headings with no argumentative substance, say so explicitly—do not invent a critique from nothing.`;
 
-export const CITATIONS_SYSTEM_PROMPT = `You are a citation assistant. The user names a style and lists sources (structured or pasted). Produce:
-1) A clean bibliography/reference list in that style (APA, MLA, or Chicago-style notes/bibliography "lite"—pick closest match to the requested label).
+export const CITATIONS_SYSTEM_PROMPT = `You are a citation and source-grounding assistant. The user names a style and lists sources, URLs, DOI values, source titles, or a research query. Produce:
+1) A clean bibliography/reference list in that style (APA, MLA, or Chicago notes/bibliography, using the closest match to the requested label).
 2) Short in-text citation examples (author-date, parenthetical, or footnote-style as fits the style).
-Use hanging indent description where relevant in plain text. If information is missing (year, publisher, URL), note [MISSING: ...] rather than inventing facts. No praise—only accurate formatting.`;
+3) Citation-needed tags for factual claims.
+4) Source-to-claim links: which source supports which claim.
+5) A citation hallucination check: missing metadata must be labeled [MISSING: ...], never invented.
+Use hanging indent description where relevant in plain text. No praise—only accurate formatting and source caution.`;
 
 export const REBUTTALS_SYSTEM_PROMPT = `You are a debate rebuttal coach. You receive opponent text and the user's case.
 - Map rebuttals to numbered opponent claims; quote-anchored snippets from the opponent where possible.
 - Add "If they say X, you say Y" cards (table or bullet pairs) tied to those claims.
+- Predict crossfire questions, likely answers, follow-ups, and the risk of overreaching.
 - Be adversarial toward the opponent's text, not toward the user; expose gaps without sugarcoating.
 Use headings:
 
 ## Claim map & rebuttals
 ## If they say X, you say Y
+## Crossfire questions
 ## Risks / overreach in your counter (honest)`;
 
 export function jsonCorsHeaders(): Record<string, string> {
@@ -104,6 +125,18 @@ export function extractAssistantText(data: unknown): string | null {
   return content.trim();
 }
 
+function localCompletion(content: string, reason?: string): { status: number; body: unknown } {
+  const prefix = reason ? `> Local Fracture engine used: ${reason}\n\n` : '';
+  return {
+    status: 200,
+    body: {
+      id: 'fracture-local',
+      object: 'chat.completion',
+      choices: [{ message: { role: 'assistant', content: `${prefix}${content}` } }],
+    },
+  };
+}
+
 function fieldTooLong(label: string, value: string): { status: number; body: { error: string; code: string } } | null {
   if (value.length > MAX_TEXT_FIELD_CHARS) {
     return {
@@ -135,7 +168,8 @@ function extractUpstreamError(data: unknown): string | null {
 }
 
 function resolveApiKey(override?: string): string | null {
-  const key = (override ?? process.env.OPENROUTER_API_KEY)?.trim();
+  const envKey = typeof process !== 'undefined' ? process.env.OPENROUTER_API_KEY : undefined;
+  const key = (override ?? envKey)?.trim();
   return key || null;
 }
 
@@ -143,9 +177,13 @@ export async function requestOpenRouter(
   messages: ChatMessage[],
   referer: string | undefined,
   apiKeyOverride?: string,
+  fallbackText?: string,
 ): Promise<{ status: number; body: unknown }> {
   const apiKey = resolveApiKey(apiKeyOverride);
   if (!apiKey) {
+    if (fallbackText) {
+      return localCompletion(fallbackText, 'server model key is not configured, so the deterministic local engine completed the request.');
+    }
     return {
       status: 500,
       body: { error: 'OPENROUTER_API_KEY is not configured on the server.', code: 'OPENROUTER_KEY_MISSING' },
@@ -162,14 +200,34 @@ export async function requestOpenRouter(
     headers['HTTP-Referer'] = referer;
   }
 
-  const response = await fetch(OPENROUTER_ENDPOINT, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      messages,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25_000);
+
+  let response: Response;
+  try {
+    response = await fetch(OPENROUTER_ENDPOINT, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        messages,
+      }),
+    });
+  } catch (error) {
+    if (fallbackText) {
+      const reason = error instanceof Error && error.name === 'AbortError'
+        ? 'remote model timed out, so the deterministic local engine completed the request.'
+        : 'remote model request failed, so the deterministic local engine completed the request.';
+      return localCompletion(fallbackText, reason);
+    }
+    return {
+      status: 504,
+      body: { error: 'OpenRouter request timed out or could not be reached.', code: 'OPENROUTER_NETWORK' },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const rawText = await response.text();
   let data: unknown = {};
@@ -181,6 +239,12 @@ export async function requestOpenRouter(
   }
 
   if (!response.ok) {
+    if (fallbackText) {
+      return localCompletion(
+        fallbackText,
+        `remote model returned HTTP ${response.status}, so the deterministic local engine completed the request.`,
+      );
+    }
     return {
       status: response.status,
       body: {
@@ -192,6 +256,9 @@ export async function requestOpenRouter(
   }
 
   if (!extractAssistantText(data)) {
+    if (fallbackText) {
+      return localCompletion(fallbackText, 'remote model returned no assistant text, so the deterministic local engine completed the request.');
+    }
     return {
       status: 502,
       body: {
@@ -210,7 +277,7 @@ export async function requestOpenRouter(
 }
 
 function parseAction(value: unknown): ChatAction {
-  if (value === 'citations' || value === 'rebuttals' || value === 'critique') {
+  if (value === 'citations' || value === 'rebuttals' || value === 'critique' || value === 'fracture') {
     return value;
   }
   return 'critique';
@@ -239,6 +306,11 @@ function buildRebuttalMessages(opponentText: string, userCase: string): ChatMess
 function buildCritiqueMessages(messages: ChatMessage[]): ChatMessage[] {
   const rest = stripClientSystemMessages(messages);
   return [{ role: 'system', content: CRITIQUE_SYSTEM_PROMPT }, ...rest];
+}
+
+function lastUserText(messages: ChatMessage[]): string {
+  const last = [...messages].reverse().find((message) => message.role === 'user');
+  return last?.content ?? messages.map((message) => message.content).join('\n\n');
 }
 
 export async function processChatPost(
@@ -286,8 +358,22 @@ export async function processChatPost(
       return sourcesErr;
     }
 
-    const messages = buildCitationMessages(style, sourcesText);
-    return requestOpenRouter(messages, referer, apiKeyOverride);
+    const claimText = typeof body.claimText === 'string' ? body.claimText.trim() : '';
+    const claimErr = claimText ? fieldTooLong('claimText', claimText) : null;
+    if (claimErr) {
+      return claimErr;
+    }
+
+    const webSources = body.searchWeb === true ? await searchCitationSources(sourcesText) : [];
+    const localReport = renderCitationReport(buildCitationReport({ style, sourcesText, claimText, webSources }));
+    const webContext =
+      webSources.length > 0
+        ? `\n\nWeb search metadata found by the server:\n${webSources
+            .map((source) => `${source.title || source.raw} | ${source.authors?.join('; ') || ''} | ${source.year || ''} | ${source.url || source.doi || ''}`)
+            .join('\n')}`
+        : '';
+    const messages = buildCitationMessages(style, `${sourcesText}${webContext}`);
+    return requestOpenRouter(messages, referer, apiKeyOverride, localReport);
   }
 
   if (action === 'rebuttals') {
@@ -308,8 +394,10 @@ export async function processChatPost(
       return uErr;
     }
 
+    const persona = typeof body.persona === 'string' ? (body.persona as OpponentPersona) : undefined;
+    const localReport = generateRebuttalReport({ opponentText, userCase, persona });
     const messages = buildRebuttalMessages(opponentText, userCase);
-    return requestOpenRouter(messages, referer, apiKeyOverride);
+    return requestOpenRouter(messages, referer, apiKeyOverride, localReport);
   }
 
   const messages = parseMessages(body.messages);
@@ -339,6 +427,17 @@ export async function processChatPost(
     };
   }
 
+  const localReport = renderFractureAnalysis(analyzeArgument(lastUserText(messages), {
+    judgeMode:
+      body.judgeMode === 'teacher' ||
+      body.judgeMode === 'historian' ||
+      body.judgeMode === 'professor' ||
+      body.judgeMode === 'reader'
+        ? body.judgeMode
+        : 'debate',
+    rubric: typeof body.rubric === 'string' ? body.rubric : undefined,
+    audience: typeof body.audience === 'string' ? body.audience : undefined,
+  }));
   const secured = buildCritiqueMessages(messages);
-  return requestOpenRouter(secured, referer, apiKeyOverride);
+  return requestOpenRouter(secured, referer, apiKeyOverride, localReport);
 }
