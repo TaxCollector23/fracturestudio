@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Plus, Shield, Zap } from 'lucide-react';
+import { ArrowRight, Network, Plus, Shield, Zap } from 'lucide-react';
 
 const landingCards = [
   {
@@ -16,9 +16,15 @@ const landingCards = [
     to: '/manifesto',
   },
   {
+    icon: Network,
+    title: 'Feature Map',
+    copy: 'Argument graph, evidence checks, rebuttal drills, citation grounding, rubric alignment, and export packets.',
+    to: '/features',
+  },
+  {
     icon: Plus,
     title: 'Studio',
-    copy: 'Critique, citations, and rebuttals in one workspace—keys stay on the server.',
+    copy: 'Draft, fracture, cite, rehearse, and export in one focused workspace.',
     to: '/studio/access',
   },
 ];
@@ -39,8 +45,8 @@ export function LandingPage() {
           <span className="text-zinc-600 italic">that cannot break.</span>
         </h1>
         <p className="mx-auto max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-          Pressure-test a draft before it meets an audience. Quote-backed critique, citation helpers, and rebuttal maps—
-          with loading states and explicit errors when the model or network fails.
+          Pressure-test a draft before it meets an audience. Fracture maps the skeleton of your argument, finds the sentence
+          that can break it, and turns weak spots into revision missions.
         </p>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
@@ -51,14 +57,14 @@ export function LandingPage() {
           </Link>
           <Link
             className="rounded-sm border border-zinc-800 px-10 py-5 text-lg font-medium text-zinc-200 transition-colors hover:border-zinc-700 hover:text-white"
-            to="/methodology"
+            to="/features"
           >
-            See the Method
+            Explore Features
           </Link>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-6 py-20 md:grid-cols-3">
+      <section className="mx-auto grid max-w-6xl gap-6 py-20 md:grid-cols-2 xl:grid-cols-4">
         {landingCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -66,8 +72,8 @@ export function LandingPage() {
               <Icon className="mb-6 h-6 w-6 text-zinc-300 group-hover:text-zinc-100" aria-hidden />
               <h2 className="mb-3 font-serif text-3xl italic">{card.title}</h2>
               <p className="text-sm leading-7 text-zinc-400">{card.copy}</p>
-              <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-wide text-zinc-500 group-hover:text-zinc-300">
-                Open →
+              <span className="mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 group-hover:text-zinc-300">
+                Open <ArrowRight className="h-3 w-3" />
               </span>
             </Link>
           );

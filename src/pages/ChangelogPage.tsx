@@ -8,10 +8,10 @@ export function ChangelogPage() {
       <ul className="mt-10 space-y-8 border-l border-zinc-800 pl-8 text-zinc-400">
         <li>
           <p className="text-xs uppercase tracking-widest text-zinc-500">Current</p>
-          <p className="mt-2 font-medium text-zinc-200">Phases B–D baseline</p>
+          <p className="mt-2 font-medium text-zinc-200">Production workspace hardening</p>
           <p className="mt-2 text-sm leading-7">
-            Server-enforced critique with validation caps and structured error codes; citations and rebuttals actions; React
-            Router shell with marketing pages; Vitest coverage for the chat engine; merge guide for future redesign import.
+            Local Fracture analysis, citation grounding, rebuttal rehearsal, argument graph, rubric checks, deployment
+            adapter fixes, and a unified routed interface.
           </p>
         </li>
       </ul>

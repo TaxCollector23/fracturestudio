@@ -8,11 +8,14 @@ export function MarketingFooter() {
       <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="font-serif text-lg italic text-zinc-300">Fracture Studio</p>
-          <p className="mt-2 max-w-sm leading-7">Argument intelligence: critique, citations, and rebuttals through a secured API.</p>
+          <p className="mt-2 max-w-sm leading-7">Argument intelligence for writers and debaters who want pressure before an audience applies it.</p>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-3">
           <Link className={linkClass} to="/docs">
             Docs
+          </Link>
+          <Link className={linkClass} to="/features">
+            Features
           </Link>
           <Link className={linkClass} to="/pricing">
             Pricing

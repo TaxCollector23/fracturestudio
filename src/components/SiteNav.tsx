@@ -35,6 +35,9 @@ export function SiteNav() {
         <Link className="transition-colors hover:text-zinc-50" to="/methodology">
           Methodology
         </Link>
+        <Link className="transition-colors hover:text-zinc-50" to="/features">
+          Features
+        </Link>
         <Link className="transition-colors hover:text-zinc-50" to="/manifesto">
           Manifesto
         </Link>
@@ -83,6 +86,9 @@ export function SiteNav() {
             <div className="flex flex-col gap-4 text-lg font-medium text-zinc-100">
               <Link className="rounded-sm border border-zinc-800 py-3 text-left" to="/methodology">
                 Methodology
+              </Link>
+              <Link className="rounded-sm border border-zinc-800 py-3 text-left" to="/features">
+                Features
               </Link>
               <Link className="rounded-sm border border-zinc-800 py-3 text-left" to="/manifesto">
                 Manifesto

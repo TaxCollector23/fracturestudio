@@ -11,10 +11,7 @@ export function ManifestoPage() {
           This studio exists for writers who would rather expose the weakness themselves than let a reader, judge, or
           opponent do it first.
         </p>
-        <p>
-          Model access stays on the server: your OpenRouter key never ships to the browser. If the API returns an error, the
-          UI shows the message (including HTTP status and error codes when present) instead of failing silently.
-        </p>
+        <p>Feedback is only useful when it leads to a next move. Fracture ends every pass with the repairs that matter most.</p>
       </div>
       <div className="mt-12 flex flex-wrap gap-4">
         <Link className="rounded-sm bg-white px-6 py-3 font-bold text-black hover:bg-zinc-100" to="/studio/access">

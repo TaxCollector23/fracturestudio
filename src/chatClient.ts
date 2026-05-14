@@ -54,19 +54,25 @@ export function formatChatRequestError(e: ChatRequestError): string {
 
 export async function postChat(body: Record<string, unknown>): Promise<string> {
   let res: Response;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 30_000);
   try {
     res = await fetch(getChatApiUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify(body),
     });
-  } catch {
+  } catch (error) {
+    const aborted = error instanceof DOMException && error.name === 'AbortError';
     throw new ChatRequestError(
-      'Network error: could not reach the chat API.',
+      aborted ? 'Request timed out before the chat API answered.' : 'Network error: could not reach the chat API.',
       'network',
       undefined,
-      'NETWORK',
+      aborted ? 'CLIENT_TIMEOUT' : 'NETWORK',
     );
+  } finally {
+    window.clearTimeout(timeout);
   }
 
   let data: OpenRouterShape | ChatApiErrorBody | null = null;

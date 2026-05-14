@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { MarketingLayout } from './layouts/MarketingLayout';
 import { ChangelogPage } from './pages/ChangelogPage';
 import { DocsPage } from './pages/DocsPage';
+import { FeaturesPage } from './pages/FeaturesPage';
 import { LandingPage } from './pages/LandingPage';
 import { ManifestoPage } from './pages/ManifestoPage';
 import { MethodologyPage } from './pages/MethodologyPage';
@@ -35,6 +36,7 @@ export const router = createBrowserRouter(
       element: <MarketingLayout />,
       children: [
         { index: true, element: <LandingPage /> },
+        { path: 'features', element: <FeaturesPage /> },
         { path: 'methodology', element: <MethodologyPage /> },
         { path: 'manifesto', element: <ManifestoPage /> },
         { path: 'pricing', element: <PricingPage /> },
