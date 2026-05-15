@@ -1,48 +1,29 @@
 import type { Handler } from '@netlify/functions';
-import { jsonCorsHeaders, processChatPost } from '../../server/chat';
+import { processChatPost } from '../../server/chat';
+
+const headers = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json',
+};
 
 export const handler: Handler = async (event) => {
-  const cors = jsonCorsHeaders();
-
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: cors, body: '' };
+    return { statusCode: 204, headers, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: cors,
-      body: JSON.stringify({ error: 'Method Not Allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
+  let payload: unknown = {};
   try {
-    let payload: unknown = {};
-    if (event.body) {
-      try {
-        payload = JSON.parse(event.body) as unknown;
-      } catch {
-        return {
-          statusCode: 400,
-          headers: cors,
-          body: JSON.stringify({ error: 'Invalid JSON body.', code: 'INVALID_JSON' }),
-        };
-      }
-    }
-
-    const origin = event.headers.origin || event.headers.referer;
-    const result = await processChatPost(payload, origin);
-    return {
-      statusCode: result.status,
-      body: JSON.stringify(result.body),
-      headers: cors,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to reach OpenRouter.';
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: message }),
-      headers: cors,
-    };
+    payload = event.body ? JSON.parse(event.body) : {};
+  } catch {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON body.', code: 'INVALID_JSON' }) };
   }
+
+  const result = await processChatPost(payload, event.headers.origin || undefined);
+  return { statusCode: result.status, headers, body: JSON.stringify(result.body) };
 };
