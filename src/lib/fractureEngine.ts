@@ -101,6 +101,11 @@ const modelBlueprints = [
     nextMove: 'Name the warrant after each major piece of evidence.',
   },
   {
+    model: 'Assertion-Reasoning-Evidence-Impact',
+    purpose: 'assertion, warrant, data, significance',
+    nextMove: 'Make every contention say what it proves, why it is true, what proves it, and why it matters.',
+  },
+  {
     model: 'Rogerian Model',
     purpose: 'fair opposition summary before disagreement',
     nextMove: 'Add the strongest good-faith version of the other side.',
@@ -635,11 +640,119 @@ function buildMissions(analysis: Pick<FractureAnalysis, 'unsupportedClaims' | 'c
   return missions;
 }
 
+function isNonsenseDraft(clean: string, wordCount: number, sentences: string[]): boolean {
+  if (!clean) {
+    return true;
+  }
+
+  const alphaWords = words(clean).filter((word) => /[A-Za-z]/.test(word));
+  const uniqueAlpha = new Set(alphaWords.map((word) => word.toLowerCase()));
+  const hasArgumentSignal = includesAny(clean, claimSignals) || includesAny(clean, evidenceSignals) || includesAny(clean, transitionSignals);
+  const hasSentenceShape = sentences.some((sentence) => words(sentence).length >= 7);
+  const repeatedToken = alphaWords.length >= 4 && uniqueAlpha.size <= 2;
+  const symbolNoise = clean.length > 0 && clean.replace(/[A-Za-z0-9\s.,;:'"?!()-]/g, '').length / clean.length > 0.35;
+
+  return wordCount < 8 || repeatedToken || symbolNoise || (!hasArgumentSignal && !hasSentenceShape);
+}
+
+function buildNonsenseAnalysis(clean: string, wordCount: number): FractureAnalysis {
+  const snippet = trimSentence(clean || 'No argumentative text provided.', 120);
+  const scores = {
+    overall: clean ? 4 : 0,
+    logic: clean ? 5 : 0,
+    evidence: 0,
+    clarity: clean ? 10 : 0,
+    originality: clean ? 5 : 0,
+    rebuttal: 0,
+  };
+  const thesisText = clean
+    ? 'No defensible thesis found. Fracture needs a claim, reasoning, evidence, and impact before it can grade an argument.'
+    : 'No draft entered yet.';
+  const heatmap: HeatmapFinding[] = clean
+    ? [
+        {
+          sentence: snippet,
+          severity: 5,
+          kind: 'unsupported claim',
+          fix: 'Replace this with a complete argumentative claim: assertion, reasoning, evidence, and impact.',
+        },
+      ]
+    : [];
+
+  return {
+    wordCount,
+    scores,
+    thesis: {
+      text: thesisText,
+      score: clean ? 3 : 0,
+      precision: [
+        'No clear assertion to test',
+        'No reasoning bridge',
+        'No evidence supplied',
+        'No impact or significance',
+        'Input is too thin for a real Fracture score',
+      ],
+    },
+    claims: [],
+    unsupportedClaims: [],
+    assumptions: ['Fracture cannot infer an argument from a greeting, fragment, repeated words, or symbol noise.'],
+    contradictions: [],
+    fallacies: [],
+    burdenOfProof: 'Start by stating one claim, one reason it is true, one piece of evidence, and why it matters.',
+    impactChain: [
+      'Assertion: not provided',
+      'Reasoning: not provided',
+      'Evidence: not provided',
+      'Impact: not provided',
+    ],
+    collapsePoint: clean ? snippet : 'No argument exists yet.',
+    paragraphRankings: clean ? [{ paragraph: 1, score: 0, reason: 'not enough argumentative substance to evaluate' }] : [],
+    heatmap,
+    graph: {
+      nodes: [{ id: 'missing-thesis', label: 'No argument entered', type: 'thesis', strength: 0 }],
+      edges: [],
+    },
+    crossfireQuestions: [
+      'What exact claim are you trying to prove?',
+      'What reason connects that claim to real-world cause and effect?',
+      'What evidence would let a skeptical reader verify it?',
+      'Why does the claim matter in the debate, essay, or speech?',
+    ],
+    judgeQuestions: ['There is not enough argumentative material to judge yet. Add an assertion, reasoning, evidence, and impact.'],
+    readerConfusion: clean ? [`Reader cannot locate an argument in "${snippet}".`] : ['No draft text has been entered.'],
+    quoteIntegration: [],
+    evidenceUpgrades: ['Add a statistic, expert source, historical example, primary source, or concrete case that supports the first real claim.'],
+    modelPasses: modelBlueprints.map((blueprint) => ({
+      model: blueprint.model,
+      purpose: blueprint.purpose,
+      diagnosis: 'No complete argument exists yet, so this model cannot run responsibly.',
+      nextMove: blueprint.nextMove,
+    })),
+    flow: buildFlow(),
+    verdict: {
+      label: 'Collapsed',
+      reason: clean
+        ? 'The input is not a complete argument yet. Fracture found no testable claim with reasoning, evidence, and impact.'
+        : 'No draft has been entered yet.',
+    },
+    missions: [
+      'Write one direct assertion the audience can agree or disagree with.',
+      'Add one reasoning sentence that explains why the assertion is true.',
+      'Add one piece of evidence and one impact sentence that shows why the claim matters.',
+    ],
+  };
+}
+
 export function analyzeArgument(text: string, options: FractureAnalysisOptions = {}): FractureAnalysis {
   const clean = text.trim();
   const paragraphs = splitParagraphs(clean);
   const sentences = splitSentences(clean);
   const wordCount = words(clean).length;
+
+  if (isNonsenseDraft(clean, wordCount, sentences)) {
+    return buildNonsenseAnalysis(clean, wordCount);
+  }
+
   const thesisText = getThesis(paragraphs, sentences);
   const claims = extractClaims(paragraphs);
   const unsupportedClaims = claims.filter((claim) => claim.certainty === 'unsupported' || claim.certainty === 'exaggerated' || claim.evidence.length === 0);

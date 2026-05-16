@@ -4,6 +4,12 @@ export function getChatApiUrl(): string {
   if (!raw) {
     return '/api/chat';
   }
-  const base = raw.replace(/\/$/, '');
+  const base = raw.replace(/\/+$/, '');
+  if (!base) {
+    return '/api/chat';
+  }
+  if (base.endsWith('/api/chat')) {
+    return base;
+  }
   return `${base}/api/chat`;
 }

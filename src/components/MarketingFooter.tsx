@@ -1,37 +1,13 @@
 import { Link } from 'react-router-dom';
 
-const linkClass = 'text-zinc-500 transition-colors hover:text-zinc-300';
-
 export function MarketingFooter() {
+  const links = [['Studio', '/studio/case'], ['All Pages', '/all-pages'], ['Contact', '/contact'], ['Privacy', '/privacy'], ['Changelog', '/changelog']];
   return (
-    <footer className="border-t border-zinc-900 bg-zinc-950/90 px-6 py-12 text-sm text-zinc-500 sm:px-12">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="font-serif text-lg italic text-zinc-300">Fracture Studio</p>
-          <p className="mt-2 max-w-sm leading-7">Argument intelligence for writers and debaters who want pressure before an audience applies it.</p>
-        </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-3">
-          <Link className={linkClass} to="/docs">
-            Docs
-          </Link>
-          <Link className={linkClass} to="/features">
-            Features
-          </Link>
-          <Link className={linkClass} to="/pricing">
-            Pricing
-          </Link>
-          <Link className={linkClass} to="/changelog">
-            Changelog
-          </Link>
-          <Link className={linkClass} to="/privacy">
-            Privacy
-          </Link>
-          <Link className={linkClass} to="/studio/access">
-            Studio
-          </Link>
-        </div>
+    <footer className="border-t border-zinc-900 bg-[#08080a] px-6 py-10 text-zinc-400 sm:px-10">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-xl text-sm leading-7">Fracture Studio finds where an argument breaks before someone else does.</p>
+        <div className="flex flex-wrap gap-4">{links.map(([label, to]) => <Link className="text-sm hover:text-zinc-100" key={to} to={to}>{label}</Link>)}</div>
       </div>
-      <p className="mx-auto mt-10 max-w-6xl text-xs text-zinc-600">© {new Date().getFullYear()} Fracture Studio. All rights reserved.</p>
     </footer>
   );
 }
