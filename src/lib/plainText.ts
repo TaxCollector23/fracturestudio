@@ -17,10 +17,12 @@ export function toPlainText(input: string): string {
     .replace(/^\s*>\s?/gm, '')
     .replace(/^\s*[-*+]\s+/gm, '')
     .replace(/^\s*-{3,}\s*$/gm, '')
+    .replace(/^\s*\|\s*$/gm, '')
     .replace(/\s-{3,}\s/g, '\n\n')
     .replace(/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/gm, '')
     .replace(/^\s*\|(.+)\|\s*$/gm, (_match, row: string) => row.split('|').map((cell: string) => cell.trim()).filter(Boolean).join('    '))
     .replace(/\|\s*[-:]{2,}\s*/g, ' ')
+    .replace(/^\s*\|\s*$/gm, '')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();

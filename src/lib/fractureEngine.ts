@@ -195,6 +195,77 @@ const evidenceSignals = [
   'evidence',
 ];
 
+const personalEssaySignals = [
+  'college',
+  'application',
+  'admission',
+  'admissions',
+  'personal statement',
+  'common app',
+  'essay',
+  'my family',
+  'my community',
+  'my school',
+  'my identity',
+  'i learned',
+  'i realized',
+  'i discovered',
+  'i began',
+  'i built',
+  'i created',
+  'i volunteered',
+  'i tutored',
+  'i led',
+  'i worked',
+];
+
+const livedSupportSignals = [
+  'for example',
+  'for instance',
+  'when i',
+  'after i',
+  'before i',
+  'during',
+  'each week',
+  'every morning',
+  'summer',
+  'freshman',
+  'sophomore',
+  'junior',
+  'senior',
+  'teacher',
+  'mentor',
+  'classroom',
+  'lab',
+  'club',
+  'team',
+  'project',
+  'prototype',
+  'competition',
+  'volunteer',
+  'community',
+  'family',
+  'kitchen',
+  'hospital',
+  'library',
+  'neighborhood',
+];
+
+const reflectionSignals = [
+  'i learned',
+  'i realized',
+  'i discovered',
+  'i noticed',
+  'i understood',
+  'taught me',
+  'changed how',
+  'helped me',
+  'made me',
+  'now i',
+  'because of this',
+  'from that',
+];
+
 const transitionSignals = ['because', 'therefore', 'so', 'thus', 'since', 'as a result', 'which means'];
 const contrastSignals = ['however', 'but', 'although', 'despite', 'yet', 'nevertheless'];
 const exaggerationSignals = ['always', 'never', 'everyone', 'no one', 'guarantee', 'impossible', 'inevitable', 'all'];
@@ -227,8 +298,17 @@ function includesAny(text: string, needles: string[]): boolean {
   return needles.some((needle) => lower.includes(needle));
 }
 
+function livedExperienceSupport(sentence: string): boolean {
+  const lower = sentence.toLowerCase();
+  const wordCount = words(sentence).length;
+  const firstPerson = /\b(i|my|me|we|our)\b/i.test(sentence);
+  const concreteMarker = includesAny(lower, livedSupportSignals);
+  const actionMarker = /\b(built|created|led|organized|taught|tutored|worked|served|volunteered|coded|wrote|translated|cared|practiced|competed|researched)\b/i.test(sentence);
+  return firstPerson && wordCount >= 8 && (concreteMarker || actionMarker);
+}
+
 function hasEvidence(sentence: string): boolean {
-  return /\d/.test(sentence) || /"[^"]{8,}"/.test(sentence) || includesAny(sentence, evidenceSignals);
+  return /\d/.test(sentence) || /"[^"]{8,}"/.test(sentence) || includesAny(sentence, evidenceSignals) || livedExperienceSupport(sentence);
 }
 
 function isClaim(sentence: string): boolean {
@@ -486,19 +566,43 @@ function buildGraph(thesis: string, claims: ClaimFinding[]): { nodes: ArgumentGr
 }
 
 function buildScores(sentences: string[], claims: ClaimFinding[], paragraphs: string[]) {
+  const fullText = sentences.join(' ');
+  const allWords = words(fullText);
+  const wordCount = allWords.length;
+  const personalVoice = sentences.filter((sentence) => /\b(i|my|me|we|our)\b/i.test(sentence)).length;
+  const livedSupportCount = sentences.filter(livedExperienceSupport).length;
+  const reflectionCount = sentences.filter((sentence) => includesAny(sentence, reflectionSignals)).length;
+  const sourcedEvidenceCount = sentences.filter((sentence) => /\d/.test(sentence) || /"[^"]{8,}"/.test(sentence) || includesAny(sentence, evidenceSignals)).length;
+  const admissionsEssay =
+    personalVoice >= Math.max(2, sentences.length * 0.25) &&
+    (livedSupportCount >= 2 || reflectionCount >= 2 || includesAny(fullText, personalEssaySignals));
   const evidenceCount = sentences.filter(hasEvidence).length;
   const claimCount = Math.max(1, claims.length);
   const unsupported = claims.filter((claim) => claim.certainty === 'unsupported' || claim.certainty === 'exaggerated').length;
   const transitions = sentences.filter((sentence) => includesAny(sentence, transitionSignals)).length;
   const rebuttalSignals = sentences.filter((sentence) => /counter|opponent|although|however|critics|rebut/i.test(sentence)).length;
-  const averageSentenceLength = words(sentences.join(' ')).length / Math.max(1, sentences.length);
+  const contrastCount = sentences.filter((sentence) => includesAny(sentence, contrastSignals)).length;
+  const averageSentenceLength = wordCount / Math.max(1, sentences.length);
+  const paragraphShape = Math.min(8, paragraphs.length * 2);
+  const lexicalRange = new Set(allWords.map((word) => word.toLowerCase())).size / Math.max(1, wordCount);
+
+  const clarity = clampScore(70 - Math.max(0, averageSentenceLength - 26) * 2 + paragraphShape + (wordCount >= 120 ? 8 : wordCount >= 60 ? 4 : 0));
+  const originality = clampScore(48 + lexicalRange * 38 + (admissionsEssay ? Math.min(12, livedSupportCount * 3 + reflectionCount * 2) : 0));
+
+  if (admissionsEssay) {
+    const support = clampScore(44 + livedSupportCount * 11 + reflectionCount * 6 + sourcedEvidenceCount * 4 - unsupported * 5);
+    const logic = clampScore(48 + transitions * 5 + reflectionCount * 6 + contrastCount * 3 - unsupported * 6);
+    const rebuttal = clampScore(48 + contrastCount * 8 + reflectionCount * 5 + (wordCount >= 180 ? 8 : 0) - Math.max(0, unsupported - 2) * 4);
+    const developmentPenalty = wordCount < 90 ? 14 : wordCount < 150 ? 8 : 0;
+    const overall = clampScore(logic * 0.28 + support * 0.25 + clarity * 0.22 + originality * 0.15 + rebuttal * 0.1 - developmentPenalty);
+    return { overall, logic, evidence: support, clarity, originality, rebuttal };
+  }
 
   const evidence = clampScore(42 + (evidenceCount / claimCount) * 30 - unsupported * 7);
   const logic = clampScore(50 + transitions * 6 - unsupported * 8);
-  const clarity = clampScore(78 - Math.max(0, averageSentenceLength - 24) * 2 + paragraphs.length * 2);
-  const originality = clampScore(52 + new Set(words(sentences.join(' ').toLowerCase())).size / Math.max(1, words(sentences.join(' ')).length) * 40);
   const rebuttal = clampScore(35 + rebuttalSignals * 18 - Math.max(0, unsupported - 1) * 5);
-  const overall = clampScore(logic * 0.27 + evidence * 0.25 + clarity * 0.18 + originality * 0.12 + rebuttal * 0.18);
+  const rawOverall = clampScore(logic * 0.27 + evidence * 0.25 + clarity * 0.18 + originality * 0.12 + rebuttal * 0.18);
+  const overall = wordCount < 30 ? Math.min(rawOverall, 42) : rawOverall;
   return { overall, logic, evidence, clarity, originality, rebuttal };
 }
 
@@ -843,23 +947,41 @@ function renderList(items: string[], empty: string): string {
   return items.map((item) => `- ${item}`).join('\n');
 }
 
+function supportRead(label: CertaintyLabel): string {
+  switch (label) {
+    case 'proven':
+      return 'well supported in this draft';
+    case 'likely':
+      return 'supported, but still worth checking';
+    case 'possible':
+      return 'plausible with limited support';
+    case 'exaggerated':
+      return 'overstated for the support shown';
+    case 'false-looking':
+      return 'needs verification before a reader should trust it';
+    case 'unsupported':
+    default:
+      return 'not supported yet';
+  }
+}
+
 export function renderFractureAnalysis(analysis: FractureAnalysis): string {
   const score = analysis.scores;
   const claims = analysis.claims
     .slice(0, 6)
     .map(
       (claim) =>
-        `- ${claim.id} P${claim.paragraph}: ${claim.text}\n  Certainty: ${claim.certainty}. Warrant: ${claim.warrant}\n  Vulnerability: ${claim.vulnerability}`,
+        `- ${claim.id}, paragraph ${claim.paragraph}: ${claim.text}\n  Support read: ${supportRead(claim.certainty)}.\n  Reasoning note: ${claim.warrant}\n  Pressure point: ${claim.vulnerability}`,
     )
     .join('\n');
   const modelPasses = analysis.modelPasses
-    .map((pass) => `- ${pass.model}: ${pass.diagnosis} Next move: ${pass.nextMove}`)
+    .map((pass) => `- ${pass.model}: ${pass.diagnosis} Next revision move: ${pass.nextMove}`)
     .join('\n');
 
-  return `## Fracture Verdict
+  return `FRACTURE VERDICT
 ${analysis.verdict.label} - ${analysis.verdict.reason}
 
-## Argument Strength Score
+ARGUMENT STRENGTH SCORE
 Overall ${score.overall}/100
 - Logic: ${score.logic}
 - Evidence: ${score.evidence}
@@ -867,37 +989,37 @@ Overall ${score.overall}/100
 - Originality: ${score.originality}
 - Rebuttal strength: ${score.rebuttal}
 
-## Thesis Stress Test
+THESIS STRESS TEST
 Thesis: ${analysis.thesis.text}
 ${renderList(analysis.thesis.precision, 'Add a thesis before running the stress test.')}
 
-## Claim Map
+CLAIM MAP
 ${claims || '- Add at least one claim sentence so the engine can map the argument.'}
 
-## Hidden Assumptions
-${renderList(analysis.assumptions, 'No major hidden assumptions detected.')}
+HIDDEN ASSUMPTIONS
+${renderList(analysis.assumptions, 'This pass did not flag an obvious hidden assumption.')}
 
-## Unsupported Claims and Warrant Gaps
+UNSUPPORTED CLAIMS AND WARRANT GAPS
 ${renderList(
-  analysis.unsupportedClaims.map((claim) => `${claim.id}: ${claim.text} | ${claim.warrant}`),
-  'No unsupported major claims detected.',
+  analysis.unsupportedClaims.map((claim) => `${claim.id}: ${claim.text}. ${claim.warrant}`),
+  'This pass did not flag an unsupported major claim.',
 )}
 
-## Rebuttal Vulnerability Scanner
-- Weakest claim: ${analysis.unsupportedClaims[0]?.text || analysis.collapsePoint}
-- Easiest counterexample: challenge an absolute, causal, or policy claim that lacks source support.
-- Most likely judge objection: ${analysis.judgeQuestions[0] || 'The judge will ask whether the draft proves the thesis.'}
-- Best opponent response: ${analysis.unsupportedClaims[0]?.vulnerability || 'Attack the warrant and demand source-to-claim proof.'}
+REBUTTAL VULNERABILITY SCANNER
+- Claim to pressure-test first: ${analysis.unsupportedClaims[0]?.text || analysis.collapsePoint}
+- Counterexample to prepare for: an absolute, causal, or policy claim that lacks source support.
+- Judge objection to prepare for: ${analysis.judgeQuestions[0] || 'A judge may ask whether the draft proves the thesis.'}
+- Opponent response to prepare for: ${analysis.unsupportedClaims[0]?.vulnerability || 'Challenge the warrant and ask for source-to-claim proof.'}
 
-## Crossfire Questions
+CROSSFIRE QUESTIONS
 ${renderList(analysis.crossfireQuestions, 'No crossfire questions generated.')}
 
-## Ten-Model Speaking Pass
+TEN-MODEL SPEAKING PASS
 ${modelPasses}
 
-## Revision Missions
+REVISION MISSIONS
 ${renderList(analysis.missions, 'No missions generated.')}
 
-## Argument Flow
+ARGUMENT FLOW
 ${renderList(analysis.flow, 'No flow generated.')}`;
 }
