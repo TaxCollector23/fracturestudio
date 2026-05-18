@@ -1,28 +1,33 @@
 {
-  "name": "fracture-studio",
+  "name": "fracture-studio-universal",
+  "version": "1.0.2",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@netlify/functions": "^2.6.0",
+    "@supabase/supabase-js": "^2.105.4",
+    "@types/node": "^20.19.41",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vercel/node": "^3.0.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.16",
     "framer-motion": "^10.16.4",
-    "lucide-react": "^0.284.0",
+    "lucide-react": "^0.292.0",
+    "postcss": "^8.4.31",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.30.3",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
   },
-  "devDependencies": {
-    "@types/react": "^18.2.15",
-    "@types/react-dom": "^18.2.7",
-    "@vitejs/plugin-react": "^4.0.3",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.27",
-    "tailwindcss": "^3.3.3",
-    "typescript": "^5.0.2",
-    "vite": "^4.4.5"
-  }
+  "devDependencies": { "vitest": "^2.1.9" }
 }
