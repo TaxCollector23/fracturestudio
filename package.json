@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -p tsconfig.json && vite build",
+    "build:github-pages": "npm run build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit"
