@@ -5,6 +5,7 @@ dist/
 .env.example
 squid-internal-ca.crt
 *.modified
+.vercel/
 .netlify/
 qa_extract/
 redesign-for-rangan-main/
