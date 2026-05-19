@@ -1,0 +1,11 @@
+.env
+.env.*
+node_modules/
+dist/
+*.log
+squid-internal-ca.crt
+*.modified
+qa_extract/
+redesign-for-rangan-main/
+.netlify/
+.vercel/
