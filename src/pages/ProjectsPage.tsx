@@ -1,4 +1,0 @@
-import { Link } from 'react-router-dom';
-export function ProjectsPage() {
-  return <main className="px-6 py-14 sm:px-10"><section className="mx-auto max-w-7xl"><p className="text-xs uppercase tracking-[0.45em] text-zinc-500">Projects</p><h1 className="mt-4 font-serif text-5xl italic sm:text-6xl">Argument workspaces.</h1><p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400">Projects are ready for drafts, sources, notes, analysis history, and exports.</p><div className="mt-8 grid gap-4 md:grid-cols-3">{['Debate case','School essay','Speech'].map((title)=><article className="border border-zinc-900 bg-[#0c0c0e] p-5" key={title}><h2 className="text-xl font-semibold text-zinc-100">{title}</h2><p className="mt-3 text-sm leading-7 text-zinc-400">Open the studio to start building this workspace.</p><Link className="mt-5 inline-block text-sm font-bold text-zinc-100" to="/studio/case">Open Studio</Link></article>)}</div></section></main>;
-}

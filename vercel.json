@@ -1,1 +1,16 @@
-{"rewrites": [{"source": "/api/(.*)", "destination": "/api/$1"}, {"source": "/(.*)", "destination": "/index.html"}]}
+{
+  "buildCommand": "node -e \"console.log('No build step needed for Fracture Studio static app')\"",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/studio", "destination": "/studio.html" },
+    { "source": "/studio/case", "destination": "/studio.html" },
+    { "source": "/analyze", "destination": "/studio.html" },
+    { "source": "/mission", "destination": "/mission.html" },
+    { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/settings", "destination": "/settings.html" },
+    { "source": "/login", "destination": "/settings.html" },
+    { "source": "/auth/callback", "destination": "/auth-callback.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/studio/(.*)", "destination": "/$1" }
+  ]
+}

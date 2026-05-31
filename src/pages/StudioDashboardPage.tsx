@@ -1,5 +1,0 @@
-import { Link } from 'react-router-dom';
-export function StudioDashboardPage() {
-  const cards = [['Case Studio','/studio/case','Run Fracture, citations, rebuttals, graph, rubric, and chat.'], ['Citations','/citations','Build MLA, APA, and Chicago citations.'], ['All Pages','/all-pages','Open any live page.']];
-  return <main className="px-6 py-12 sm:px-10"><section className="mx-auto max-w-7xl"><p className="text-xs uppercase tracking-[0.45em] text-zinc-500">Studio dashboard</p><h1 className="mt-4 font-serif text-5xl italic sm:text-6xl">Nothing is pre-graded.</h1><p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400">Choose a workspace, paste your own draft, then run the engine you want.</p><div className="mt-8 grid gap-4 md:grid-cols-3">{cards.map(([title,to,body])=><Link className="border border-zinc-900 bg-[#0c0c0e] p-5 hover:border-zinc-700" key={to} to={to}><h2 className="font-serif text-3xl italic text-zinc-100">{title}</h2><p className="mt-4 text-sm leading-7 text-zinc-400">{body}</p></Link>)}</div></section></main>;
-}

@@ -1,5 +1,0 @@
-import { Link } from 'react-router-dom';
-export function ModelsLibraryPage() {
-  const models = [['Toulmin','/models/toulmin'], ['Rogerian','/models/rogerian'], ['Monroe','/models/monroe'], ['Aristotle','/models/aristotle'], ['Policy','/models/policy'], ['Public Forum','/models/public-forum'], ['Lincoln-Douglas','/models/lincoln-douglas'], ['World Schools','/models/world-schools'], ['British Parliamentary','/models/british-parliamentary']];
-  return <main className="px-6 py-14 sm:px-10"><section className="mx-auto max-w-7xl"><p className="text-xs uppercase tracking-[0.45em] text-zinc-500">Models Library</p><h1 className="mt-4 font-serif text-5xl italic sm:text-6xl">One argument, many pressure lenses.</h1><div className="mt-8 grid gap-4 md:grid-cols-3">{models.map(([label,to])=><Link className="border border-zinc-900 bg-[#0c0c0e] p-5 hover:border-zinc-700" key={to} to={to}><h2 className="font-serif text-3xl italic text-zinc-100">{label}</h2><p className="mt-4 text-sm leading-7 text-zinc-400">Open this model page and connect it to a real Fracture run.</p></Link>)}</div></section></main>;
-}

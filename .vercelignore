@@ -1,11 +1,6 @@
-.env
-.env.*
+.tools/
+pb_data/
+pb_test_data/
 node_modules/
-dist/
+.env
 *.log
-squid-internal-ca.crt
-*.modified
-qa_extract/
-redesign-for-rangan-main/
-.netlify/
-.vercel/
