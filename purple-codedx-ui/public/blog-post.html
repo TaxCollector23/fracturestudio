@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Read Fracture Studio field notes on arguments, evidence, debate, and revision." />
+  <title>Blog Article - Fracture Studio</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .article-shell {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 130px 28px 100px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .article-title {
+      font-family: var(--serif);
+      font-size: clamp(42px, 7vw, 78px);
+      line-height: 1.02;
+      letter-spacing: -.03em;
+      margin: 18px 0 22px;
+    }
+
+    .article-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 26px;
+    }
+
+    .article-excerpt {
+      color: var(--text-2);
+      font-size: clamp(17px, 2vw, 21px);
+      line-height: 1.7;
+      font-weight: 300;
+      max-width: 720px;
+      margin-bottom: 42px;
+    }
+
+    .article-card {
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at top left, rgba(108,99,255,.12), transparent 36%),
+        var(--surface);
+      box-shadow: var(--shadow), var(--glow);
+      padding: clamp(24px, 4vw, 44px);
+    }
+
+    .article-section + .article-section {
+      margin-top: 34px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+    }
+
+    .article-section h2 {
+      font-size: 24px;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .article-section p {
+      color: var(--text-2);
+      font-size: 16px;
+      line-height: 1.78;
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><span class="nav-logo-text">FS</span></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">Argument Analysis Engine</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="studio.html" class="nav-link">Studio</a>
+    <a href="mission.html" class="nav-link">Mission</a>
+    <a href="blog.html" class="nav-link active">Blog</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="studio.html" class="nav-cta">Open Studio</a>
+    <a href="settings.html" class="nav-gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<main class="article-shell" id="articleRoot">
+  <div class="label">Field Notes</div>
+  <h1 class="article-title">Loading article.</h1>
+</main>
+
+<script src="auth.js"></script>
+<script src="shared.js"></script>
+<script src="blog-posts.js"></script>
+<script>
+  (function () {
+    const root = document.getElementById('articleRoot');
+    const slug = new URLSearchParams(window.location.search).get('post') || 'read-fracture-report';
+    const posts = window.FractureBlogPosts || [];
+    const post = posts.find(function (item) { return item.slug === slug; }) || posts[0];
+
+    function esc(value) {
+      return String(value || '').replace(/[&<>"']/g, function (char) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+      });
+    }
+
+    if (!post) {
+      root.innerHTML = '<div class="label">Field Notes</div><h1 class="article-title">Article not found.</h1><p class="article-excerpt">Return to the Blog to choose another Fracture Studio article.</p><a href="blog.html" class="btn btn-primary">Back to Blog</a>';
+      return;
+    }
+
+    document.title = post.title + ' - Fracture Studio';
+    root.innerHTML = ''
+      + '<div class="label">' + esc(post.category) + '</div>'
+      + '<h1 class="article-title">' + esc(post.title) + '</h1>'
+      + '<div class="article-meta"><span class="tag">' + esc(post.date) + '</span><span class="tag">' + esc(post.readTime) + '</span></div>'
+      + '<p class="article-excerpt">' + esc(post.excerpt) + '</p>'
+      + '<article class="article-card">'
+      + post.sections.map(function (section) {
+        return '<section class="article-section"><h2>' + esc(section.heading) + '</h2><p>' + esc(section.body) + '</p></section>';
+      }).join('')
+      + '</article>';
+  })();
+</script>
+</body>
+</html>

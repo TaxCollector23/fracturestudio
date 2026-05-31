@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Fracture Studio private admin view for account signups." />
+  <title>Admin - Fracture Studio</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .admin-hero {
+      min-height: 52vh;
+      display: flex;
+      align-items: center;
+      padding: 130px 0 70px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .admin-title {
+      font-family: var(--serif);
+      font-size: clamp(44px, 7vw, 84px);
+      line-height: 1;
+      letter-spacing: -.03em;
+      margin: 18px 0 24px;
+    }
+
+    .admin-sub {
+      max-width: 620px;
+      color: var(--text-2);
+      font-size: clamp(16px, 2vw, 20px);
+      font-weight: 300;
+      line-height: 1.7;
+    }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, .75fr) minmax(0, 1.25fr);
+      gap: 22px;
+      align-items: start;
+      padding-bottom: 100px;
+    }
+
+    .admin-field {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(6,6,16,.7);
+      color: var(--text);
+      padding: 12px 14px;
+      font-family: var(--sans);
+      outline: none;
+    }
+
+    [data-theme="light"] .admin-field {
+      background: #fafafe;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .admin-table th,
+    .admin-table td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    .admin-table th {
+      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      background: rgba(108,99,255,.07);
+    }
+
+    .admin-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .admin-muted {
+      color: var(--text-3);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .admin-message {
+      min-height: 22px;
+      color: var(--accent-2);
+      font-size: 12px;
+    }
+
+    @media (max-width: 880px) {
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><span class="nav-logo-text">FS</span></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">Argument Analysis Engine</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="studio.html" class="nav-link">Studio</a>
+    <a href="mission.html" class="nav-link">Mission</a>
+    <a href="blog.html" class="nav-link">Blog</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="settings.html" class="nav-gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<section class="admin-hero">
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+    <div class="orb orb-1" style="opacity:.12;"></div>
+    <div class="orb orb-2" style="opacity:.10;"></div>
+  </div>
+  <div class="container" style="position:relative;z-index:1;">
+    <div class="label">Private Admin</div>
+    <h1 class="admin-title">Account<br>intelligence.</h1>
+    <p class="admin-sub">Enter the admin password to view the names, emails, providers, and recent activity for Fracture Studio accounts.</p>
+  </div>
+</section>
+
+<main class="container admin-grid">
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Admin Access</div>
+        <div class="panel-sub">This page requires the admin password and server-side PocketBase superuser credentials.</div>
+      </div>
+    </div>
+    <input class="admin-field" id="adminPassword" type="password" placeholder="Admin password" autocomplete="current-password" />
+    <div class="controls" style="justify-content:flex-start;">
+      <button class="btn-primary" id="adminLoadBtn" type="button">Load Accounts</button>
+    </div>
+    <div class="admin-message" id="adminMessage"></div>
+    <p class="admin-muted">Configure `POCKETBASE_URL`, `POCKETBASE_SUPERUSER_EMAIL`, and `POCKETBASE_SUPERUSER_PASSWORD` on the server to load registered accounts.</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Logged In Users</div>
+        <div class="panel-sub" id="adminCount">No accounts loaded yet.</div>
+      </div>
+    </div>
+    <div id="adminUsers">
+      <div class="admin-muted">Accounts appear here after the password check passes.</div>
+    </div>
+  </section>
+</main>
+
+<script src="auth.js"></script>
+<script src="shared.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Fracture Studio helps writers test claims, evidence, assumptions, logic, and rhetoric with clear academic feedback." />
+  <title>Studio — Fracture Studio</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="noise"></div>
+
+<!-- ── Nav ─────────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><span class="nav-logo-text">FS</span></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">Argument Analysis Engine</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="studio.html" class="nav-link active">Studio</a>
+    <a href="mission.html" class="nav-link">Mission</a>
+    <a href="blog.html" class="nav-link">Blog</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="index.html" class="nav-cta nav-cta--secondary">Home</a>
+    <a href="settings.html" class="nav-gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<!-- ── Studio ────────────────────────────────────────────────────────── -->
+<div class="studio-shell">
+
+  <!-- Header -->
+  <div class="studio-header">
+    <div class="studio-title-block">
+      <div class="studio-title">Fracture Studio · Argument Analysis Engine</div>
+      <div class="studio-headline">Audit your arguments.<br><em style="font-family:var(--serif);font-style:italic;">Strengthen your voice.</em></div>
+    </div>
+    <div class="studio-header-right">
+      <span class="tag">
+        <span style="width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 0 4px rgba(52,211,153,.18);flex-shrink:0;"></span>
+        Analysis Engine Ready
+      </span>
+      <span class="tag">Academic · Debate · Research</span>
+    </div>
+  </div>
+
+  <!-- Main split -->
+  <div class="studio-main">
+
+    <!-- Input Panel -->
+    <section class="panel" id="inputPanel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Your Argument</div>
+          <div class="panel-sub">Paste a draft, case, speech, or paragraph and Fracture will test the reasoning.</div>
+          <div class="badge-row">
+            <span class="badge">Structural Analysis</span>
+            <span class="badge">Assumption Audit</span>
+            <span class="badge">Logic &amp; Fallacies</span>
+            <span class="badge">Rhetorical Coaching</span>
+            <span class="badge">Counter-Arguments</span>
+            <span class="badge">Rewrite Suggestions</span>
+          </div>
+        </div>
+      </div>
+
+      <textarea
+        id="essayInput"
+        placeholder="Paste your argumentative writing here. Fracture will:
+- Score the argument across structure, assumptions, logic, and rhetoric
+- Identify claims and rate their support
+- Find hidden assumptions and weak warrants
+- Flag unsupported facts and logical fallacies
+- Build strong counterarguments and rebuttal paths
+- Review tone, flow, strongest sentence, and weakest sentence
+- Give complete rewrite options for the highest-impact fixes"
+      ></textarea>
+
+      <div class="textarea-footer">
+        <span>Best with a clear claim, evidence, warrant, and impact.</span>
+        <span id="charCount">0 chars</span>
+      </div>
+
+      <div class="controls">
+        <button class="btn-sm" id="clearBtn" type="button">Clear</button>
+        <button class="btn-sm" id="loadBtn" type="button">Load Saved</button>
+        <button class="btn-sm" id="saveBtn" type="button">Save</button>
+        <button class="btn-primary" id="analyzeBtn" type="button">Fracture It</button>
+      </div>
+
+      <div class="status-row" id="statusRow">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">Idle</span>
+        <span id="statusDetail" style="color:var(--text-3);font-size:11px;">Waiting for an argument.</span>
+        <span class="progress-pill" id="progressPill">0%</span>
+      </div>
+
+      <div class="progress-note" id="progressNote">Ready when you are</div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+
+      <div class="argument-map" id="argumentGraph">
+        <div class="argument-map-head">
+          <div>
+            <div class="panel-title">Argument Flow Map</div>
+            <div class="panel-sub">A visual claim, evidence, warrant, and weakness map appears after analysis.</div>
+          </div>
+          <span class="graph-status">Awaiting Fracture</span>
+        </div>
+        <div class="argument-map-empty">
+          <div class="empty-orbit">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <p>Paste a draft and press Fracture It to see the structure of the argument as a visual flowchart.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Output Panel -->
+    <section class="panel panel--output" id="outputPanel">
+      <div class="output-header">
+        <div>
+          <div class="panel-title">Fracture Report</div>
+          <div class="panel-sub">A validated diagnosis of the argument's strongest and weakest points.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-3);">Overall Score:</span>
+          <span class="score-pill" id="scorePill">—</span>
+        </div>
+      </div>
+
+      <div class="skeleton hidden" id="skeleton"></div>
+
+      <details id="rawJsonBlock" style="position:relative;z-index:1;">
+        <summary class="json-raw-summary">View Structured Data</summary>
+        <div class="json-raw-wrap" style="border-top:none;border-radius:0 0 12px 12px;">
+          <pre class="json-container" id="jsonOutput">Awaiting analysis...</pre>
+        </div>
+      </details>
+
+      <div id="reportContainer" class="report"></div>
+      <div class="json-error hidden" id="jsonError"></div>
+
+      <div class="json-toolbar">
+        <div class="toolbar-left">
+          <button class="btn-sm" id="exportBtn" type="button" disabled>Export Report Data</button>
+          <button class="btn-sm" id="shareBtn" type="button" disabled>Share Link</button>
+        </div>
+        <button class="btn-sm" id="copyBtn" type="button" disabled>Copy Report Data</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Studio Footer -->
+  <div class="studio-footer">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <span class="pill-tag">Review Lens: Academic Writing · Debate · Rhetoric</span>
+      <span class="pill-tag">Validated Structure · Essay-Specific · Actionable Feedback</span>
+    </div>
+    <span></span>
+  </div>
+
+</div>
+
+<script src="shared.js"></script>
+<script src="auth.js"></script>
+<script src="source-verification.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
