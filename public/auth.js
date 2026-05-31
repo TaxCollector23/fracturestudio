@@ -100,9 +100,11 @@
       'auth/email-already-in-use': 'An account already exists for that email. Sign in instead.',
       'auth/invalid-credential': 'The email or password was not accepted.',
       'auth/invalid-email': 'Enter a valid email address.',
+      'auth/missing-email': 'Enter the email address for your account.',
       'auth/popup-blocked': 'Your browser blocked Google sign-in. Allow the popup and try again.',
       'auth/popup-closed-by-user': 'Google sign-in was closed before it finished.',
       'auth/unauthorized-domain': 'This site address is not approved for sign-in yet.',
+      'auth/user-not-found': 'No account was found for that email address.',
       'auth/weak-password': 'Use a password with at least 8 characters.',
       'auth/network-request-failed': 'The sign-in service could not be reached. Check your connection and try again.'
     };
@@ -272,6 +274,18 @@
       }
       await syncProfile(credential.user);
       return normalizedUser(credential.user);
+    } catch (error) {
+      throw friendlyAuthError(error);
+    }
+  }
+
+  async function sendPasswordReset(email) {
+    const cleanEmail = String(email || '').trim();
+    if (!cleanEmail) throw new Error('Enter your email address first.');
+    try {
+      const services = await getServices();
+      await services.authModule.sendPasswordResetEmail(services.auth, cleanEmail);
+      return true;
     } catch (error) {
       throw friendlyAuthError(error);
     }
@@ -472,6 +486,7 @@
       + '<button class="btn-sm" id="authModalEmailSignIn" type="button">Sign In</button>'
       + '<button class="btn-sm" id="authModalEmailCreate" type="button">Create Account</button>'
       + '</div>'
+      + '<button class="auth-reset-link" id="authModalPasswordReset" type="button">Forgot password?</button>'
       + '<p class="auth-message" id="authModalStatus"></p>'
       + '</div>';
     document.body.appendChild(modal);
@@ -480,6 +495,7 @@
     const googleBtn = document.getElementById('authModalGoogle');
     const signInBtn = document.getElementById('authModalEmailSignIn');
     const createBtn = document.getElementById('authModalEmailCreate');
+    const resetBtn = document.getElementById('authModalPasswordReset');
     const nameInput = document.getElementById('authModalName');
     const emailInput = document.getElementById('authModalEmail');
     const passwordInput = document.getElementById('authModalPassword');
@@ -513,6 +529,16 @@
         modal.classList.add('hidden');
       } catch (error) {
         setText('authModalStatus', error.message || 'Account creation failed.');
+      }
+    });
+
+    resetBtn.addEventListener('click', async function () {
+      setText('authModalStatus', 'Requesting a reset email...');
+      try {
+        await sendPasswordReset(emailInput.value);
+        setText('authModalStatus', 'Password reset email sent. Check your inbox and spam folder.');
+      } catch (error) {
+        setText('authModalStatus', error.message || 'Password reset email could not be sent.');
       }
     });
     return modal;
@@ -577,6 +603,7 @@
     const googleBtn = document.getElementById('googleSignInBtn');
     const signInBtn = document.getElementById('emailSignInBtn');
     const createBtn = document.getElementById('emailCreateBtn');
+    const resetBtn = document.getElementById('passwordResetBtn');
     const signOutBtn = document.getElementById('signOutBtn');
     const savePrefsBtn = document.getElementById('savePrefsBtn');
     const refreshProjectsBtn = document.getElementById('refreshProjectsBtn');
@@ -628,6 +655,17 @@
       });
     }
 
+    if (resetBtn) {
+      resetBtn.addEventListener('click', async function () {
+        try {
+          await sendPasswordReset((document.getElementById('emailInput') || {}).value || '');
+          setText('settingsMessage', 'Password reset email sent. Check your inbox and spam folder.');
+        } catch (error) {
+          setText('settingsMessage', error.message || 'Password reset email could not be sent.');
+        }
+      });
+    }
+
     if (signOutBtn) {
       signOutBtn.addEventListener('click', async function () {
         await signOut();
@@ -665,6 +703,7 @@
     signInGoogle: signInGoogle,
     signInEmail: signInEmail,
     signUpEmail: signUpEmail,
+    sendPasswordReset: sendPasswordReset,
     signOut: signOut,
     getPreferences: getPreferences,
     savePreferences: savePreferences,

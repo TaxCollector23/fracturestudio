@@ -5,6 +5,7 @@ Fracture Studio uses Firebase Authentication and Cloud Firestore so sign-in and 
 ## Active services
 
 - Email and password account creation and sign-in through Firebase Authentication.
+- Password-reset emails through Firebase Authentication's built-in email sender.
 - Google account sign-in through Firebase Authentication.
 - Cloud-saved projects and feedback preferences in Cloud Firestore.
 - Browser-local draft saving when a user is not signed in.
@@ -31,8 +32,6 @@ The Google OAuth web client must include the Firebase authentication handler as 
 https://gen-lang-client-0002047847.firebaseapp.com/__/auth/handler
 ```
 
-Keep any local development redirect already used by older PocketBase testing only if that test environment is still needed.
-
 ## Public browser settings
 
 Firebase web app configuration is designed to be present in browser code. It identifies the Firebase project; it is not an administrative secret. User-data protection is provided by Authentication and Firestore Security Rules.
@@ -51,3 +50,20 @@ Firebase Authentication is approved for:
 - Firebase's hosting domains
 
 Add any future custom domain to Firebase Authentication authorized domains before using login on that address.
+
+## Password reset email
+
+Firebase Authentication sends password-reset emails without a separate mail server. The Settings page and Studio sign-in modal both expose a `Forgot password?` action.
+
+To change the sender name or email wording, open Firebase Console, then go to Authentication, Templates, and Password reset. Firebase's default sender works without additional setup.
+
+## Private admin page
+
+`/admin` lists the Firestore profiles created whenever users sign in. The server-side endpoint requires Firebase Admin credentials and never sends those credentials to the browser.
+
+1. In Firebase Console, open Project settings, Service accounts.
+2. Generate a new private key.
+3. Set `FIREBASE_SERVICE_ACCOUNT_JSON` to the complete JSON object in the server or Vercel environment.
+4. Restart or redeploy.
+
+The admin password defaults to `goatbergandrangoat`. Set `FRACTURE_ADMIN_PASSWORD` to replace it before a public launch.

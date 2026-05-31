@@ -424,8 +424,12 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
       logic: Math.min(25, Math.max(3, Math.round(score * 0.24))),
       rhetoric: Math.min(25, Math.max(4, Math.round(score * 0.24)))
     },
-    verdict: "The argument makes a clear accusation, but it does not yet provide verifiable evidence, a careful definition, or a defensible warrant. The weakest point is the source claim, because the reader cannot inspect or confirm it from the draft.",
-    coaching_note: "Replace loaded wording with a precise claim, then attach a complete citation and one warrant sentence that explains why the evidence proves the claim.",
+    verdict: usesLoadedLabel
+      ? "The argument makes a clear accusation, but it does not yet provide verifiable evidence, a careful definition, or a defensible warrant. The weakest point is the source claim, because the reader cannot inspect or confirm it from the draft."
+      : "The argument presents a visible thesis, but it does not yet provide enough verifiable evidence or warrant support. The weakest point is the source claim, because the reader cannot inspect or confirm it from the draft.",
+    coaching_note: usesLoadedLabel
+      ? "Replace loaded wording with a precise claim, then attach a complete citation and one warrant sentence that explains why the evidence proves the claim."
+      : "Attach a complete citation and add one warrant sentence that explains why the evidence proves the thesis.",
     priority_fixes: buildHeuristicFixes(text),
     collapse_point: {
       quote: sourceSentence,
@@ -450,18 +454,26 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
     },
     assumption_audit: [
       {
-        assumption: "The reader accepts that the named source exists and directly supports the accusation.",
+        assumption: usesLoadedLabel
+          ? "The reader accepts that the named source exists and directly supports the accusation."
+          : "The reader accepts that the named source exists and directly supports the claim.",
         load_bearing: "HIGH",
         quote: sourceSentence,
         vulnerability: "If the source is misnamed, missing, or unrelated, the entire argument appears unreliable.",
         defense: "Provide the full citation, source type, publication date, and a directly relevant quotation."
       },
       {
-        assumption: "The label used in the thesis is acceptable as an academic category.",
+        assumption: usesLoadedLabel
+          ? "The label used in the thesis is acceptable as an academic category."
+          : "The thesis uses a sufficiently precise academic standard.",
         load_bearing: "MEDIUM",
         quote: thesis,
-        vulnerability: "If the label is seen as vague or pejorative, the reader may reject the tone before evaluating the evidence.",
-        defense: "Use a neutral term and define the exact condition or behavior being evaluated."
+        vulnerability: usesLoadedLabel
+          ? "If the label is seen as vague or pejorative, the reader may reject the tone before evaluating the evidence."
+          : "If the standard remains vague, the reader may not know exactly what the evidence is meant to prove.",
+        defense: usesLoadedLabel
+          ? "Use a neutral term and define the exact condition or behavior being evaluated."
+          : "Define the standard and connect it explicitly to the cited evidence."
       }
     ],
     logical_fallacies: [
@@ -482,14 +494,20 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
     ],
     counter_arguments: [
       {
-        steelman: "A skeptical reader could argue that the draft has not proven the factual basis of its accusation. The cited source is incomplete, and the language is too loaded to function as academic evidence. Until the source is verifiable, the accusation should be treated as unsupported.",
+        steelman: usesLoadedLabel
+          ? "A skeptical reader could argue that the draft has not proven the factual basis of its accusation. The cited source is incomplete, and the language is too loaded to function as academic evidence. Until the source is verifiable, the accusation should be treated as unsupported."
+          : "A skeptical reader could argue that the draft has not proven the factual basis of its thesis. The cited source is incomplete, and the warrant is not explicit enough to connect the evidence to the conclusion.",
         targets: sourceSentence,
         damage: "This challenge removes the factual support behind the thesis.",
-        suggested_rebuttal: "Answer by replacing the label with a defined claim and citing a source that directly confirms the factual statement."
+        suggested_rebuttal: usesLoadedLabel
+          ? "Answer by replacing the label with a defined claim and citing a source that directly confirms the factual statement."
+          : "Answer by citing a source that directly confirms the factual statement and explaining how it supports the thesis."
       }
     ],
     rhetorical_analysis: {
-      opening_hook: "The opening is direct, but the tone is not yet academic. A more professional opening would define the claim before evaluating evidence.",
+      opening_hook: usesLoadedLabel
+        ? "The opening is direct, but the tone is not yet academic. A more professional opening would define the claim before evaluating evidence."
+        : "The opening is direct, but it needs a more precise standard and a clearer path into the evidence.",
       logical_flow: "The draft repeats the conclusion instead of building a source-to-claim chain. It needs a thesis, verified evidence, warrant, and conclusion in that order.",
       strongest_sentence: {
         quote: sourceSentence,
@@ -497,14 +515,20 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
       },
       weakest_sentence: {
         quote: thesis,
-        why: "It uses a loaded label without defining the standard or proving the claim.",
-        fix: "The argument should identify a specific, verifiable condition and avoid pejorative labels."
+        why: usesLoadedLabel
+          ? "It uses a loaded label without defining the standard or proving the claim."
+          : "It states the position before defining the standard or proving the claim.",
+        fix: usesLoadedLabel
+          ? "The argument should identify a specific, verifiable condition and avoid pejorative labels."
+          : "The argument should define the standard and support it with verifiable evidence."
       }
     },
     rewrite_suggestions: [
       {
         original: thesis,
-        rewrite: "David Goldberg should be described with a precise, verifiable claim rather than a loaded label, and that claim should be supported by a complete citation.",
+        rewrite: usesLoadedLabel
+          ? "The subject should be described with a precise, verifiable claim rather than a loaded label, and that claim should be supported by a complete citation."
+          : "The thesis should define a precise, verifiable standard and support it with a complete citation.",
         improvement: "The rewrite turns the sentence into an academic standard the reader can evaluate."
       },
       {

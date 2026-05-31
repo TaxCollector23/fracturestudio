@@ -9,6 +9,8 @@
 | Landing | `public/index.html` | Hero, why us vs generic AI, features, how-it-works, testimonials |
 | Studio | `public/studio.html` | The analysis interface — paste essay, get full structured report |
 | Mission | `public/mission.html` | Our principles, transparency, the full system prompt |
+| Settings | `public/settings.html` | Firebase sign-in, password reset, preferences, and saved work |
+| Admin | `public/admin.html` | Private Firebase profile list for signed-in users |
 
 ## Setup
 
@@ -29,6 +31,8 @@ npm start
 
 - **API key is server-side only.** `OPENROUTER_API_KEY` lives in `.env`, loaded by `dotenv`. It is never sent to the browser, never in any HTML/JS file, never in any response.
 - All AI calls are proxied through `/api/analyze` (POST). The browser sends plain essay text; the server handles auth with OpenRouter.
+- Firebase Authentication sends free password-reset emails without a separate mail server.
+- `/api/admin-users` reads Firebase profiles only after the server validates the admin password.
 - Input is size-limited (50kb body, 40,000 char essay max) to prevent abuse.
 - Static files are served from `public/` — no framework, no build step, no client-side secrets.
 
@@ -37,11 +41,14 @@ npm start
 ```
 fracture-studio/
 ├── src/
-│   └── server.js          # Express server + OpenRouter proxy
+│   ├── server.js          # Express server + OpenRouter proxy
+│   └── admin-users.js     # Server-only Firebase Admin profile lookup
 ├── public/
 │   ├── index.html         # Landing page
 │   ├── studio.html        # Analysis studio
 │   ├── mission.html       # Mission & principles
+│   ├── settings.html      # Account settings + forgot-password action
+│   ├── admin.html         # Private account profile viewer
 │   ├── style.css          # All styles (shared + per-page)
 │   ├── shared.js          # Theme toggle, shared utilities
 │   └── app.js             # Studio analysis logic

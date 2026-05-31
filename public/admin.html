@@ -145,7 +145,7 @@
     <div class="panel-header">
       <div>
         <div class="panel-title">Admin Access</div>
-        <div class="panel-sub">This page requires the admin password and server-side PocketBase superuser credentials.</div>
+        <div class="panel-sub">This page requires the admin password and server-side Firebase Admin credentials.</div>
       </div>
     </div>
     <input class="admin-field" id="adminPassword" type="password" placeholder="Admin password" autocomplete="current-password" />
@@ -153,13 +153,13 @@
       <button class="btn-primary" id="adminLoadBtn" type="button">Load Accounts</button>
     </div>
     <div class="admin-message" id="adminMessage"></div>
-    <p class="admin-muted">Configure `POCKETBASE_URL`, `POCKETBASE_SUPERUSER_EMAIL`, and `POCKETBASE_SUPERUSER_PASSWORD` on the server to load registered accounts.</p>
+    <p class="admin-muted">Set `FIREBASE_SERVICE_ACCOUNT_JSON` on the server to load profiles for users who have signed in.</p>
   </section>
 
   <section class="panel">
     <div class="panel-header">
       <div>
-        <div class="panel-title">Logged In Users</div>
+        <div class="panel-title">Signed-In User Profiles</div>
         <div class="panel-sub" id="adminCount">No accounts loaded yet.</div>
       </div>
     </div>

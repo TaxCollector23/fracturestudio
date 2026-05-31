@@ -3,6 +3,3 @@ node_modules/
 *.log
 .DS_Store
 .vercel
-.tools/
-pb_data/
-pb_test_data/
