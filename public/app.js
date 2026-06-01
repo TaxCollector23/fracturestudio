@@ -234,7 +234,7 @@
     + '</div>'
     + '<div class="argument-map-empty">'
     + '<div class="empty-orbit"><span></span><span></span><span></span></div>'
-    + '<p>Paste a draft and press Fracture It to see the structure of the argument as a visual flowchart.</p>'
+    + '<p>Add a draft and run the review to reveal its reasoning structure.</p>'
     + '</div>';
   }
 
