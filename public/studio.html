@@ -108,6 +108,14 @@
         <div class="progress-bar" id="progressBar"></div>
       </div>
 
+      <details class="live-audit-stream hidden" id="liveAuditStream" open>
+        <summary>
+          <span>Live Audit Stream</span>
+          <span class="live-audit-status" id="liveAuditStatus">Fracture is writing</span>
+        </summary>
+        <pre id="liveAuditText" aria-live="polite"></pre>
+      </details>
+
       <div class="argument-map" id="argumentGraph" hidden></div>
 
       <div class="studio-tools" id="studioTools">

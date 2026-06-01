@@ -15,6 +15,9 @@
   const progressNote    = document.getElementById('progressNote');
   const progressPill    = document.getElementById('progressPill');
   const progressBar     = document.getElementById('progressBar');
+  const liveAuditStream = document.getElementById('liveAuditStream');
+  const liveAuditStatus = document.getElementById('liveAuditStatus');
+  const liveAuditText   = document.getElementById('liveAuditText');
   const jsonOutput      = document.getElementById('jsonOutput');
   const jsonError       = document.getElementById('jsonError');
   const scorePill       = document.getElementById('scorePill');
@@ -122,6 +125,9 @@
     sourceVerifier = null;
     sourceVerificationData = null;
     if (jsonOutput) jsonOutput.textContent = '';
+    if (liveAuditText) liveAuditText.textContent = '';
+    if (liveAuditStream) liveAuditStream.classList.add('hidden');
+    if (liveAuditStatus) liveAuditStatus.textContent = 'Fracture is writing';
     if (jsonError)  { jsonError.classList.add('hidden'); jsonError.textContent = ''; }
     if (scorePill)  scorePill.textContent = '—';
     if (copyBtn)    copyBtn.disabled  = true;
@@ -138,6 +144,19 @@
     [analyzeBtn, clearBtn, saveBtn, loadBtn].forEach(function (b) {
       if (b) b.disabled = disabled;
     });
+  }
+
+  function appendLiveAuditDelta(delta) {
+    if (!delta || !liveAuditText || !liveAuditStream) return;
+    liveAuditStream.classList.remove('hidden');
+    liveAuditStream.open = true;
+    liveAuditText.textContent += delta;
+    liveAuditText.scrollTop = liveAuditText.scrollHeight;
+  }
+
+  function completeLiveAuditStream() {
+    if (!liveAuditText || !liveAuditText.textContent.trim()) return;
+    if (liveAuditStatus) liveAuditStatus.textContent = 'Report stream complete';
   }
 
   // ── Escape HTML ────────────────────────────────────────────────────────────
@@ -758,12 +777,14 @@
             if (json.fracture_model_delta) {
               rawJsonText += json.fracture_model_delta;
               if (jsonOutput) jsonOutput.textContent += json.fracture_model_delta;
+              appendLiveAuditDelta(json.fracture_model_delta);
               continue;
             }
             const delta = (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) || '';
             if (delta) {
               rawJsonText += delta;
               if (jsonOutput) jsonOutput.textContent += delta;
+              appendLiveAuditDelta(delta);
             }
           } catch (_) { /* ignore malformed SSE chunks */ }
         }
@@ -775,6 +796,7 @@
       if (exportBtn) exportBtn.disabled = false;
       if (shareBtn)  shareBtn.disabled  = false;
       stopProgress(true, 'Report ready');
+      completeLiveAuditStream();
       if (skeleton) skeleton.classList.add('hidden');
 
       try {
