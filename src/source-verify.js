@@ -42,11 +42,12 @@ export async function verifySources(input = {}) {
       works_cited: [],
       summary: {
         total_claims: 0,
-        supported: 0,
-        partially_supported: 0,
-        unsupported: 0,
-        contradicted: 0,
+        likely_supported: 0,
+        partial_match: 0,
+        needs_source_review: 0,
+        possible_conflict: 0,
         source_not_found: 0,
+        citation_incomplete: 0,
         source_too_vague: 0,
         needs_review: 0,
         note: "No essay text or audit claims were provided."
@@ -61,7 +62,7 @@ export async function verifySources(input = {}) {
     const result = await verifyClaim(claim);
     claims.push(result);
     for (const source of result.sources) {
-      if (source.url && !citedSources.has(source.url)) {
+      if (result.support_status === "likely_supported" && source.match_score >= 0.65 && source.url && !citedSources.has(source.url)) {
         citedSources.set(source.url, source);
       }
     }
@@ -119,9 +120,7 @@ export function extractClaims(essay = "", audit = null) {
 }
 
 async function verifyClaim(claim) {
-  if (isSourceTooVague(claim.text)) {
-    return finalizeClaim(claim, [], "source_too_vague", "The claim invokes a source without enough identifying detail to verify it directly.");
-  }
+  const citationTooVague = isSourceTooVague(claim.text);
 
   let search;
   try {
@@ -135,7 +134,14 @@ async function verifyClaim(claim) {
   }
 
   if (!search.results.length) {
-    return finalizeClaim(claim, [], "source_not_found", "No usable public web result was found for this claim.");
+    return finalizeClaim(
+      claim,
+      [],
+      citationTooVague ? "citation_incomplete" : "source_not_found",
+      citationTooVague
+        ? "The draft does not identify the source precisely enough, and the public search did not find a dependable match."
+        : "No usable public web result was found for this claim."
+    );
   }
 
   const sources = [];
@@ -144,8 +150,11 @@ async function verifyClaim(claim) {
     sources.push(normalizeSource({ ...result, ...metadata }));
   }
 
-  const status = classifySupport(claim.text, sources);
-  return finalizeClaim(claim, sources, status.status, status.reason);
+  const scoredSources = sources
+    .map((source) => ({ ...source, match_score: sourceMatchScore(claim.text, source) }))
+    .sort((a, b) => b.match_score - a.match_score);
+  const status = classifySupport(claim.text, scoredSources, citationTooVague);
+  return finalizeClaim(claim, scoredSources, status.status, status.reason);
 }
 
 function finalizeClaim(claim, sources, supportStatus, verificationNote) {
@@ -157,6 +166,7 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote) {
     support_status: supportStatus,
     confidence: confidenceFor(supportStatus, sources),
     verification_note: verificationNote,
+    verification_scope: "Public web search and retrieved page metadata. Open the source before treating the claim as verified.",
     citation_issues: claim.citation_issues,
     citation_issue_fields: citationIssueFields(claim.text, sources),
     sources: sources.map((source) => ({
@@ -167,6 +177,7 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote) {
       published_date: source.published_date,
       accessed_date: source.accessed_date,
       snippet: source.snippet,
+      match_score: source.match_score,
       mla: buildWorksCitedEntry(source)
     }))
   };
@@ -174,35 +185,16 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote) {
 
 async function searchOpenWeb(query) {
   const ddgUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-  let fallbackError = "";
 
   try {
     const html = await fetchText(ddgUrl, SEARCH_TIMEOUT_MS);
     const results = parseDuckDuckGoResults(html);
     if (results.length) return { results };
-  } catch (err) {
-    fallbackError = err?.message || String(err);
-  }
-
-  try {
-    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=${RESULTS_PER_CLAIM}&namespace=0&format=json&origin=*`;
-    const json = await fetchJson(wikiUrl, SEARCH_TIMEOUT_MS);
-    const titles = ensureArray(json?.[1]);
-    const descriptions = ensureArray(json?.[2]);
-    const urls = ensureArray(json?.[3]);
-    const results = urls.map((url, index) => ({
-      title: titles[index] || url,
-      url,
-      snippet: descriptions[index] || ""
-    }));
-    return {
-      results,
-      fallback_error: fallbackError
-    };
+    return { results: [] };
   } catch (err) {
     return {
       results: [],
-      fallback_error: fallbackError || err?.message || String(err)
+      fallback_error: err?.message || String(err)
     };
   }
 }
@@ -273,25 +265,7 @@ async function fetchText(url, timeoutMs) {
   }
 }
 
-async function fetchJson(url, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "application/json"
-      },
-      signal: controller.signal
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function classifySupport(claimText, sources) {
+function classifySupport(claimText, sources, citationTooVague) {
   const claimTerms = importantTerms(claimText);
   if (!claimTerms.length) {
     return {
@@ -304,33 +278,39 @@ function classifySupport(claimText, sources) {
   let hasContradictionCue = false;
   for (const source of sources) {
     const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""}`.toLowerCase();
-    const overlap = claimTerms.filter((term) => sourceText.includes(term)).length / claimTerms.length;
+    const overlap = source.match_score ?? claimTerms.filter((term) => sourceText.includes(term)).length / claimTerms.length;
     bestOverlap = Math.max(bestOverlap, overlap);
     if (hasNegationConflict(claimText, sourceText)) hasContradictionCue = true;
   }
 
   if (hasContradictionCue && bestOverlap >= 0.5) {
     return {
-      status: "contradicted",
-      reason: "The retrieved source metadata appears to discuss the same subject but contains a conflicting negation cue."
+      status: "possible_conflict",
+      reason: "The retrieved source metadata appears to discuss the same subject but contains a conflicting negation cue. Inspect the full source before relying on the claim."
+    };
+  }
+  if (citationTooVague) {
+    return {
+      status: "citation_incomplete",
+      reason: "A potentially relevant public page was found, but the draft does not identify the source precisely enough to connect it confidently to this claim."
     };
   }
   if (bestOverlap >= 0.72) {
     return {
-      status: "supported",
-      reason: "Retrieved source metadata closely matches the claim's distinctive terms."
+      status: "likely_supported",
+      reason: "Retrieved source metadata closely matches the claim's distinctive terms. Open the source and confirm the passage before final submission."
     };
   }
   if (bestOverlap >= 0.42) {
     return {
-      status: "partially_supported",
-      reason: "Retrieved sources match part of the claim, but the metadata does not verify every important detail."
+      status: "partial_match",
+      reason: "Retrieved sources match part of the claim, but the metadata does not verify every important detail. Narrow the claim or cite the exact passage."
     };
   }
   if (sources.length) {
     return {
-      status: "unsupported",
-      reason: "Search returned sources, but their metadata does not clearly support the claim."
+      status: "needs_source_review",
+      reason: "Search returned public pages, but their metadata does not clearly support the claim. Inspect the pages and replace the citation if the match is weak."
     };
   }
   return {
@@ -383,11 +363,12 @@ function buildWorksCitedEntry(source) {
 function buildSummary(claims, worksCited) {
   const counts = {
     total_claims: claims.length,
-    supported: 0,
-    partially_supported: 0,
-    unsupported: 0,
-    contradicted: 0,
+    likely_supported: 0,
+    partial_match: 0,
+    needs_source_review: 0,
+    possible_conflict: 0,
     source_not_found: 0,
+    citation_incomplete: 0,
     source_too_vague: 0,
     needs_review: 0
   };
@@ -401,15 +382,14 @@ function buildSummary(claims, worksCited) {
   return {
     ...counts,
     works_cited_count: worksCited.length,
-    note: "Automated verification uses public search metadata and should be treated as a triage layer, not a final scholarly source review."
+    note: "Automated verification searches public pages, retrieves source metadata, and builds a working bibliography. Open each source before treating a claim as fully verified."
   };
 }
 
 function buildSearchQuery(text) {
   const quoted = extractQuotedSource(text);
-  if (quoted) return quoted;
   const terms = importantTerms(text).slice(0, 10);
-  return terms.length ? terms.join(" ") : text.slice(0, 160);
+  return Array.from(new Set([quoted, ...terms].filter(Boolean))).join(" ") || text.slice(0, 160);
 }
 
 function extractQuotedSource(text) {
@@ -426,6 +406,14 @@ function importantTerms(text) {
     .match(/[a-z0-9][a-z0-9'-]{2,}/g) || []))
     .filter((term) => !STOP_WORDS.has(term) && !/^\d{1,2}$/.test(term))
     .slice(0, 16);
+}
+
+function sourceMatchScore(claimText, source) {
+  const claimTerms = importantTerms(claimText);
+  if (!claimTerms.length) return 0;
+  const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""}`.toLowerCase();
+  const overlap = claimTerms.filter((term) => sourceText.includes(term)).length / claimTerms.length;
+  return Number(overlap.toFixed(2));
 }
 
 function looksFactual(sentence) {
@@ -501,11 +489,12 @@ function hasNegationConflict(claimText, sourceText) {
 
 function confidenceFor(status, sources) {
   const base = {
-    supported: 0.74,
-    partially_supported: 0.55,
-    unsupported: 0.42,
-    contradicted: 0.48,
+    likely_supported: 0.7,
+    partial_match: 0.52,
+    needs_source_review: 0.36,
+    possible_conflict: 0.44,
     source_not_found: 0.35,
+    citation_incomplete: 0.32,
     source_too_vague: 0.3,
     needs_review: 0.2
   }[status] || 0.25;
@@ -534,6 +523,7 @@ function decodeHtml(text) {
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, "\"")
     .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&#x2F;/g, "/");

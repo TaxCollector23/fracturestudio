@@ -23,7 +23,20 @@
   const shareBtn        = document.getElementById('shareBtn');
   const reportContainer = document.getElementById('reportContainer');
   const argumentGraph   = document.getElementById('argumentGraph');
+  const outputPanel     = document.getElementById('outputPanel');
   const skeleton        = document.getElementById('skeleton');
+  const rebuttalInput   = document.getElementById('rebuttalInput');
+  const rebuttalBtn     = document.getElementById('rebuttalBtn');
+  const rebuttalStatus  = document.getElementById('rebuttalStatus');
+  const rebuttalProgress = document.getElementById('rebuttalProgress');
+  const rebuttalOutput  = document.getElementById('rebuttalOutput');
+  const chatInput       = document.getElementById('chatInput');
+  const chatBtn         = document.getElementById('chatBtn');
+  const chatStatus      = document.getElementById('chatStatus');
+  const chatProgress    = document.getElementById('chatProgress');
+  const chatOutput      = document.getElementById('chatOutput');
+  const chatSelectedPoint = document.getElementById('chatSelectedPoint');
+  const fractureChatCard = document.getElementById('fractureChatCard');
 
   if (!essayInput) return; // Not on studio page
 
@@ -38,6 +51,7 @@
   let sourceVerifier = null;
   let sourceVerificationData = null;
   let autoSaveInFlight = false;
+  let selectedChatPoint = '';
 
   const STORAGE_KEY_ESSAY = 'fracture_studio_last_essay';
   const PACING_PHRASES = [
@@ -114,6 +128,7 @@
     if (exportBtn)  exportBtn.disabled = true;
     if (shareBtn)   shareBtn.disabled  = true;
     if (reportContainer) { reportContainer.innerHTML = ''; reportContainer.classList.remove('visible'); }
+    if (outputPanel) outputPanel.hidden = true;
     resetArgumentGraph();
     if (skeleton)   skeleton.classList.add('hidden');
     setProgress(0, 'Ready when you are');
@@ -132,6 +147,10 @@
 
   function quoteBlock(text) {
     return '<div class="report-quote">' + esc(text || '') + '</div>';
+  }
+
+  function dataPoint(text) {
+    return encodeURIComponent(firstText(text).slice(0, 1200));
   }
 
   function asArray(value) {
@@ -224,18 +243,8 @@
   function resetArgumentGraph() {
     if (!argumentGraph) return;
     sourceVerifier = null;
-    argumentGraph.innerHTML =
-      '<div class="argument-map-head">'
-    + '<div>'
-    + '<div class="panel-title">Argument Flow Map</div>'
-    + '<div class="panel-sub">A visual claim, evidence, warrant, and weakness map appears after analysis.</div>'
-    + '</div>'
-    + '<span class="graph-status">Awaiting Fracture</span>'
-    + '</div>'
-    + '<div class="argument-map-empty">'
-    + '<div class="empty-orbit"><span></span><span></span><span></span></div>'
-    + '<p>Add a draft and run the review to reveal its reasoning structure.</p>'
-    + '</div>';
+    argumentGraph.innerHTML = '';
+    argumentGraph.hidden = true;
   }
 
   function renderArgumentGraph(parsed) {
@@ -266,7 +275,7 @@
       const noteTitle = rating === 'strong' ? 'Watch point' : 'Needs attention';
 
       return '<div class="graph-row">'
-        + '<div class="graph-node claim-node ' + rating + '">'
+        + '<div class="graph-node claim-node ' + rating + '" data-chat-point="' + dataPoint(claim.quote) + '" title="Select this claim for Fracture Chat">'
         + '<div class="node-kicker">Claim ' + (index + 1) + '</div>'
         + '<div class="node-text">' + esc(truncateText(claim.quote, 155)) + '</div>'
         + '<span class="node-badge ' + rating + '">' + esc((claim.rating || 'WEAK').toUpperCase()) + '</span>'
@@ -300,7 +309,7 @@
     + '<div class="node-kicker">Thesis</div>'
     + '<div class="node-text">' + esc(truncateText(firstText(thesis.quote, parsed.verdict, 'No clear thesis found yet.'), 190)) + '</div>'
     + '</div>'
-    + '<div class="collapse-card">'
+        + '<div class="collapse-card" data-chat-point="' + dataPoint(firstText(collapse.quote, thesis.quote)) + '" title="Select this collapse point for Fracture Chat">'
     + '<div class="note-title">Collapse Point</div>'
     + '<p>' + esc(truncateText(firstText(collapse.quote, thesis.quote, 'The most load-bearing claim is not clear yet.'), 150)) + '</p>'
     + '<small>' + esc(truncateText(firstText(collapse.why_it_collapses, 'If this point is unsupported, the whole argument loses force.'), 170)) + '</small>'
@@ -309,6 +318,7 @@
     + '<div class="graph-spine"><span></span><span></span><span></span></div>'
     + '<div class="graph-rows">' + mapRows + '</div>'
     + '</div>';
+    argumentGraph.hidden = false;
   }
 
   function mountSourceVerification() {
@@ -444,13 +454,117 @@
     }
   }
 
-  function tryParseStreamingJson() {
-    if (parsedAudit || !rawJsonText || rawJsonText.trim().slice(-1) !== '}') return;
+  function updateToolButton(input, button) {
+    if (!input || !button) return;
+    button.disabled = !input.value.trim();
+  }
+
+  function setToolProgress(progressEl, statusEl, value, message) {
+    if (progressEl) progressEl.style.width = Math.max(0, Math.min(100, value || 0)) + '%';
+    if (statusEl && message) statusEl.textContent = message;
+  }
+
+  async function streamPlainTextTool(options) {
+    const input = options.input;
+    const button = options.button;
+    const output = options.output;
+    if (!input || !button || !output || !input.value.trim()) return;
+
+    button.disabled = true;
+    output.textContent = '';
+    setToolProgress(options.progress, options.status, 4, 'Connecting');
+
     try {
-      renderParsedAudit(parseAuditJson(rawJsonText));
-    } catch (_) {
-      // Partial JSON is expected while the response is still streaming.
+      const response = await fetch(options.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(options.body())
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(function () { return {}; });
+        throw new Error(payload.error || response.statusText);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const result = await reader.read();
+        if (result.done) break;
+        buffer += decoder.decode(result.value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        lines.forEach(function (line) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) return;
+          const data = trimmed.slice(5).trim();
+          if (!data || data === '[DONE]') return;
+          try {
+            const event = JSON.parse(data);
+            if (event.fracture_text_delta) output.textContent += event.fracture_text_delta;
+            if (event.fracture_text_progress) {
+              setToolProgress(options.progress, options.status, event.fracture_text_progress.progress, event.fracture_text_progress.message);
+            }
+            if (event.fracture_text_error) throw new Error(event.fracture_text_error);
+          } catch (err) {
+            if (err && err.message && !/Unexpected token/.test(err.message)) throw err;
+          }
+        });
+      }
+
+      setToolProgress(options.progress, options.status, 100, 'Ready');
+    } catch (err) {
+      output.textContent = 'This request could not finish. ' + (err && err.message ? err.message : String(err));
+      setToolProgress(options.progress, options.status, 0, 'Needs attention');
+    } finally {
+      updateToolButton(input, button);
     }
+  }
+
+  function selectChatPoint(point) {
+    selectedChatPoint = firstText(point);
+    if (!selectedChatPoint || !chatSelectedPoint) return;
+    chatSelectedPoint.textContent = 'Selected pressure point: ' + selectedChatPoint;
+    chatSelectedPoint.classList.remove('hidden');
+    if (chatInput && !chatInput.value.trim()) {
+      chatInput.value = 'How should I strengthen this exact point? Give me a practical rewrite and explain why it works.';
+      updateToolButton(chatInput, chatBtn);
+    }
+    if (fractureChatCard) fractureChatCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function runRebuttal() {
+    return streamPlainTextTool({
+      endpoint: '/api/rebuttal',
+      input: rebuttalInput,
+      button: rebuttalBtn,
+      output: rebuttalOutput,
+      progress: rebuttalProgress,
+      status: rebuttalStatus,
+      body: function () {
+        return { argument: rebuttalInput.value.trim(), context: essayInput.value.trim() };
+      }
+    });
+  }
+
+  function runChat() {
+    return streamPlainTextTool({
+      endpoint: '/api/chat',
+      input: chatInput,
+      button: chatBtn,
+      output: chatOutput,
+      progress: chatProgress,
+      status: chatStatus,
+      body: function () {
+        return {
+          message: chatInput.value.trim(),
+          draft: essayInput.value.trim(),
+          report: parsedAudit,
+          selectedPoint: selectedChatPoint
+        };
+      }
+    });
   }
 
   function finalizeJsonTextFromAudit() {
@@ -468,6 +582,7 @@
   // ── Report renderer ────────────────────────────────────────────────────────
   function renderReport(parsed) {
     const c = reportContainer;
+    if (outputPanel) outputPanel.hidden = false;
     c.innerHTML = '';
 
     function section(title, innerHTML, open) {
@@ -635,11 +750,20 @@
               renderParsedAudit(json.fracture_audit);
               continue;
             }
+            if (json.fracture_normalized_json) {
+              rawJsonText = json.fracture_normalized_json;
+              if (jsonOutput) jsonOutput.textContent = rawJsonText;
+              continue;
+            }
+            if (json.fracture_model_delta) {
+              rawJsonText += json.fracture_model_delta;
+              if (jsonOutput) jsonOutput.textContent += json.fracture_model_delta;
+              continue;
+            }
             const delta = (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) || '';
             if (delta) {
               rawJsonText += delta;
               if (jsonOutput) jsonOutput.textContent += delta;
-              tryParseStreamingJson();
             }
           } catch (_) { /* ignore malformed SSE chunks */ }
         }
@@ -768,6 +892,17 @@
   if (shareBtn)  shareBtn.addEventListener('click',  shareLink);
   if (saveBtn)   saveBtn.addEventListener('click',   saveEssay);
   if (loadBtn)   loadBtn.addEventListener('click',   loadEssay);
+  if (rebuttalInput) rebuttalInput.addEventListener('input', function () { updateToolButton(rebuttalInput, rebuttalBtn); });
+  if (chatInput) chatInput.addEventListener('input', function () { updateToolButton(chatInput, chatBtn); });
+  if (rebuttalBtn) rebuttalBtn.addEventListener('click', runRebuttal);
+  if (chatBtn) chatBtn.addEventListener('click', runChat);
+  if (argumentGraph) {
+    argumentGraph.addEventListener('click', function (event) {
+      const target = event.target.closest('[data-chat-point]');
+      if (!target) return;
+      selectChatPoint(decodeURIComponent(target.getAttribute('data-chat-point') || ''));
+    });
+  }
 
   // ── Init ───────────────────────────────────────────────────────────────────
   updateCharCount();

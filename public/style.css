@@ -317,6 +317,21 @@ body {
   text-decoration: underline;
 }
 
+.auth-guest-divider {
+  margin-top: 18px;
+}
+
+.auth-guest {
+  width: 100%;
+  justify-content: center;
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+.auth-guest:hover {
+  border-color: var(--accent);
+}
+
 .auth-message {
   min-height: 20px;
   margin-top: 12px;

@@ -16,10 +16,10 @@
   }
 
   function statusTone(status) {
-    const normalized = text(status, 'needs review').toLowerCase();
-    if (/\b(verified|supported|match|accurate|pass|strong|ok)\b/.test(normalized)) return 'ok';
-    if (/\b(partial|mixed|unclear|review|warning|weak)\b/.test(normalized)) return 'warn';
-    if (/\b(false|unsupported|missing|failed|fabricated|mismatch|error|not found)\b/.test(normalized)) return 'bad';
+    const normalized = text(status, 'needs review').toLowerCase().replace(/_/g, ' ');
+    if (/\b(likely supported|verified|accurate|pass|strong|ok)\b/.test(normalized)) return 'ok';
+    if (/\b(partial|match|mixed|unclear|review|warning|weak|incomplete)\b/.test(normalized)) return 'warn';
+    if (/\b(false|unsupported|missing|failed|fabricated|mismatch|error|not found|conflict)\b/.test(normalized)) return 'bad';
     return 'warn';
   }
 
@@ -145,8 +145,9 @@
       const s = payload.summary;
       return [
         text(s.total_claims, '0') + ' claims checked',
-        text(s.supported, '0') + ' supported',
-        text(s.unsupported, '0') + ' unsupported',
+        text(s.likely_supported || s.supported, '0') + ' likely matches',
+        text(s.needs_source_review || s.unsupported, '0') + ' need source review',
+        text(s.citation_incomplete, '0') + ' citations incomplete',
         text(s.works_cited_count, '0') + ' Works Cited entries'
       ].join('. ') + '.';
     }

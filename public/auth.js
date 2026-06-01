@@ -7,6 +7,7 @@
   const FIREBASE_AUTH_CDN = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/firebase-auth.js';
   const FIREBASE_FIRESTORE_CDN = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/firebase-firestore.js';
   const RETURN_PATH_KEY = 'fracture_auth_return';
+  const GUEST_ACCESS_KEY = 'fracture_guest_access';
   const DEFAULT_FIREBASE_CONFIG = {
     apiKey: 'AIzaSyCfvIx3BFLSW3jM7UVI55xEUWU6ruw_KGQ',
     authDomain: 'gen-lang-client-0002047847.firebaseapp.com',
@@ -58,6 +59,25 @@
       if (path && path.startsWith('/') && !path.startsWith('//')) return path;
     } catch (_) {}
     return null;
+  }
+
+  function hasGuestAccess() {
+    try {
+      return sessionStorage.getItem(GUEST_ACCESS_KEY) === 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function continueWithoutEmail() {
+    try { sessionStorage.setItem(GUEST_ACCESS_KEY, 'true'); } catch (_) {}
+    const modal = document.getElementById('fractureAuthModal');
+    if (modal) modal.classList.add('hidden');
+    const returnPath = consumeReturnPath();
+    if (returnPath && isStudioHref(returnPath) && !isStudioPage()) {
+      window.location.href = returnPath;
+    }
+    return true;
   }
 
   async function loadConfig() {
@@ -487,6 +507,8 @@
       + '<button class="btn-sm" id="authModalEmailCreate" type="button">Create Account</button>'
       + '</div>'
       + '<button class="auth-reset-link" id="authModalPasswordReset" type="button">Forgot password?</button>'
+      + '<div class="auth-divider auth-guest-divider"><span>or continue without email</span></div>'
+      + '<button class="btn-sm auth-guest" id="authModalGuest" type="button">Continue as Guest</button>'
       + '<p class="auth-message" id="authModalStatus"></p>'
       + '</div>';
     document.body.appendChild(modal);
@@ -496,6 +518,7 @@
     const signInBtn = document.getElementById('authModalEmailSignIn');
     const createBtn = document.getElementById('authModalEmailCreate');
     const resetBtn = document.getElementById('authModalPasswordReset');
+    const guestBtn = document.getElementById('authModalGuest');
     const nameInput = document.getElementById('authModalName');
     const emailInput = document.getElementById('authModalEmail');
     const passwordInput = document.getElementById('authModalPassword');
@@ -541,6 +564,10 @@
         setText('authModalStatus', error.message || 'Password reset email could not be sent.');
       }
     });
+
+    guestBtn.addEventListener('click', function () {
+      continueWithoutEmail();
+    });
     return modal;
   }
 
@@ -558,8 +585,8 @@
 
   async function requireAuthForStudio() {
     const user = await getUser();
-    if (user) return true;
-    showAuthModal(true, 'Create or enter your account before opening the Studio. Your drafts and reports can then be saved securely in the cloud.');
+    if (user || hasGuestAccess()) return true;
+    showAuthModal(true, 'Sign in to save cloud history, or continue as a guest to start immediately. Guest drafts stay in this browser.');
     return false;
   }
 
@@ -569,7 +596,7 @@
       const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
       if (!link || !isStudioHref(link.getAttribute('href'))) return;
       const user = await getUser();
-      if (user) return;
+      if (user || hasGuestAccess()) return;
       event.preventDefault();
       try {
         const destination = new URL(link.getAttribute('href'), window.location.href);
@@ -577,7 +604,7 @@
       } catch (_) {
         rememberReturnPath('/studio');
       }
-      showAuthModal(false, 'Sign in first, then Studio opens with cloud-saved drafts and report history enabled.');
+      showAuthModal(false, 'Sign in for cloud-saved drafts and report history, or continue as a guest to start immediately.');
     }, true);
 
     if (isStudioPage()) {
@@ -707,6 +734,8 @@
     signOut: signOut,
     getPreferences: getPreferences,
     savePreferences: savePreferences,
+    hasGuestAccess: hasGuestAccess,
+    continueWithoutEmail: continueWithoutEmail,
     initAuthGate: initAuthGate,
     showAuthModal: showAuthModal,
     requireAuthForStudio: requireAuthForStudio,

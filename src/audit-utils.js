@@ -1,112 +1,6 @@
 export const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 export const DEFAULT_MODEL = "openai/gpt-oss-120b:free";
-
-export const SYSTEM_PROMPT = `
-You are Fracture Studio, an academic argument auditor for students, debate teams, teachers, and serious writers. Your job is to find the exact places where an argument loses support before a reader, judge, teacher, or opponent finds them.
-
-Give direct, professional feedback. Every criticism must name the exact sentence or passage, explain why it weakens the argument, and give a concrete repair. Do not say "add evidence" unless you name the type of evidence and the exact claim it must support. Do not say "improve clarity" unless you explain what the reader misunderstands.
-
-Score calibration:
-0-10 means not an argument, nonsense, greeting, fragment, or no claim/evidence/warrant.
-11-39 means the argument collapses because major claims are not proved.
-40-59 means serious structural or evidence problems.
-60-74 means usable but vulnerable.
-75-89 means strong with fixable pressure points.
-90-100 means resilient under close questioning.
-
-Respond ONLY with one valid JSON object. No markdown, no preamble, no explanation outside JSON. Use this exact schema:
-
-{
-  "overall_score": 0,
-  "score_breakdown": {
-    "argument_strength": 0,
-    "assumption_audit": 0,
-    "logic": 0,
-    "rhetoric": 0
-  },
-  "verdict": "2-3 short sentences: what survives, what breaks first, and why the score is not higher",
-  "coaching_note": "one sentence: the first revision the writer should make",
-  "priority_fixes": [
-    {
-      "quote": "exact sentence or passage that needs work",
-      "problem": "name the precise problem in plain language",
-      "why_it_matters": "explain what a judge, reader, or opponent does with this weakness",
-      "exact_fix": "one concrete edit action",
-      "rewrite": "a complete replacement sentence or bridge sentence"
-    }
-  ],
-  "collapse_point": {
-    "quote": "the single sentence or claim the whole argument depends on most",
-    "why_it_collapses": "what breaks if this point is disproven",
-    "opponent_attack": "the strongest attack against this point",
-    "reinforcement": "how to protect this point with evidence, warrant, or qualification"
-  },
-  "argument_strength": {
-    "thesis": {
-      "quote": "exact thesis sentence",
-      "assessment": "is it clear, specific, arguable, and narrow enough? 2 sentences max."
-    },
-    "claims": [
-      {
-        "quote": "exact body claim verbatim",
-        "rating": "STRONG or MODERATE or WEAK",
-        "diagnosis": "name the exact logical, evidence, or warrant flaw in 1-2 sentences",
-        "opponent_exploit": "how a skilled opponent uses this exact weakness",
-        "fix": "one concrete action targeting the named flaw specifically"
-      }
-    ]
-  },
-  "assumption_audit": [
-    {
-      "assumption": "hidden assumption the author never explicitly defends",
-      "load_bearing": "HIGH or MEDIUM or LOW",
-      "quote": "the claim that depends on this assumption",
-      "vulnerability": "what happens if this assumption is false",
-      "defense": "how the author could defend this assumption"
-    }
-  ],
-  "logical_fallacies": [
-    {
-      "name": "exact fallacy name",
-      "quote": "verbatim passage containing the fallacy",
-      "explanation": "why this passage commits this fallacy",
-      "fix": "what the author should write instead"
-    }
-  ],
-  "counter_arguments": [
-    {
-      "steelman": "strongest version of the opposing argument in 3 sentences",
-      "targets": "which specific claim this defeats",
-      "damage": "what breaks if unanswered",
-      "suggested_rebuttal": "how to preempt or rebut this"
-    }
-  ],
-  "rhetorical_analysis": {
-    "opening_hook": "evaluate the opening in 2 sentences",
-    "logical_flow": "evaluate paragraph progression in 2 sentences",
-    "strongest_sentence": {
-      "quote": "single best sentence in the essay, verbatim",
-      "why": "why this sentence works"
-    },
-    "weakest_sentence": {
-      "quote": "single most damaging sentence verbatim",
-      "why": "exactly what is wrong with it",
-      "fix": "rewrite the sentence completely"
-    }
-  },
-  "rewrite_suggestions": [
-    {
-      "original": "exact original sentence verbatim",
-      "rewrite": "complete replacement sentence",
-      "improvement": "what specifically makes the rewrite stronger"
-    }
-  ]
-}
-
-Hard rules: priority_fixes must be ordered by what improves the score fastest. The collapse point must be a real quote from the essay unless the input is not an argument. Never flag a thesis for lacking evidence. All quotes must be verbatim from the essay. Escape internal double quotes inside JSON strings. Keep language professional and academically appropriate.
-
-Now evaluate the following essay and respond ONLY with the JSON object:
-`;
+export { AUDIT_SYSTEM_PROMPT as SYSTEM_PROMPT } from "./prompts.js";
 
 export function words(text) {
   return text.match(/[A-Za-z0-9']+/g) || [];
@@ -184,25 +78,32 @@ export async function collectOpenRouterContent(upstreamRes, onChunk) {
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const data = trimmed.slice(5).trim();
-      if (!data || data === "[DONE]") continue;
-      try {
-        const json = JSON.parse(data);
-        const delta = json?.choices?.[0]?.delta?.content || "";
-        if (delta) {
-          content += delta;
-          if (onChunk) onChunk(delta, content.length);
-        }
-      } catch (_) {
-        // Ignore upstream comments or non-content events.
-      }
-    }
+    for (const line of lines) processLine(line);
   }
 
+  buffer += decoder.decode();
+  if (buffer.trim()) processLine(buffer);
   return content;
+
+  function processLine(line) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) return;
+    const data = trimmed.slice(5).trim();
+    if (!data || data === "[DONE]") return;
+    try {
+      const json = JSON.parse(data);
+      const streamError = json?.error?.message || json?.choices?.[0]?.error?.message;
+      if (streamError) throw new Error(streamError);
+      const delta = json?.choices?.[0]?.delta?.content || "";
+      if (delta) {
+        content += delta;
+        if (onChunk) onChunk(delta, content.length);
+      }
+    } catch (err) {
+      if (err instanceof SyntaxError) return;
+      throw err;
+    }
+  }
 }
 
 export function prepareAuditFromModelText(rawText, essay) {
@@ -411,10 +312,13 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
   const sentences = splitSentences(text);
   const thesis = sentences[0] || text || "No text entered.";
   const hasNamedSource = /\b(according to|study|report|research|data|survey|article|journal|encyclopedia|britannica|brittanica)\b/i.test(text);
+  const hasWarrant = /\b(because|therefore|since|so that|which means|as a result|this matters because|thus)\b/i.test(text);
+  const hasImpact = /\b(impact|matters|harm|benefit|consequence|therefore|ultimately|important)\b/i.test(text);
+  const hasCounter = /\b(however|although|critics|opponents|some may argue|counterargument|but)\b/i.test(text);
   const usesLoadedLabel = /\b(bum|idiot|stupid|lazy|evil|bad person|loser)\b/i.test(text);
   const sourceSentence = sentences.find((s) => /\b(according to|study|report|research|britannica|brittanica)\b/i.test(s)) || sentences[1] || thesis;
-  const score = usesLoadedLabel ? 12 : (hasNamedSource ? 28 : 18);
-  const sourceName = /brittanica/i.test(text) ? "Britannica" : "the named source";
+  const collapseSentence = sentences.find((s) => /\b(should|must|because|causes?|leads? to|therefore|proves?|improves?|reduces?)\b/i.test(s)) || thesis;
+  const score = heuristicScore(text, { hasNamedSource, hasWarrant, hasImpact, hasCounter, usesLoadedLabel });
 
   return normalizeAudit({
     overall_score: score,
@@ -425,17 +329,17 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
       rhetoric: Math.min(25, Math.max(4, Math.round(score * 0.24)))
     },
     verdict: usesLoadedLabel
-      ? "The argument makes a clear accusation, but it does not yet provide verifiable evidence, a careful definition, or a defensible warrant. The weakest point is the source claim, because the reader cannot inspect or confirm it from the draft."
-      : "The argument presents a visible thesis, but it does not yet provide enough verifiable evidence or warrant support. The weakest point is the source claim, because the reader cannot inspect or confirm it from the draft.",
+      ? "The draft states a position, but loaded wording prevents the reader from evaluating a precise academic standard. The fastest repair is to define the claim neutrally, explain the reasoning bridge, and then check the source details separately."
+      : "This stable report found a visible argument structure and the most important reasoning risks available from the draft. Strengthen the claim-to-warrant chain first, then use source verification for any factual statements that still need checking.",
     coaching_note: usesLoadedLabel
-      ? "Replace loaded wording with a precise claim, then attach a complete citation and one warrant sentence that explains why the evidence proves the claim."
-      : "Attach a complete citation and add one warrant sentence that explains why the evidence proves the thesis.",
+      ? "Replace loaded wording with a neutral, testable claim and write one warrant sentence that explains the standard."
+      : "Make the central warrant explicit: state why the strongest evidence logically supports the conclusion.",
     priority_fixes: buildHeuristicFixes(text),
     collapse_point: {
-      quote: sourceSentence,
-      why_it_collapses: `If ${sourceName} does not actually support this statement, the argument loses its factual foundation.`,
-      opponent_attack: "Where is the exact source, title, date, author, and quotation that proves this point?",
-      reinforcement: "Give a complete citation, quote the relevant passage, and explain why it supports the specific claim rather than a broader or different claim."
+      quote: collapseSentence,
+      why_it_collapses: "This sentence carries the argument's main inferential weight. If the reader rejects its reasoning or scope, the conclusion loses force.",
+      opponent_attack: "Why does this point prove the broader conclusion, and what happens if a reasonable counterexample exists?",
+      reinforcement: "Narrow the wording if needed, then add one explicit warrant and the strongest directly relevant evidence."
     },
     argument_strength: {
       thesis: {
@@ -446,34 +350,36 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
       },
       claims: sentences.slice(1, 5).map((sentence) => ({
         quote: sentence,
-        rating: "WEAK",
-        diagnosis: "The sentence makes a factual claim without enough citation detail or warrant support.",
-        opponent_exploit: "A skeptical reader can ask whether the source exists and whether it directly proves the claim.",
-        fix: "Attach a complete citation and add one sentence explaining how that source proves this claim."
+        rating: ratingForSentence(sentence),
+        diagnosis: /\b(because|therefore|since|which means|as a result)\b/i.test(sentence)
+          ? "This sentence attempts a reasoning bridge. Check whether its conclusion is narrower than the evidence and whether the causal step is explained."
+          : "This sentence advances a point, but the connection to the thesis is not explicit enough for a skeptical reader.",
+        opponent_exploit: "A skeptical reader can ask why this sentence changes the conclusion rather than simply adding another fact or assertion.",
+        fix: "Add one warrant sentence that names the connection to the thesis. Use source verification separately if the sentence also makes a factual claim."
       }))
     },
     assumption_audit: [
       {
         assumption: usesLoadedLabel
-          ? "The reader accepts that the named source exists and directly supports the accusation."
-          : "The reader accepts that the named source exists and directly supports the claim.",
+          ? "The reader accepts the loaded label as a meaningful standard."
+          : "The reader accepts the unstated bridge between the evidence and the conclusion.",
         load_bearing: "HIGH",
-        quote: sourceSentence,
-        vulnerability: "If the source is misnamed, missing, or unrelated, the entire argument appears unreliable.",
-        defense: "Provide the full citation, source type, publication date, and a directly relevant quotation."
+        quote: collapseSentence,
+        vulnerability: "If the bridge is too broad, the same evidence may support a smaller conclusion without proving this one.",
+        defense: "State the warrant directly, qualify the claim where necessary, and explain why plausible alternatives do not defeat the inference."
       },
       {
         assumption: usesLoadedLabel
           ? "The label used in the thesis is acceptable as an academic category."
-          : "The thesis uses a sufficiently precise academic standard.",
+          : "The thesis is scoped narrowly enough for the available reasoning to prove.",
         load_bearing: "MEDIUM",
         quote: thesis,
         vulnerability: usesLoadedLabel
           ? "If the label is seen as vague or pejorative, the reader may reject the tone before evaluating the evidence."
-          : "If the standard remains vague, the reader may not know exactly what the evidence is meant to prove.",
+          : "If the thesis is too broad, a single counterexample can defeat more of the argument than necessary.",
         defense: usesLoadedLabel
           ? "Use a neutral term and define the exact condition or behavior being evaluated."
-          : "Define the standard and connect it explicitly to the cited evidence."
+          : "Define the standard, narrow the scope, and connect the evidence to that smaller claim."
       }
     ],
     logical_fallacies: [
@@ -485,42 +391,42 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
           : "The sentence states a conclusion before proving it.",
         fix: "Rewrite the thesis as a neutral, testable claim with a defined standard."
       },
-      {
-        name: "Appeal to Unverified Authority",
+      ...(hasNamedSource ? [{
+        name: "Source Verification Needed",
         quote: sourceSentence,
-        explanation: "The argument invokes a source without enough citation information for the reader to verify it.",
-        fix: "Provide author, title, date, publisher, link or locator, and the exact wording that supports the claim."
-      }
+        explanation: "The draft invokes an outside source. That is a research task to verify separately, not automatic proof that the reasoning fails.",
+        fix: "Use Verify Sources to check the match, then cite the exact passage if the source supports this claim."
+      }] : [])
     ],
     counter_arguments: [
       {
         steelman: usesLoadedLabel
-          ? "A skeptical reader could argue that the draft has not proven the factual basis of its accusation. The cited source is incomplete, and the language is too loaded to function as academic evidence. Until the source is verifiable, the accusation should be treated as unsupported."
-          : "A skeptical reader could argue that the draft has not proven the factual basis of its thesis. The cited source is incomplete, and the warrant is not explicit enough to connect the evidence to the conclusion.",
-        targets: sourceSentence,
-        damage: "This challenge removes the factual support behind the thesis.",
+          ? "A skeptical reader could argue that the draft relies on a loaded label instead of a defined standard. Even if some supporting details are accurate, the conclusion remains vague until the writer explains what the label means and why those details satisfy it."
+          : "A skeptical reader could accept the draft's evidence and still reject the conclusion. The missing step is the warrant: the draft needs to explain why the evidence proves this specific claim rather than a narrower one.",
+        targets: collapseSentence,
+        damage: "This challenge breaks the reasoning bridge between the support and the conclusion.",
         suggested_rebuttal: usesLoadedLabel
-          ? "Answer by replacing the label with a defined claim and citing a source that directly confirms the factual statement."
-          : "Answer by citing a source that directly confirms the factual statement and explaining how it supports the thesis."
+          ? "Answer by replacing the label with a neutral standard and showing how the evidence meets that standard."
+          : "Answer by writing the missing warrant explicitly and qualifying the conclusion to match what the evidence can prove."
       }
     ],
     rhetorical_analysis: {
       opening_hook: usesLoadedLabel
         ? "The opening is direct, but the tone is not yet academic. A more professional opening would define the claim before evaluating evidence."
         : "The opening is direct, but it needs a more precise standard and a clearer path into the evidence.",
-      logical_flow: "The draft repeats the conclusion instead of building a source-to-claim chain. It needs a thesis, verified evidence, warrant, and conclusion in that order.",
+      logical_flow: "The draft should move through assertion, reasoning, evidence, and impact in a visible order. Check whether each paragraph completes one of those jobs before moving to the next point.",
       strongest_sentence: {
-        quote: sourceSentence,
-        why: "This is the closest sentence to evidence because it attempts to name an outside source."
+        quote: hasNamedSource ? sourceSentence : collapseSentence,
+        why: hasNamedSource ? "This sentence attempts to ground the argument in outside evidence." : "This sentence carries the clearest available reasoning signal in the draft."
       },
       weakest_sentence: {
         quote: thesis,
         why: usesLoadedLabel
-          ? "It uses a loaded label without defining the standard or proving the claim."
-          : "It states the position before defining the standard or proving the claim.",
+          ? "It uses a loaded label without defining the standard."
+          : "It carries major argumentative weight without making the warrant explicit.",
         fix: usesLoadedLabel
           ? "The argument should identify a specific, verifiable condition and avoid pejorative labels."
-          : "The argument should define the standard and support it with verifiable evidence."
+          : "The argument should define the standard, state the warrant, and use source verification separately for factual claims."
       }
     },
     rewrite_suggestions: [
@@ -528,14 +434,14 @@ export function buildRecoveryAudit(essay, note = "Fracture recovered from a malf
         original: thesis,
         rewrite: usesLoadedLabel
           ? "The subject should be described with a precise, verifiable claim rather than a loaded label, and that claim should be supported by a complete citation."
-          : "The thesis should define a precise, verifiable standard and support it with a complete citation.",
+          : "The thesis should define a precise standard and state the central reason the reader should accept it.",
         improvement: "The rewrite turns the sentence into an academic standard the reader can evaluate."
       },
-      {
+      ...(hasNamedSource ? [{
         original: sourceSentence,
-        rewrite: "According to [author], [title], published by [publisher] in [year], [direct quotation or finding], which supports the claim because [warrant].",
-        improvement: "The rewrite shows exactly what citation fields and warrant language the argument needs."
-      }
+        rewrite: "According to [source], [specific finding]. This supports the claim because [explicit warrant].",
+        improvement: "The rewrite keeps source verification and logical explanation visible as two separate tasks."
+      }] : [])
     ],
     recovery_note: note
   }, essay);
@@ -552,32 +458,58 @@ function buildHeuristicFixes(text) {
   const sentences = splitSentences(text);
   const thesis = sentences[0] || text || "No text entered.";
   const sourceSentence = sentences.find((s) => /\b(according to|study|report|research|britannica|brittanica)\b/i.test(s)) || sentences[1] || thesis;
-  const observation = sentences.find((s) => /\b(asks|lives|does not|doesn't|is|are|was|were)\b/i.test(s) && s !== thesis && s !== sourceSentence) || sentences[2] || sourceSentence;
+  const observation = sentences.find((s) => s !== thesis && s !== sourceSentence) || sentences[2] || sourceSentence;
   const loaded = /\b(bum|idiot|stupid|lazy|evil|bad person|loser)\b/i.test(thesis);
+  const hasSource = /\b(according to|study|report|research|data|survey|article|journal|encyclopedia|britannica|brittanica)\b/i.test(text);
 
   return [
-    {
-      quote: sourceSentence,
-      problem: "The source is too vague to verify.",
-      why_it_matters: "A reader cannot credit evidence that lacks author, title, date, publisher, locator, and a direct connection to the claim.",
-      exact_fix: "Replace the vague source mention with a complete citation and quote the exact line that supports this claim.",
-      rewrite: "According to [author], [title], published by [publisher] in [year], [specific finding], which supports the claim because [warrant]."
-    },
     {
       quote: thesis,
       problem: loaded ? "The thesis uses a loaded label instead of an academic standard." : "The thesis needs a clearer standard.",
       why_it_matters: "Loaded or undefined wording makes the argument easier to dismiss before the evidence is evaluated.",
-      exact_fix: "Define the exact condition being argued and use neutral language.",
-      rewrite: "The argument should define the specific condition being claimed and support it with verifiable evidence."
+      exact_fix: "Define the exact condition being argued, narrow the scope, and use neutral language.",
+      rewrite: "The argument should state a specific, neutral claim and name the standard the reader should apply."
     },
     {
       quote: observation,
-      problem: "This factual detail is presented without proof.",
-      why_it_matters: "An unsupported factual detail gives an opponent an easy way to challenge the whole draft's credibility.",
-      exact_fix: "Add a source, remove the detail, or clearly label it as an example that still needs verification.",
-      rewrite: "A stronger version would cite a documented example and then explain why it supports the thesis."
-    }
+      problem: "The draft needs a more explicit warrant.",
+      why_it_matters: "A reader can accept this sentence and still ask why it proves the conclusion.",
+      exact_fix: "Add one sentence that begins with a clear reasoning move such as 'This matters because' or 'This supports the claim because.'",
+      rewrite: "This supports the claim because [explain the exact connection between the evidence and the conclusion]."
+    },
+    ...(hasSource ? [{
+      quote: sourceSentence,
+      problem: "The source reference needs a separate verification pass.",
+      why_it_matters: "The reasoning can be evaluated now, but the writer should still confirm that the cited source supports this exact claim.",
+      exact_fix: "Use Verify Sources, inspect the retrieved page, and add the author, title, date, locator, and exact relevant passage.",
+      rewrite: "According to [source], [specific finding]. This supports the claim because [warrant]."
+    }] : [])
   ];
+}
+
+function heuristicScore(text, signals) {
+  const tokenCount = words(text).length;
+  const sentenceCount = splitSentences(text).length;
+  let score = 18;
+  if (tokenCount >= 45) score += 8;
+  if (tokenCount >= 120) score += 8;
+  if (tokenCount >= 350) score += 6;
+  if (sentenceCount >= 4) score += 7;
+  if (sentenceCount >= 8) score += 5;
+  if (signals.hasWarrant) score += 10;
+  if (signals.hasImpact) score += 6;
+  if (signals.hasCounter) score += 6;
+  if (signals.hasNamedSource) score += 5;
+  if (signals.usesLoadedLabel) score -= 14;
+  return Math.max(8, Math.min(72, score));
+}
+
+function ratingForSentence(sentence) {
+  const hasReasoning = /\b(because|therefore|since|which means|as a result|so that)\b/i.test(sentence);
+  const hasEvidence = /\b(according to|study|report|research|data|survey|shows?|found)\b/i.test(sentence);
+  if (hasReasoning && hasEvidence) return "STRONG";
+  if (hasReasoning || hasEvidence) return "MODERATE";
+  return "WEAK";
 }
 
 function splitSentences(text) {

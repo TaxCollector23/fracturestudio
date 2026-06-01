@@ -29,20 +29,8 @@ export default async function handler(req, res) {
     const verification = await verifySources({ essay, audit });
     return res.status(200).json(verification);
   } catch (err) {
-    return res.status(200).json({
-      claims: [],
-      works_cited: [],
-      summary: {
-        total_claims: 0,
-        supported: 0,
-        partially_supported: 0,
-        unsupported: 0,
-        contradicted: 0,
-        source_not_found: 0,
-        source_too_vague: 0,
-        needs_review: 1,
-        note: `Source verification failed gracefully: ${err?.message || String(err)}`
-      }
+    return res.status(503).json({
+      error: `Source verification could not complete: ${err?.message || String(err)}`
     });
   }
 }

@@ -29,7 +29,7 @@
     count.textContent = users.length.toLocaleString() + ' accounts found.';
     usersRoot.innerHTML = ''
       + '<table class="admin-table">'
-      + '<thead><tr><th>Name</th><th>Email</th><th>Provider</th><th>Last Seen</th></tr></thead>'
+      + '<thead><tr><th>Full Name</th><th>Email</th><th>Provider</th><th>Last Active</th><th>Account Created</th></tr></thead>'
       + '<tbody>'
       + users.map(function (user) {
         return '<tr>'
@@ -37,6 +37,7 @@
           + '<td>' + esc(user.email || 'No email') + '</td>'
           + '<td>' + esc(user.provider || 'email') + '</td>'
           + '<td>' + esc(dateLabel(user.lastSeen || user.created)) + '</td>'
+          + '<td>' + esc(dateLabel(user.created)) + '</td>'
           + '</tr>';
       }).join('')
       + '</tbody></table>';
