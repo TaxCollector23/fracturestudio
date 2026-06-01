@@ -195,18 +195,29 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote, citation
 
 async function searchOpenWeb(query) {
   const ddgUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+  const liteUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+  const errors = [];
 
   try {
     const html = await fetchText(ddgUrl, SEARCH_TIMEOUT_MS);
     const results = parseDuckDuckGoResults(html);
     if (results.length) return { results };
-    return { results: [] };
   } catch (err) {
-    return {
-      results: [],
-      fallback_error: err?.message || String(err)
-    };
+    errors.push(`standard search: ${err?.message || String(err)}`);
   }
+
+  try {
+    const html = await fetchText(liteUrl, SEARCH_TIMEOUT_MS);
+    const results = parseDuckDuckGoLiteResults(html);
+    if (results.length) return { results };
+  } catch (err) {
+    errors.push(`lightweight search: ${err?.message || String(err)}`);
+  }
+
+  return {
+    results: [],
+    fallback_error: errors.length ? errors.join("; ") : ""
+  };
 }
 
 function parseDuckDuckGoResults(html) {
@@ -234,6 +245,25 @@ function parseDuckDuckGoResults(html) {
       title: cleanText(stripHtml(match[2])),
       url,
       snippet: ""
+    });
+  }
+
+  return dedupeResults(results);
+}
+
+function parseDuckDuckGoLiteResults(html) {
+  const results = [];
+  const resultPattern = /<a([^>]*class=['"][^'"]*result-link[^'"]*['"][^>]*)>([\s\S]*?)<\/a>[\s\S]*?<td[^>]+class=['"][^'"]*result-snippet[^'"]*['"][^>]*>([\s\S]*?)<\/td>/gi;
+  let match;
+
+  while ((match = resultPattern.exec(html)) && results.length < RESULTS_PER_CLAIM) {
+    const href = match[1].match(/href=['"]([^'"]+)['"]/i);
+    const url = normalizeDuckDuckGoUrl(decodeHtml(href?.[1] || ""));
+    if (!url || !/^https?:\/\//i.test(url)) continue;
+    results.push({
+      title: cleanText(stripHtml(match[2])),
+      url,
+      snippet: cleanText(stripHtml(match[3]))
     });
   }
 
