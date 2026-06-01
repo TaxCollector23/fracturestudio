@@ -148,10 +148,13 @@
             <textarea class="tool-textarea" id="chatInput" placeholder="Ask Fracture Chat about your draft or select a mapped claim above."></textarea>
             <div class="tool-actions">
               <button class="btn-sm tool-run" id="chatBtn" type="button" disabled>Ask Fracture Chat</button>
-              <span class="tool-status" id="chatStatus">Ready</span>
+              <div class="tool-actions-secondary">
+                <button class="tool-clear" id="chatClearBtn" type="button">Clear conversation</button>
+                <span class="tool-status" id="chatStatus">Ready</span>
+              </div>
             </div>
             <div class="tool-progress"><span id="chatProgress"></span></div>
-            <pre class="tool-output" id="chatOutput"></pre>
+            <div class="tool-output chat-transcript" id="chatOutput" aria-live="polite"></div>
           </section>
         </div>
       </div>
@@ -184,7 +187,7 @@
 
       <div class="json-toolbar">
         <div class="toolbar-left">
-          <button class="btn-sm" id="exportBtn" type="button" disabled>Export Report Data</button>
+          <button class="btn-sm" id="exportBtn" type="button" disabled>Export PDF Report</button>
           <button class="btn-sm" id="shareBtn" type="button" disabled>Share Link</button>
         </div>
         <button class="btn-sm" id="copyBtn" type="button" disabled>Copy Report Data</button>

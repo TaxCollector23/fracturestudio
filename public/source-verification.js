@@ -96,7 +96,7 @@
       const firstSource = asArray(claim.sources)[0] || {};
       const sourceLabel = text(
         claim.source || claim.citation || claim.reference || claim.url || claim.evidence ||
-        firstSource.mla || firstSource.title || firstSource.url,
+        firstSource.citation || firstSource.mla || firstSource.apa || firstSource.title || firstSource.url,
         'No source supplied.'
       );
       const issueText = asArray(claim.citation_issues).length
@@ -111,24 +111,12 @@
     });
   }
 
-  function normalizeWorksCited(data, rows) {
+  function normalizeWorksCited(data) {
     const explicit = asArray(data && (data.works_cited || data.worksCited || data.citations || data.references));
-    const cited = explicit.map(function (item) {
+    return explicit.map(function (item) {
       if (typeof item === 'string') return item.trim();
       return text(item.entry || item.citation || item.reference || item.mla || item.title || item.url || item.source, '');
     }).filter(Boolean);
-
-    rows.forEach(function (row) {
-      const source = text(row.source, '');
-      if (source && source !== 'No source supplied.' && cited.indexOf(source) === -1) cited.push(source);
-    });
-
-    asArray(data && data.sources).forEach(function (item) {
-      const source = typeof item === 'string' ? item.trim() : text(item.entry || item.citation || item.reference || item.mla || item.title || item.url || item.name, '');
-      if (source && cited.indexOf(source) === -1) cited.push(source);
-    });
-
-    return cited;
   }
 
   function scoreFromRows(data, rows) {
@@ -148,7 +136,7 @@
         text(s.likely_supported || s.supported, '0') + ' likely matches',
         text(s.needs_source_review || s.unsupported, '0') + ' need source review',
         text(s.citation_incomplete, '0') + ' citations incomplete',
-        text(s.works_cited_count, '0') + ' Works Cited entries'
+        text(s.works_cited_count, '0') + ' bibliography entries'
       ].join('. ') + '.';
     }
     return text(payload.overall || payload.verdict, 'Review each claim against the source it relies on before final submission.');
@@ -158,7 +146,9 @@
     injectStyles();
     const payload = data && typeof data === 'object' ? data : {};
     const rows = normalizeRows(payload);
-    const worksCited = normalizeWorksCited(payload, rows);
+    const worksCited = normalizeWorksCited(payload);
+    const bibliographyTitle = text(payload.bibliography_title, payload.citation_style === 'apa' ? 'References' : 'Works Cited');
+    const edition = text(payload.summary && payload.summary.style_edition, payload.citation_style === 'apa' ? 'APA 7th edition' : 'MLA 9th edition');
     const card = makeEl('section', 'fracture-source-card');
     const head = makeEl('div', 'fracture-source-head');
     const warning = append(makeEl('div', 'fracture-warning-triangle'), makeEl('span', '', '!'));
@@ -167,7 +157,7 @@
     const titleBlock = makeEl('div', 'fracture-source-heading');
     append(
       titleBlock,
-      makeEl('div', 'fracture-source-kicker', 'Source Verification'),
+      makeEl('div', 'fracture-source-kicker', 'Source Verification · ' + edition),
       makeEl('div', 'fracture-source-title', text(payload.title, 'Claim and citation check')),
       makeEl('div', 'fracture-source-summary', summaryText(payload))
     );
@@ -203,9 +193,9 @@
     append(rowSection, rowWrap);
 
     const citedSection = makeEl('div', 'fracture-source-section');
-    append(citedSection, makeEl('h3', '', 'Works Cited'));
+    append(citedSection, makeEl('h3', '', bibliographyTitle));
     if (!worksCited.length) {
-      append(citedSection, makeEl('div', 'fracture-source-empty', 'Works Cited will populate when citations or source references are returned.'));
+      append(citedSection, makeEl('div', 'fracture-source-empty', bibliographyTitle + ' will populate only when a retrieved public source clears the strong-match threshold. Review flagged claims before relying on a source.'));
     } else {
       const list = makeEl('ol', 'fracture-works-cited');
       worksCited.forEach(function (citation) {
@@ -232,15 +222,16 @@
     return card;
   }
 
-  async function verifySources(getEssay, getAudit) {
+  async function verifySources(getEssay, getAudit, getCitationStyle) {
     const essay = typeof getEssay === 'function' ? text(getEssay(), '') : '';
     const audit = typeof getAudit === 'function' ? getAudit() : null;
+    const citationStyle = typeof getCitationStyle === 'function' && getCitationStyle() === 'apa' ? 'apa' : 'mla';
     if (!essay) throw new Error('No essay text is available for source verification.');
 
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ essay: essay, audit: audit })
+      body: JSON.stringify({ essay: essay, audit: audit, citation_style: citationStyle })
     });
 
     const contentType = res.headers.get('content-type') || '';
@@ -270,7 +261,7 @@
       button.disabled = true;
       root.replaceChild(renderMessage('Preparing source verification.', 'loading'), root.firstChild);
       try {
-        const data = await verifySources(config.getEssay, config.getAudit);
+        const data = await verifySources(config.getEssay, config.getAudit, config.getCitationStyle);
         root.replaceChild(renderVerification(data), root.firstChild);
         return data;
       } catch (err) {

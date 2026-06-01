@@ -38,6 +38,7 @@
   const chatStatus      = document.getElementById('chatStatus');
   const chatProgress    = document.getElementById('chatProgress');
   const chatOutput      = document.getElementById('chatOutput');
+  const chatClearBtn    = document.getElementById('chatClearBtn');
   const chatSelectedPoint = document.getElementById('chatSelectedPoint');
   const fractureChatCard = document.getElementById('fractureChatCard');
 
@@ -55,6 +56,8 @@
   let sourceVerificationData = null;
   let autoSaveInFlight = false;
   let selectedChatPoint = '';
+  let preferredCitationStyle = 'mla';
+  let chatHistory = [];
 
   const STORAGE_KEY_ESSAY = 'fracture_studio_last_essay';
   const PACING_PHRASES = [
@@ -346,7 +349,8 @@
       sourceVerifier = window.FractureSources.attach({
         targetSelector: argumentGraph,
         getEssay: function () { return essayInput.value.trim(); },
-        getAudit: function () { return parsedAudit; }
+        getAudit: function () { return parsedAudit; },
+        getCitationStyle: function () { return preferredCitationStyle; }
       });
       return sourceVerifier;
     } catch (_) {
@@ -361,7 +365,9 @@
     if (!verifier || typeof verifier.verify !== 'function') return null;
 
     try {
-      if (statusDetail) statusDetail.textContent = 'Checking sources and building Works Cited.';
+      const preferences = await loadFeedbackPreferences();
+      preferredCitationStyle = preferences && preferences.citationStyle === 'apa' ? 'apa' : 'mla';
+      if (statusDetail) statusDetail.textContent = 'Checking sources and building your bibliography.';
       sourceVerificationData = await verifier.verify();
       if (statusDetail) statusDetail.textContent = 'Fracture report complete. Source verification added.';
       return sourceVerificationData;
@@ -489,15 +495,19 @@
     const output = options.output;
     if (!input || !button || !output || !input.value.trim()) return;
 
+    const requestText = input.value.trim();
     button.disabled = true;
-    output.textContent = '';
+    const outputTarget = typeof options.createOutputTarget === 'function'
+      ? options.createOutputTarget(requestText)
+      : output;
+    if (!options.preserveOutput) outputTarget.textContent = '';
     setToolProgress(options.progress, options.status, 4, 'Connecting');
 
     try {
       const response = await fetch(options.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(options.body())
+        body: JSON.stringify(options.body(requestText))
       });
       if (!response.ok) {
         const payload = await response.json().catch(function () { return {}; });
@@ -521,7 +531,7 @@
           if (!data || data === '[DONE]') return;
           try {
             const event = JSON.parse(data);
-            if (event.fracture_text_delta) output.textContent += event.fracture_text_delta;
+            if (event.fracture_text_delta) outputTarget.textContent += event.fracture_text_delta;
             if (event.fracture_text_progress) {
               setToolProgress(options.progress, options.status, event.fracture_text_progress.progress, event.fracture_text_progress.message);
             }
@@ -533,8 +543,9 @@
       }
 
       setToolProgress(options.progress, options.status, 100, 'Ready');
+      if (typeof options.onComplete === 'function') options.onComplete(outputTarget.textContent);
     } catch (err) {
-      output.textContent = 'This request could not finish. ' + (err && err.message ? err.message : String(err));
+      outputTarget.textContent = 'This request could not finish. ' + (err && err.message ? err.message : String(err));
       setToolProgress(options.progress, options.status, 0, 'Needs attention');
     } finally {
       updateToolButton(input, button);
@@ -573,17 +584,52 @@
       input: chatInput,
       button: chatBtn,
       output: chatOutput,
+      preserveOutput: true,
       progress: chatProgress,
       status: chatStatus,
-      body: function () {
+      createOutputTarget: function (question) {
+        appendChatMessage('user', question);
+        chatHistory.push({ role: 'user', content: question });
+        chatInput.value = '';
+        const response = appendChatMessage('assistant', '');
+        chatOutput.scrollTop = chatOutput.scrollHeight;
+        return response;
+      },
+      body: function (question) {
         return {
-          message: chatInput.value.trim(),
+          message: question,
           draft: essayInput.value.trim(),
           report: parsedAudit,
-          selectedPoint: selectedChatPoint
+          selectedPoint: selectedChatPoint,
+          history: chatHistory.slice(0, -1)
         };
+      },
+      onComplete: function (answer) {
+        if (answer) chatHistory.push({ role: 'assistant', content: answer });
+        chatOutput.scrollTop = chatOutput.scrollHeight;
       }
     });
+  }
+
+  function appendChatMessage(role, content) {
+    const message = document.createElement('div');
+    message.className = 'chat-message chat-message-' + role;
+    const label = document.createElement('span');
+    label.className = 'chat-message-label';
+    label.textContent = role === 'user' ? 'You' : 'Fracture Chat';
+    const body = document.createElement('span');
+    body.textContent = content || '';
+    message.appendChild(label);
+    message.appendChild(body);
+    chatOutput.appendChild(message);
+    return body;
+  }
+
+  function clearChatConversation() {
+    chatHistory = [];
+    if (chatOutput) chatOutput.textContent = '';
+    if (chatStatus) chatStatus.textContent = 'Ready';
+    setToolProgress(chatProgress, chatStatus, 0, 'Ready');
   }
 
   function finalizeJsonTextFromAudit() {
@@ -842,14 +888,37 @@
     }
   }
 
-  function exportJson() {
-    if (!rawJsonText) return;
-    const blob = new Blob([rawJsonText], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'fracture-analysis.json';
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
+  async function exportPdf() {
+    if (!parsedAudit) return;
+    if (statusDetail) statusDetail.textContent = 'Formatting your PDF report.';
+    try {
+      const response = await fetch('/api/report-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/pdf' },
+        body: JSON.stringify({
+          audit: parsedAudit,
+          sources: sourceVerificationData,
+          draft: essayInput.value.trim(),
+          citation_style: preferredCitationStyle
+        })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(function () { return {}; });
+        throw new Error(payload.error || response.statusText);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fracture-studio-report.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (statusDetail) statusDetail.textContent = 'PDF report downloaded.';
+    } catch (err) {
+      if (statusDetail) statusDetail.textContent = 'PDF export needs attention: ' + (err && err.message ? err.message : String(err));
+    }
   }
 
   function shareLink() {
@@ -910,7 +979,7 @@
   analyzeBtn.addEventListener('click', runAnalysis);
   if (clearBtn)  clearBtn.addEventListener('click',  clearAll);
   if (copyBtn)   copyBtn.addEventListener('click',   copyJson);
-  if (exportBtn) exportBtn.addEventListener('click', exportJson);
+  if (exportBtn) exportBtn.addEventListener('click', exportPdf);
   if (shareBtn)  shareBtn.addEventListener('click',  shareLink);
   if (saveBtn)   saveBtn.addEventListener('click',   saveEssay);
   if (loadBtn)   loadBtn.addEventListener('click',   loadEssay);
@@ -918,6 +987,7 @@
   if (chatInput) chatInput.addEventListener('input', function () { updateToolButton(chatInput, chatBtn); });
   if (rebuttalBtn) rebuttalBtn.addEventListener('click', runRebuttal);
   if (chatBtn) chatBtn.addEventListener('click', runChat);
+  if (chatClearBtn) chatClearBtn.addEventListener('click', clearChatConversation);
   if (argumentGraph) {
     argumentGraph.addEventListener('click', function (event) {
       const target = event.target.closest('[data-chat-point]');

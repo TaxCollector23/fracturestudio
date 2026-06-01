@@ -17,6 +17,7 @@ export default async function handler(req, res) {
 
   const essay = typeof body?.essay === "string" ? body.essay.trim() : "";
   const audit = body?.audit && typeof body.audit === "object" ? body.audit : null;
+  const citationStyle = body?.citation_style === "apa" ? "apa" : "mla";
 
   if (!essay && !audit) {
     return res.status(400).json({ error: "Provide essay text or an audit object to verify." });
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const verification = await verifySources({ essay, audit });
+    const verification = await verifySources({ essay, audit, citationStyle });
     return res.status(200).json(verification);
   } catch (err) {
     return res.status(503).json({

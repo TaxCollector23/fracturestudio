@@ -34,10 +34,13 @@ const VAGUE_SOURCE_PATTERNS = [
 export async function verifySources(input = {}) {
   const essay = typeof input.essay === "string" ? input.essay.trim() : "";
   const audit = input.audit && typeof input.audit === "object" ? input.audit : null;
+  const citationStyle = normalizeCitationStyle(input.citationStyle);
   const extractedClaims = extractClaims(essay, audit).slice(0, CLAIM_LIMIT);
 
   if (!essay && !extractedClaims.length) {
     return {
+      citation_style: citationStyle,
+      bibliography_title: citationStyle === "apa" ? "References" : "Works Cited",
       claims: [],
       works_cited: [],
       summary: {
@@ -59,25 +62,29 @@ export async function verifySources(input = {}) {
   const citedSources = new Map();
 
   for (const claim of extractedClaims) {
-    const result = await verifyClaim(claim);
+    const result = await verifyClaim(claim, citationStyle);
     claims.push(result);
-    for (const source of result.sources) {
-      if (result.support_status === "likely_supported" && source.match_score >= 0.65 && source.url && !citedSources.has(source.url)) {
-        citedSources.set(source.url, source);
-      }
+    const bestSource = result.sources.find((source) => source.match_score >= 0.72 && source.url);
+    if (result.support_status === "likely_supported" && bestSource && !citedSources.has(bestSource.url)) {
+      citedSources.set(bestSource.url, bestSource);
     }
   }
 
   const worksCited = Array.from(citedSources.values()).map((source) => ({
     url: source.url,
     title: source.title || source.site_name || source.url,
-    entry: buildWorksCitedEntry(source)
+    style: citationStyle,
+    entry: buildCitationEntry(source, citationStyle),
+    mla: buildMlaEntry(source),
+    apa: buildApaEntry(source)
   }));
 
   return {
+    citation_style: citationStyle,
+    bibliography_title: citationStyle === "apa" ? "References" : "Works Cited",
     claims,
     works_cited: worksCited,
-    summary: buildSummary(claims, worksCited)
+    summary: buildSummary(claims, worksCited, citationStyle)
   };
 }
 
@@ -119,18 +126,18 @@ export function extractClaims(essay = "", audit = null) {
     .map((claim, index) => ({ ...claim, id: `claim_${index + 1}` }));
 }
 
-async function verifyClaim(claim) {
+async function verifyClaim(claim, citationStyle) {
   const citationTooVague = isSourceTooVague(claim.text);
 
   let search;
   try {
     search = await searchOpenWeb(claim.query);
   } catch (err) {
-    return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`);
+    return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`, citationStyle);
   }
 
   if (!search.results.length && search.fallback_error) {
-    return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${search.fallback_error}`);
+    return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${search.fallback_error}`, citationStyle);
   }
 
   if (!search.results.length) {
@@ -140,7 +147,8 @@ async function verifyClaim(claim) {
       citationTooVague ? "citation_incomplete" : "source_not_found",
       citationTooVague
         ? "The draft does not identify the source precisely enough, and the public search did not find a dependable match."
-        : "No usable public web result was found for this claim."
+        : "No usable public web result was found for this claim.",
+      citationStyle
     );
   }
 
@@ -154,10 +162,10 @@ async function verifyClaim(claim) {
     .map((source) => ({ ...source, match_score: sourceMatchScore(claim.text, source) }))
     .sort((a, b) => b.match_score - a.match_score);
   const status = classifySupport(claim.text, scoredSources, citationTooVague);
-  return finalizeClaim(claim, scoredSources, status.status, status.reason);
+  return finalizeClaim(claim, scoredSources, status.status, status.reason, citationStyle);
 }
 
-function finalizeClaim(claim, sources, supportStatus, verificationNote) {
+function finalizeClaim(claim, sources, supportStatus, verificationNote, citationStyle) {
   return {
     id: claim.id,
     claim: claim.text,
@@ -166,7 +174,7 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote) {
     support_status: supportStatus,
     confidence: confidenceFor(supportStatus, sources),
     verification_note: verificationNote,
-    verification_scope: "Public web search and retrieved page metadata. Open the source before treating the claim as verified.",
+    verification_scope: "Public web search and retrieved page text comparison. Open the source before treating the claim as verified.",
     citation_issues: claim.citation_issues,
     citation_issue_fields: citationIssueFields(claim.text, sources),
     sources: sources.map((source) => ({
@@ -178,7 +186,9 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote) {
       accessed_date: source.accessed_date,
       snippet: source.snippet,
       match_score: source.match_score,
-      mla: buildWorksCitedEntry(source)
+      mla: buildMlaEntry(source),
+      apa: buildApaEntry(source),
+      citation: buildCitationEntry(source, citationStyle)
     }))
   };
 }
@@ -238,7 +248,8 @@ async function fetchPageMetadata(url) {
       author: firstMeta(html, ["author", "article:author", "byl"]),
       site_name: firstMeta(html, ["og:site_name", "application-name"]) || hostName(url),
       published_date: firstMeta(html, ["article:published_time", "date", "dc.date", "citation_publication_date"]),
-      description: firstMeta(html, ["og:description", "twitter:description", "description"])
+      description: firstMeta(html, ["og:description", "twitter:description", "description"]),
+      page_excerpt: pageExcerpt(html)
     };
   } catch (_) {
     return {
@@ -277,10 +288,11 @@ function classifySupport(claimText, sources, citationTooVague) {
   let bestOverlap = 0;
   let hasContradictionCue = false;
   for (const source of sources) {
-    const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""}`.toLowerCase();
+    const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""} ${source.page_excerpt || ""}`.toLowerCase();
+    const contradictionText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""}`.toLowerCase();
     const overlap = source.match_score ?? claimTerms.filter((term) => sourceText.includes(term)).length / claimTerms.length;
     bestOverlap = Math.max(bestOverlap, overlap);
-    if (hasNegationConflict(claimText, sourceText)) hasContradictionCue = true;
+    if (hasNegationConflict(claimText, contradictionText)) hasContradictionCue = true;
   }
 
   if (hasContradictionCue && bestOverlap >= 0.5) {
@@ -350,7 +362,7 @@ function citationIssueFields(text, sources) {
   };
 }
 
-function buildWorksCitedEntry(source) {
+function buildMlaEntry(source) {
   const author = source.author ? `${source.author}. ` : "";
   const title = source.title ? `"${trimTrailingPunctuation(source.title)}." ` : "";
   const site = source.site_name ? `${trimTrailingPunctuation(source.site_name)}, ` : "";
@@ -360,7 +372,19 @@ function buildWorksCitedEntry(source) {
   return cleanText(`${author}${title}${site}${date}${url}. ${accessed}`);
 }
 
-function buildSummary(claims, worksCited) {
+function buildApaEntry(source) {
+  const author = source.author ? `${trimTrailingPunctuation(source.author)}. ` : "";
+  const date = source.published_date ? `(${formatDateForApa(source.published_date)}). ` : "(n.d.). ";
+  const title = source.title ? `${sentenceCase(trimTrailingPunctuation(source.title))}. ` : "";
+  const site = source.site_name ? `${trimTrailingPunctuation(source.site_name)}. ` : "";
+  return cleanText(`${author}${date}${title}${site}${source.url || ""}`);
+}
+
+function buildCitationEntry(source, style) {
+  return style === "apa" ? buildApaEntry(source) : buildMlaEntry(source);
+}
+
+function buildSummary(claims, worksCited, citationStyle) {
   const counts = {
     total_claims: claims.length,
     likely_supported: 0,
@@ -382,7 +406,12 @@ function buildSummary(claims, worksCited) {
   return {
     ...counts,
     works_cited_count: worksCited.length,
-    note: "Automated verification searches public pages, retrieves source metadata, and builds a working bibliography. Open each source before treating a claim as fully verified."
+    all_sources_likely_supported: claims.length > 0 && claims.every((claim) => claim.support_status === "likely_supported"),
+    citation_style: citationStyle,
+    style_edition: citationStyle === "apa" ? "APA 7th edition" : "MLA 9th edition",
+    note: claims.length > 0 && claims.every((claim) => claim.support_status === "likely_supported")
+      ? "Every checked claim has a strong public-web match. Open each retrieved page and confirm the exact passage before final submission."
+      : "Automated verification searched public pages and retrieved page text for comparison. Review flagged claims and open each promoted source before final submission."
   };
 }
 
@@ -411,7 +440,7 @@ function importantTerms(text) {
 function sourceMatchScore(claimText, source) {
   const claimTerms = importantTerms(claimText);
   if (!claimTerms.length) return 0;
-  const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""}`.toLowerCase();
+  const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""} ${source.page_excerpt || ""}`.toLowerCase();
   const overlap = claimTerms.filter((term) => sourceText.includes(term)).length / claimTerms.length;
   return Number(overlap.toFixed(2));
 }
@@ -457,7 +486,8 @@ function normalizeSource(source) {
     published_date: cleanText(source.published_date || ""),
     accessed_date: accessedDate,
     snippet: cleanText(source.snippet || source.description || ""),
-    description: cleanText(source.description || "")
+    description: cleanText(source.description || ""),
+    page_excerpt: cleanText(source.page_excerpt || "")
   };
 }
 
@@ -552,6 +582,31 @@ function formatDateForMla(value) {
   if (Number.isNaN(date.getTime())) return String(value || "").trim();
   const months = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "June", "July", "Aug.", "Sept.", "Oct.", "Nov.", "Dec."];
   return `${date.getUTCDate()} ${months[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+}
+
+function formatDateForApa(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value || "").trim();
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return `${date.getUTCFullYear()}, ${months[date.getUTCMonth()]} ${date.getUTCDate()}`;
+}
+
+function pageExcerpt(html) {
+  return cleanText(String(html || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " "))
+    .slice(0, 6000);
+}
+
+function sentenceCase(value) {
+  const text = String(value || "").trim();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
+}
+
+function normalizeCitationStyle(value) {
+  return String(value || "").toLowerCase() === "apa" ? "apa" : "mla";
 }
 
 function todayIso() {

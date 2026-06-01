@@ -192,7 +192,7 @@ export function normalizeAudit(audit, essay) {
   const argumentStrength = input.argument_strength && typeof input.argument_strength === "object" ? input.argument_strength : {};
   const thesis = argumentStrength.thesis && typeof argumentStrength.thesis === "object" ? argumentStrength.thesis : {};
   const claims = ensureArray(argumentStrength.claims).map((claim) => ({
-    quote: stringOr(claim?.quote, fallbackQuote),
+    quote: sourceQuoteOr(claim?.quote, text, fallbackQuote),
     rating: normalizeRating(claim?.rating),
     diagnosis: stringOr(claim?.diagnosis, "This claim needs a clearer warrant and stronger support."),
     opponent_exploit: stringOr(claim?.opponent_exploit, "A skeptical reader can ask what evidence proves this exact claim."),
@@ -210,21 +210,21 @@ export function normalizeAudit(audit, essay) {
     verdict: stringOr(input.verdict, "Fracture found an argument, but the current version does not yet provide enough clear support for its central claim."),
     coaching_note: stringOr(input.coaching_note, "Start by defining the main claim and attaching direct evidence to the sentence that carries the most weight."),
     priority_fixes: ensureArray(input.priority_fixes).map((fix) => ({
-      quote: stringOr(fix?.quote, fallbackQuote),
+      quote: sourceQuoteOr(fix?.quote, text, fallbackQuote),
       problem: stringOr(fix?.problem, "This point needs more precise support."),
       why_it_matters: stringOr(fix?.why_it_matters, "A reader can challenge this before accepting the argument."),
       exact_fix: stringOr(fix?.exact_fix, "Add specific evidence, then write one warrant sentence explaining why that evidence proves the claim."),
       rewrite: stringOr(fix?.rewrite, "")
     })),
     collapse_point: {
-      quote: stringOr(input.collapse_point?.quote, claims[0]?.quote, fallbackQuote),
+      quote: sourceQuoteOr(input.collapse_point?.quote, text, claims[0]?.quote || fallbackQuote),
       why_it_collapses: stringOr(input.collapse_point?.why_it_collapses, "If this point is disproven or unsupported, the argument loses its main source of force."),
       opponent_attack: stringOr(input.collapse_point?.opponent_attack, "What evidence proves this exact point rather than merely asserting it?"),
       reinforcement: stringOr(input.collapse_point?.reinforcement, "Support it with a verifiable source, a clear warrant, and a narrower qualification.")
     },
     argument_strength: {
       thesis: {
-        quote: stringOr(thesis.quote, fallbackQuote),
+        quote: sourceQuoteOr(thesis.quote, text, fallbackQuote),
         assessment: stringOr(thesis.assessment, "The thesis is present, but it needs a clearer standard, narrower scope, and stronger reason for the reader to accept it.")
       },
       claims
@@ -232,13 +232,13 @@ export function normalizeAudit(audit, essay) {
     assumption_audit: ensureArray(input.assumption_audit).map((item) => ({
       assumption: stringOr(item?.assumption, "The reader accepts a premise that has not been defended yet."),
       load_bearing: normalizeLoad(item?.load_bearing),
-      quote: stringOr(item?.quote, fallbackQuote),
+      quote: sourceQuoteOr(item?.quote, text, fallbackQuote),
       vulnerability: stringOr(item?.vulnerability, "If this premise is false, the connected claim becomes much less persuasive."),
       defense: stringOr(item?.defense, "State the premise directly and support it with a source, example, or limiting qualifier.")
     })),
     logical_fallacies: ensureArray(input.logical_fallacies).map((item) => ({
       name: stringOr(item?.name, "Unsupported Assertion"),
-      quote: stringOr(item?.quote, fallbackQuote),
+      quote: sourceQuoteOr(item?.quote, text, fallbackQuote),
       explanation: stringOr(item?.explanation, "The passage asserts more than it proves."),
       fix: stringOr(item?.fix, "Replace the assertion with a claim supported by evidence and a warrant.")
     })),
@@ -252,17 +252,17 @@ export function normalizeAudit(audit, essay) {
       opening_hook: stringOr(input.rhetorical_analysis?.opening_hook, "The opening states a position but needs a more precise frame for the reader."),
       logical_flow: stringOr(input.rhetorical_analysis?.logical_flow, "The sequence needs clearer claim-to-evidence movement."),
       strongest_sentence: {
-        quote: stringOr(input.rhetorical_analysis?.strongest_sentence?.quote, fallbackQuote),
+        quote: sourceQuoteOr(input.rhetorical_analysis?.strongest_sentence?.quote, text, fallbackQuote),
         why: stringOr(input.rhetorical_analysis?.strongest_sentence?.why, "This sentence gives the clearest available statement of the argument.")
       },
       weakest_sentence: {
-        quote: stringOr(input.rhetorical_analysis?.weakest_sentence?.quote, fallbackQuote),
+        quote: sourceQuoteOr(input.rhetorical_analysis?.weakest_sentence?.quote, text, fallbackQuote),
         why: stringOr(input.rhetorical_analysis?.weakest_sentence?.why, "This sentence carries more argumentative weight than it currently supports."),
         fix: stringOr(input.rhetorical_analysis?.weakest_sentence?.fix, "Rewrite it with a specific standard, source, and warrant.")
       }
     },
     rewrite_suggestions: ensureArray(input.rewrite_suggestions).map((item) => ({
-      original: stringOr(item?.original, fallbackQuote),
+      original: sourceQuoteOr(item?.original, text, fallbackQuote),
       rewrite: stringOr(item?.rewrite, "The claim should be rewritten with a specific standard, a verifiable source, and a clear reason the evidence proves the point."),
       improvement: stringOr(item?.improvement, "The rewrite makes the claim easier to verify and harder to dismiss.")
     }))
@@ -279,6 +279,8 @@ export function normalizeAudit(audit, essay) {
       100
     );
   }
+
+  rebalanceScoreBreakdown(normalized);
 
   if (!normalized.argument_strength.claims.length && essaySentences.length > 1) {
     normalized.argument_strength.claims = essaySentences.slice(1, 5).map((sentence) => ({
@@ -304,7 +306,40 @@ export function normalizeAudit(audit, essay) {
     ];
   }
 
+  scrubUnsupportedGeneratedNumbers(normalized, text);
   return normalized;
+}
+
+function rebalanceScoreBreakdown(audit) {
+  const keys = ["argument_strength", "assumption_audit", "logic", "rhetoric"];
+  const totalScore = clampInt(audit.overall_score, 0, 0, 100);
+  const values = keys.map((key) => clampInt(audit.score_breakdown[key], 0, 0, 25));
+  const currentTotal = values.reduce((sum, value) => sum + value, 0);
+  if (currentTotal === totalScore) return;
+
+  const raw = currentTotal > 0
+    ? values.map((value) => totalScore * value / currentTotal)
+    : keys.map(() => totalScore / keys.length);
+  const next = raw.map((value) => Math.min(25, Math.floor(value)));
+  let remainder = totalScore - next.reduce((sum, value) => sum + value, 0);
+  const order = raw
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction);
+
+  while (remainder > 0) {
+    let changed = false;
+    for (const item of order) {
+      if (next[item.index] >= 25 || remainder <= 0) continue;
+      next[item.index] += 1;
+      remainder -= 1;
+      changed = true;
+    }
+    if (!changed) break;
+  }
+
+  keys.forEach((key, index) => {
+    audit.score_breakdown[key] = next[index];
+  });
 }
 
 export function buildRecoveryAudit(essay, note = "Fracture recovered from a malformed model response and generated a validated report.") {
@@ -530,6 +565,39 @@ function stringOr() {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return "";
+}
+
+function sourceQuoteOr(value, sourceText, fallback) {
+  const candidate = stringOr(value);
+  const source = String(sourceText || "");
+  if (candidate && source) {
+    const index = source.toLowerCase().indexOf(candidate.toLowerCase());
+    if (index >= 0) return source.slice(index, index + candidate.length);
+  }
+  return stringOr(fallback, source);
+}
+
+function scrubUnsupportedGeneratedNumbers(audit, essay) {
+  const allowed = new Set((String(essay || "").match(/\d+(?:[.,]\d+)?/g) || []).map((value) => value.replace(",", ".")));
+  const scrub = (value) => String(value || "").replace(/\d+(?:[.,]\d+)?/g, (match) => (
+    allowed.has(match.replace(",", ".")) ? match : "[verified evidence needed]"
+  ));
+  const scrubFields = (item, fields) => fields.forEach((field) => {
+    if (typeof item?.[field] === "string") item[field] = scrub(item[field]);
+  });
+
+  scrubFields(audit, ["verdict", "coaching_note"]);
+  ensureArray(audit.priority_fixes).forEach((item) => scrubFields(item, ["problem", "why_it_matters", "exact_fix", "rewrite"]));
+  scrubFields(audit.collapse_point, ["why_it_collapses", "opponent_attack", "reinforcement"]);
+  scrubFields(audit.argument_strength?.thesis, ["assessment"]);
+  ensureArray(audit.argument_strength?.claims).forEach((item) => scrubFields(item, ["diagnosis", "opponent_exploit", "fix"]));
+  ensureArray(audit.assumption_audit).forEach((item) => scrubFields(item, ["assumption", "vulnerability", "defense"]));
+  ensureArray(audit.logical_fallacies).forEach((item) => scrubFields(item, ["name", "explanation", "fix"]));
+  ensureArray(audit.counter_arguments).forEach((item) => scrubFields(item, ["steelman", "targets", "damage", "suggested_rebuttal"]));
+  scrubFields(audit.rhetorical_analysis, ["opening_hook", "logical_flow"]);
+  scrubFields(audit.rhetorical_analysis?.strongest_sentence, ["why"]);
+  scrubFields(audit.rhetorical_analysis?.weakest_sentence, ["why", "fix"]);
+  ensureArray(audit.rewrite_suggestions).forEach((item) => scrubFields(item, ["rewrite", "improvement"]));
 }
 
 function clampInt(value, fallback, min, max) {

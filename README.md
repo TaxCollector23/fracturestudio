@@ -32,9 +32,10 @@ npm start
 - **API key is server-side only.** `OPENROUTER_API_KEY` lives in `.env`, loaded by `dotenv`. It is never sent to the browser, never in any HTML/JS file, never in any response.
 - All AI calls are proxied through server routes. The browser never receives the OpenRouter key.
 - `/api/analyze` streams live report-generation events and returns a normalized JSON audit.
-- `/api/chat` streams plain-text Fracture Chat coaching.
+- `/api/chat` streams detailed plain-text Fracture Chat coaching with follow-up conversation context.
 - `/api/rebuttal` streams rapid debate responses through the fast model.
-- `/api/verify-sources` searches public pages, compares retrieved metadata to draft claims, and builds a working Works Cited list without fabricating entries.
+- `/api/verify-sources` searches public pages, compares retrieved page text to draft claims, and builds a strong-match-only MLA 9th or APA 7th bibliography without fabricating entries.
+- `/api/report-pdf` exports a formatted PDF report with the diagnosis, priority fixes, source-verification summary, bibliography, and submitted draft.
 - Firebase Authentication sends free password-reset emails without a separate mail server.
 - `/api/admin-users` reads Firebase profiles only after the server validates the admin password.
 - Input is size-limited (50kb body, 40,000 char essay max) to prevent abuse.

@@ -9,7 +9,7 @@ const MODES = {
     tooLong: 6000,
     messages: buildChatMessages,
     model: () => process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
-    maxTokens: 1100,
+    maxTokens: 1800,
     temperature: 0.45
   },
   rebuttal: {
@@ -94,11 +94,21 @@ export async function handleTextStream(req, res, mode) {
 }
 
 function sanitizePlainText(text, allowedNumbers) {
+  const safeValues = [];
+  const safeKeys = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const protect = (value) => {
+    if (safeValues.length >= safeKeys.length) return value;
+    const key = `@@SAFE${safeKeys[safeValues.length]}@@`;
+    safeValues.push(value);
+    return key;
+  };
+
   return String(text || "")
-    .replace(/10-second answer:/gi, "@@TEN-SECOND-ANSWER@@")
-    .replace(/30-second answer:/gi, "@@THIRTY-SECOND-ANSWER@@")
-    .replace(/2-minute rebuttal:/gi, "@@TWO-MINUTE-REBUTTAL@@")
-    .replace(/^(\s*)(\d+)\.\s/gm, "$1@@LIST-$2@@ ")
+    .replace(/10-second answer:/gi, () => protect("10-second answer:"))
+    .replace(/30-second answer:/gi, () => protect("30-second answer:"))
+    .replace(/2-minute rebuttal:/gi, () => protect("2-minute rebuttal:"))
+    .replace(/^(\s*)(\d+)\.\s/gm, (_match, spacing, number) => protect(`${spacing}${number}. `))
+    .replace(/\((\d{1,2})\)(?=\s+[A-Za-z])/g, (match) => protect(match))
     .replace(/```[\s\S]*?```/g, (block) => block.replace(/```[a-z]*\n?/gi, "").replace(/```/g, ""))
     .replace(/[*_`]/g, "")
     .replace(/^\s{0,3}#{1,6}\s*/gm, "")
@@ -118,10 +128,7 @@ function sanitizePlainText(text, allowedNumbers) {
       const values = match.match(/\d+(?:[.,]\d+)?/g) || [];
       return values.every((value) => allowedNumbers.has(value.replace(",", "."))) ? match : "[verify statistic]";
     })
-    .replace(/@@TEN-SECOND-ANSWER@@/g, "10-second answer:")
-    .replace(/@@THIRTY-SECOND-ANSWER@@/g, "30-second answer:")
-    .replace(/@@TWO-MINUTE-REBUTTAL@@/g, "2-minute rebuttal:")
-    .replace(/@@LIST-(\d+)@@/g, "$1.")
+    .replace(/@@SAFE([A-Za-z])@@/g, (_match, key) => safeValues[safeKeys.indexOf(key)] || "")
     .replace(/[ \t]+\n/g, "\n");
 }
 
