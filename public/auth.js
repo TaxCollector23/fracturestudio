@@ -55,7 +55,7 @@
     try {
       const path = localStorage.getItem(RETURN_PATH_KEY);
       localStorage.removeItem(RETURN_PATH_KEY);
-      if (path && path.startsWith('/')) return path;
+      if (path && path.startsWith('/') && !path.startsWith('//')) return path;
     } catch (_) {}
     return null;
   }

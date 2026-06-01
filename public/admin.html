@@ -104,6 +104,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="professional.css" />
 </head>
 <body>
 <div class="noise"></div>
@@ -152,8 +153,7 @@
     <div class="controls" style="justify-content:flex-start;">
       <button class="btn-primary" id="adminLoadBtn" type="button">Load Accounts</button>
     </div>
-    <div class="admin-message" id="adminMessage"></div>
-    <p class="admin-muted">Set `FIREBASE_SERVICE_ACCOUNT_JSON` on the server to load profiles for users who have signed in.</p>
+    <div class="admin-message" id="adminMessage" role="status" aria-live="polite"></div>
   </section>
 
   <section class="panel">

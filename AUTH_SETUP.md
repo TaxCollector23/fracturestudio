@@ -66,4 +66,4 @@ To change the sender name or email wording, open Firebase Console, then go to Au
 3. Set `FIREBASE_SERVICE_ACCOUNT_JSON` to the complete JSON object in the server or Vercel environment.
 4. Restart or redeploy.
 
-The admin password defaults to `goatbergandrangoat`. Set `FRACTURE_ADMIN_PASSWORD` to replace it before a public launch.
+Set `FRACTURE_ADMIN_PASSWORD` before using the private admin page. The admin endpoint refuses access when this server-side secret is missing.

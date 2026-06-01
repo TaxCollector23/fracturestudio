@@ -62,6 +62,7 @@
       count.textContent = 'No account data loaded.';
       message.textContent = err.message || 'Admin request failed.';
     } finally {
+      passwordInput.value = '';
       loadBtn.disabled = false;
     }
   }

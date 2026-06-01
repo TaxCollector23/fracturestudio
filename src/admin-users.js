@@ -2,8 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { applicationDefault, cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
-const DEFAULT_ADMIN_PASSWORD = "goatbergandrangoat";
-const ADMIN_PASSWORD = process.env.FRACTURE_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
+const ADMIN_PASSWORD = process.env.FRACTURE_ADMIN_PASSWORD;
 
 function passwordsMatch(input, expected) {
   const left = Buffer.from(String(input || ""));
@@ -37,6 +36,14 @@ function isoTimestamp(value) {
 }
 
 export async function listAdminUsers(password) {
+  if (!ADMIN_PASSWORD) {
+    return {
+      ok: false,
+      status: 503,
+      body: { error: "Admin access is not configured." }
+    };
+  }
+
   if (!passwordsMatch(password, ADMIN_PASSWORD)) {
     return {
       ok: false,
