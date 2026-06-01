@@ -19,6 +19,7 @@
   const liveAuditStatus = document.getElementById('liveAuditStatus');
   const liveAuditText   = document.getElementById('liveAuditText');
   const jsonOutput      = document.getElementById('jsonOutput');
+  const rawJsonBlock    = document.getElementById('rawJsonBlock');
   const jsonError       = document.getElementById('jsonError');
   const scorePill       = document.getElementById('scorePill');
   const copyBtn         = document.getElementById('copyBtn');
@@ -128,9 +129,10 @@
     sourceVerifier = null;
     sourceVerificationData = null;
     if (jsonOutput) jsonOutput.textContent = '';
-    if (liveAuditText) liveAuditText.textContent = '';
+    if (rawJsonBlock) rawJsonBlock.open = false;
+    if (liveAuditText) liveAuditText.innerHTML = '';
     if (liveAuditStream) liveAuditStream.classList.add('hidden');
-    if (liveAuditStatus) liveAuditStatus.textContent = 'Fracture is writing';
+    if (liveAuditStatus) liveAuditStatus.textContent = 'Fracture is thinking';
     if (jsonError)  { jsonError.classList.add('hidden'); jsonError.textContent = ''; }
     if (scorePill)  scorePill.textContent = '—';
     if (copyBtn)    copyBtn.disabled  = true;
@@ -153,13 +155,14 @@
     if (!delta || !liveAuditText || !liveAuditStream) return;
     liveAuditStream.classList.remove('hidden');
     liveAuditStream.open = true;
-    liveAuditText.textContent += delta;
+    renderLiveReadablePreview();
     liveAuditText.scrollTop = liveAuditText.scrollHeight;
   }
 
   function completeLiveAuditStream() {
-    if (!liveAuditText || !liveAuditText.textContent.trim()) return;
-    if (liveAuditStatus) liveAuditStatus.textContent = 'Report stream complete';
+    if (!liveAuditText) return;
+    renderLiveReadablePreview();
+    if (liveAuditStatus) liveAuditStatus.textContent = 'Full report ready below';
   }
 
   // ── Escape HTML ────────────────────────────────────────────────────────────
@@ -184,6 +187,88 @@
       if (typeof arguments[i] === 'string' && arguments[i].trim()) return arguments[i].trim();
     }
     return '';
+  }
+
+  function decodeJsonString(value) {
+    try {
+      return JSON.parse('"' + value + '"');
+    } catch (_) {
+      return String(value || '').replace(/\\"/g, '"').replace(/\\n/g, ' ').replace(/\\\\/g, '\\');
+    }
+  }
+
+  function streamedStringValues(text, key) {
+    const values = [];
+    const pattern = new RegExp('"' + key + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"', 'g');
+    let match;
+    while ((match = pattern.exec(String(text || '')))) {
+      const value = decodeJsonString(match[1]).trim();
+      if (value && values.indexOf(value) === -1) values.push(value);
+    }
+    return values;
+  }
+
+  function streamedNumber(text, key) {
+    const match = String(text || '').match(new RegExp('"' + key + '"\\s*:\\s*(\\d{1,3})'));
+    return match ? match[1] : '';
+  }
+
+  function jsonSlice(text, startKey, endKey) {
+    const source = String(text || '');
+    const start = source.indexOf('"' + startKey + '"');
+    if (start === -1) return '';
+    const end = endKey ? source.indexOf('"' + endKey + '"', start + startKey.length + 2) : -1;
+    return source.slice(start, end === -1 ? source.length : end);
+  }
+
+  function livePreviewCard(title, body, tone) {
+    if (!body) return '';
+    return '<section class="live-report-card ' + (tone || '') + '">'
+      + '<div class="live-report-kicker">' + esc(title) + '</div>'
+      + '<p>' + esc(body) + '</p>'
+      + '</section>';
+  }
+
+  function renderLiveReadablePreview() {
+    if (!liveAuditText || !liveAuditStream) return;
+    liveAuditStream.classList.remove('hidden');
+    liveAuditStream.open = true;
+
+    const verdict = streamedStringValues(rawJsonText, 'verdict')[0] || '';
+    const firstMove = streamedStringValues(rawJsonText, 'coaching_note')[0] || '';
+    const prioritySlice = jsonSlice(rawJsonText, 'priority_fixes', 'collapse_point');
+    const problems = streamedStringValues(prioritySlice, 'problem').slice(0, 3);
+    const whyItMatters = streamedStringValues(prioritySlice, 'why_it_matters').slice(0, 3);
+    const exactFixes = streamedStringValues(prioritySlice, 'exact_fix').slice(0, 3);
+    const collapseSlice = jsonSlice(rawJsonText, 'collapse_point', 'argument_strength');
+    const collapse = streamedStringValues(collapseSlice, 'why_it_collapses')[0] || '';
+    const opponentAttack = streamedStringValues(collapseSlice, 'opponent_attack')[0] || '';
+    const score = streamedNumber(rawJsonText, 'overall_score');
+
+    let html = '<div class="live-report-intro">'
+      + '<span class="live-report-pulse"></span>'
+      + '<span>' + (score ? 'Early score: ' + esc(score) + '/100. ' : '') + 'Readable findings appear here as each part of the audit is completed.</span>'
+      + '</div>';
+
+    html += livePreviewCard('Early diagnosis', verdict, 'primary');
+    html += livePreviewCard('Best first move', firstMove, 'accent');
+
+    problems.forEach(function (problem, index) {
+      const details = [
+        whyItMatters[index] ? 'Why it matters: ' + whyItMatters[index] : '',
+        exactFixes[index] ? 'What to change: ' + exactFixes[index] : ''
+      ].filter(Boolean).join(' ');
+      html += livePreviewCard('Priority ' + (index + 1), problem + (details ? ' ' + details : ''), 'priority');
+    });
+
+    html += livePreviewCard('Collapse point', collapse, 'risk');
+    html += livePreviewCard('Likely challenge', opponentAttack, 'risk');
+
+    if (!verdict && !firstMove && !problems.length && !collapse) {
+      html += '<div class="live-report-waiting">Fracture is reading the draft and identifying the first pressure points.</div>';
+    }
+
+    liveAuditText.innerHTML = html;
   }
 
   function fallbackPriorityFixes(parsed) {
@@ -470,6 +555,8 @@
   function renderParsedAudit(audit) {
     if (!audit || typeof audit !== 'object') return;
     parsedAudit = audit;
+    if (!rawJsonText.trim()) rawJsonText = JSON.stringify(audit, null, 2);
+    renderLiveReadablePreview();
     if (typeof audit.overall_score === 'number' && scorePill) {
       scorePill.textContent = String(audit.overall_score);
     }
@@ -963,8 +1050,9 @@
       rawJsonText = decodeURIComponent(analysis);
       if (jsonOutput) jsonOutput.textContent = rawJsonText;
       const parsed = parseAuditJson(rawJsonText);
+      parsedAudit = parsed;
+      auditRendered = true;
       if (typeof parsed.overall_score === 'number' && scorePill) scorePill.textContent = String(parsed.overall_score);
-      renderArgumentGraph(parsed);
       renderReport(parsed);
       if (copyBtn)   copyBtn.disabled   = false;
       if (exportBtn) exportBtn.disabled = false;

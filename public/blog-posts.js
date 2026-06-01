@@ -466,15 +466,15 @@
   function practiceAddition(guide, index) {
     if (!guide) return '';
     if (index === 0) {
-      return 'To apply this idea, work on a draft that is already familiar instead of inventing a practice example. ' + guide.exercise + ' The purpose is ' + guide.focus + '. Keep the test narrow enough that you can see whether one revision changed the logic. A focused exercise makes the underlying habit easier to repeat when the stakes are higher.';
+      return 'Try this on a draft you already know. ' + guide.exercise + ' The goal is ' + guide.focus + '. Keep the test small so you can see whether one edit changed the logic.';
     }
     if (index === 1) {
-      return 'Evaluate the result with a concrete standard. ' + guide.success + ' Read the revised passage from the viewpoint of a skeptical but fair reader. Ask what question remains unanswered and whether the new sentence answers that question directly. Improvement should be visible in the argument, not merely in the amount of text on the page.';
+      return 'Check the result with a clear standard. ' + guide.success + ' Read the new passage like a fair but doubtful reader. Ask what question is still open. A better draft should add proof or logic, not just more words.';
     }
     if (index === 2) {
-      return 'Watch for the most common failure mode. ' + guide.mistake + ' Slow down long enough to name the job of the paragraph before revising it. If the edit does not change what the reader can reasonably accept, return to the claim, warrant, or source connection. Precision is usually more valuable than volume.';
+      return 'Watch for the common mistake. ' + guide.mistake + ' Name the job of the paragraph before you revise it. If the edit does not change what the reader can accept, return to the claim, warrant, or source link.';
     }
-    return 'Carry the habit forward after this draft. ' + guide.transfer + ' Over time, the goal is to recognize the pressure point before a report has to name it. Use Fracture as a training partner: form a hypothesis about the weakness, revise deliberately, and compare the next result. That rhythm turns feedback into judgment you can use independently.';
+    return 'Use the habit again after this draft. ' + guide.transfer + ' Over time, try to spot the weak point before the report names it. Make one careful edit, run Fracture again, and compare the result.';
   }
 
   window.FractureBlogPosts.forEach(function (post) {

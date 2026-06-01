@@ -110,10 +110,10 @@
 
       <details class="live-audit-stream hidden" id="liveAuditStream" open>
         <summary>
-          <span>Live Audit Stream</span>
-          <span class="live-audit-status" id="liveAuditStatus">Fracture is writing</span>
+          <span>Live Report Preview</span>
+          <span class="live-audit-status" id="liveAuditStatus">Fracture is thinking</span>
         </summary>
-        <pre id="liveAuditText" aria-live="polite"></pre>
+        <div class="live-report-preview" id="liveAuditText" aria-live="polite"></div>
       </details>
 
       <div class="argument-map" id="argumentGraph" hidden></div>
@@ -175,15 +175,15 @@
 
       <div class="skeleton hidden" id="skeleton"></div>
 
+      <div id="reportContainer" class="report"></div>
+      <div class="json-error hidden" id="jsonError"></div>
+
       <details id="rawJsonBlock" style="position:relative;z-index:1;">
-        <summary class="json-raw-summary">View Structured Data</summary>
+        <summary class="json-raw-summary">Advanced: View Structured Report Data</summary>
         <div class="json-raw-wrap" style="border-top:none;border-radius:0 0 12px 12px;">
           <pre class="json-container" id="jsonOutput">Awaiting analysis...</pre>
         </div>
       </details>
-
-      <div id="reportContainer" class="report"></div>
-      <div class="json-error hidden" id="jsonError"></div>
 
       <div class="json-toolbar">
         <div class="toolbar-left">
