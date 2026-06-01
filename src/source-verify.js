@@ -2,7 +2,9 @@ const CLAIM_LIMIT = 10;
 const RESULTS_PER_CLAIM = 4;
 const SEARCH_TIMEOUT_MS = 8000;
 const PAGE_TIMEOUT_MS = 7000;
+const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const USER_AGENT = "FractureStudioSourceVerifier/1.0 (+https://fracturestudio.vercel.app)";
+const searchCache = new Map();
 
 const STOP_WORDS = new Set([
   "about", "after", "again", "against", "also", "because", "before", "being",
@@ -196,12 +198,18 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote, citation
 async function searchOpenWeb(query) {
   const ddgUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
   const liteUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+  const readerLiteUrl = `https://r.jina.ai/http://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
   const errors = [];
+  const cached = searchCache.get(query);
+
+  if (cached && Date.now() - cached.createdAt < SEARCH_CACHE_TTL_MS) {
+    return cached.value;
+  }
 
   try {
     const html = await fetchText(ddgUrl, SEARCH_TIMEOUT_MS);
     const results = parseDuckDuckGoResults(html);
-    if (results.length) return { results };
+    if (results.length) return cacheSearch(query, { results });
   } catch (err) {
     errors.push(`standard search: ${err?.message || String(err)}`);
   }
@@ -209,15 +217,28 @@ async function searchOpenWeb(query) {
   try {
     const html = await fetchText(liteUrl, SEARCH_TIMEOUT_MS);
     const results = parseDuckDuckGoLiteResults(html);
-    if (results.length) return { results };
+    if (results.length) return cacheSearch(query, { results });
   } catch (err) {
     errors.push(`lightweight search: ${err?.message || String(err)}`);
   }
 
-  return {
+  try {
+    const markdown = await fetchText(readerLiteUrl, SEARCH_TIMEOUT_MS);
+    const results = parseReaderSearchResults(markdown);
+    if (results.length) return cacheSearch(query, { results });
+  } catch (err) {
+    errors.push(`reader search: ${err?.message || String(err)}`);
+  }
+
+  return cacheSearch(query, {
     results: [],
     fallback_error: errors.length ? errors.join("; ") : ""
-  };
+  });
+}
+
+function cacheSearch(query, value) {
+  searchCache.set(query, { createdAt: Date.now(), value });
+  return value;
 }
 
 function parseDuckDuckGoResults(html) {
@@ -227,7 +248,7 @@ function parseDuckDuckGoResults(html) {
 
   while ((match = resultPattern.exec(html)) && results.length < RESULTS_PER_CLAIM) {
     const url = normalizeDuckDuckGoUrl(decodeHtml(match[1]));
-    if (!url || !/^https?:\/\//i.test(url)) continue;
+    if (!isUsableSourceUrl(url)) continue;
     results.push({
       title: cleanText(stripHtml(match[2])),
       url,
@@ -240,7 +261,7 @@ function parseDuckDuckGoResults(html) {
   const loosePattern = /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
   while ((match = loosePattern.exec(html)) && results.length < RESULTS_PER_CLAIM) {
     const url = normalizeDuckDuckGoUrl(decodeHtml(match[1]));
-    if (!url || !/^https?:\/\//i.test(url)) continue;
+    if (!isUsableSourceUrl(url)) continue;
     results.push({
       title: cleanText(stripHtml(match[2])),
       url,
@@ -259,12 +280,32 @@ function parseDuckDuckGoLiteResults(html) {
   while ((match = resultPattern.exec(html)) && results.length < RESULTS_PER_CLAIM) {
     const href = match[1].match(/href=['"]([^'"]+)['"]/i);
     const url = normalizeDuckDuckGoUrl(decodeHtml(href?.[1] || ""));
-    if (!url || !/^https?:\/\//i.test(url)) continue;
+    if (!isUsableSourceUrl(url)) continue;
     results.push({
       title: cleanText(stripHtml(match[2])),
       url,
       snippet: cleanText(stripHtml(match[3]))
     });
+  }
+
+  return dedupeResults(results);
+}
+
+function parseReaderSearchResults(markdown) {
+  const results = [];
+  const lines = String(markdown || "").split(/\r?\n/);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^\d+\.\[([^\]]+)\]\((https?:\/\/duckduckgo\.com\/l\/\?[^)]+)\)$/i);
+    if (!match) continue;
+    const url = normalizeDuckDuckGoUrl(decodeHtml(match[2]));
+    if (!isUsableSourceUrl(url)) continue;
+    results.push({
+      title: cleanText(match[1]),
+      url,
+      snippet: cleanText(lines[index + 1] || "")
+    });
+    if (results.length >= RESULTS_PER_CLAIM) break;
   }
 
   return dedupeResults(results);
@@ -288,13 +329,13 @@ async function fetchPageMetadata(url) {
   }
 }
 
-async function fetchText(url, timeoutMs) {
+async function fetchText(url, timeoutMs, userAgent = USER_AGENT) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": userAgent,
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
       },
       signal: controller.signal
@@ -503,6 +544,18 @@ function normalizeDuckDuckGoUrl(url) {
     return uddg ? decodeURIComponent(uddg) : parsed.href;
   } catch (_) {
     return "";
+  }
+}
+
+function isUsableSourceUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return /^https?:\/\//i.test(url)
+      && host !== "duckduckgo.com"
+      && !host.endsWith(".duckduckgo.com")
+      && host !== "r.jina.ai";
+  } catch (_) {
+    return false;
   }
 }
 
