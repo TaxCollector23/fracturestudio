@@ -390,13 +390,101 @@
     ]
   };
 
+  const practiceGuides = {
+    'read-fracture-report': {
+      focus: 'turning a long diagnosis into a short, defensible revision plan',
+      exercise: 'Choose one existing draft, read only the verdict and collapse point, and write the single sentence you would repair first. Then explain in one line what that edit protects elsewhere in the argument.',
+      success: 'You should be able to name the load-bearing sentence, the repair, and the reason it matters without rereading the entire report.',
+      mistake: 'Do not treat every observation as equally urgent. A report is most useful when it helps you choose an editing order.',
+      transfer: 'Repeat the same sequence after each new draft so that the report becomes a decision tool rather than a pile of comments.'
+    },
+    'defensible-claim-before-style': {
+      focus: 'matching the confidence and scope of a sentence to the proof that can actually support it',
+      exercise: 'Take the most polished sentence in your draft and rewrite it as four plain lines: claim, reason, evidence, and impact. Circle the first line that cannot survive a skeptical question.',
+      success: 'The revised paragraph should remain persuasive even when its adjectives and rhetorical flourishes are removed.',
+      mistake: 'Do not confuse confidence with proof. A sentence can sound decisive while quietly increasing the burden of proof beyond what the evidence reaches.',
+      transfer: 'Run this test before line editing any important paragraph, especially when a thesis uses universal or causal language.'
+    },
+    'twenty-minute-revision-sprint': {
+      focus: 'using a limited editing window to repair one structural weakness and measure whether the argument changed',
+      exercise: 'Set a timer, record the original collapse point, make one targeted revision, and rerun the audit before you polish unrelated sentences. Keep the original and revised versions beside each other.',
+      success: 'The new report should move the pressure point, narrow the warning, or clearly explain why a deeper rewrite is necessary.',
+      mistake: 'Do not spend the sprint collecting minor edits. The exercise is valuable because it forces one testable intervention.',
+      transfer: 'Use the same ledger across revisions so that progress is visible and recurring weaknesses become easier to recognize.'
+    },
+    'hidden-assumptions': {
+      focus: 'making invisible premises explicit enough to test, defend, qualify, or remove',
+      exercise: 'Place one important evidence sentence next to its conclusion and complete this line: this evidence supports the claim only if we accept that. Write the missing premise without softening it.',
+      success: 'A reader should be able to see which assumption is shared background and which assumption carries enough weight to require a defense.',
+      mistake: 'Do not respond to every hidden premise by adding more words. Some assumptions are better handled by narrowing the conclusion.',
+      transfer: 'Use the exercise whenever a paragraph moves from a fact to a policy, causal, or moral judgment.'
+    },
+    'weak-to-strong-claim': {
+      focus: 'building a claim that is precise, directly supported, visibly warranted, and worth caring about',
+      exercise: 'Rewrite one weak sentence four times: first define the outcome, then add direct evidence, then state the warrant, then explain the impact. Read the four versions in order.',
+      success: 'The final version should ask the evidence to prove exactly one clear proposition and tell the reader why accepting it matters.',
+      mistake: 'Do not add a citation simply because it is related to the topic. The source must perform a specific job for a specific sentence.',
+      transfer: 'Use this four-step pattern when planning body paragraphs so structure is present before the prose becomes complicated.'
+    },
+    'counterarguments-as-constraints': {
+      focus: 'using the fairest objection to decide what the next version of the argument must be able to survive',
+      exercise: 'Write the strongest objection to your main claim without weakening it. Under that objection, choose one response strategy and write one crossfire question that exposes the remaining burden.',
+      success: 'Your rebuttal should answer the actual attack at the same level of seriousness rather than changing the subject.',
+      mistake: 'Do not answer a causal objection with a moral claim or an evidence objection with a rhetorical flourish.',
+      transfer: 'Carry the strongest objection into the architecture of the draft so the answer appears before the reader has to request it.'
+    },
+    'debate-team-case-review': {
+      focus: 'turning a shared audit into a coordinated practice plan that improves decisions under time pressure',
+      exercise: 'Give the team one completed report and assign three jobs: protect the collapse point, verify the decisive evidence card, and write the shortest usable frontline. Reassemble the case and test it aloud.',
+      success: 'Every teammate should be able to state the core response in ten seconds and expand it without changing the underlying strategy.',
+      mistake: 'Do not mistake a large block file for preparedness. Preparedness means the team knows which line matters and why.',
+      transfer: 'Track recurring report patterns across cases and turn them into focused drills for the next practice session.'
+    },
+    'specific-fallacies': {
+      focus: 'diagnosing reasoning precisely enough that the repair fits the actual flaw and its structural importance',
+      exercise: 'Choose one flagged sentence and describe the problem without using the fallacy name. Then name the fallacy and compare whether the label adds useful precision.',
+      success: 'The explanation should identify the exact inference that fails and the smallest revision that restores a fair, defensible claim.',
+      mistake: 'Do not force every weak sentence into a named category. Missing evidence and missing warrants are often more accurate diagnoses.',
+      transfer: 'Use fallacy labels as compact reminders after the full reasoning problem is understood, not as substitutes for explanation.'
+    },
+    'score-drop-second-draft': {
+      focus: 'reading score changes as evidence about the argument rather than as a verdict on the writer',
+      exercise: 'Compare two reports and record three things: the collapse point, the weakest category, and the first mission. Ignore the total score until you can explain how those changed.',
+      success: 'You should be able to describe whether the argument has fewer dangerous dependencies even if the total moved only slightly.',
+      mistake: 'Do not chase the number by adding length. A longer paragraph can preserve the same structural weakness.',
+      transfer: 'Keep a revision history so each audit teaches you which repairs reliably make your reasoning more resilient.'
+    },
+    'source-check-routine': {
+      focus: 'connecting each source to a precise claim while preserving a bibliography that can be audited later',
+      exercise: 'Select three citations from a draft, open each original page, locate the exact supporting passage, and write the claim beside it. Mark any citation that proves only background context.',
+      success: 'A reader should be able to move from claim to source to passage without guessing what the evidence was meant to establish.',
+      mistake: 'Do not let a polished bibliography hide a weak source-to-claim connection. Documentation and reasoning are related but separate tests.',
+      transfer: 'Add the citation and passage note at the moment evidence enters the draft so the final source review is a confirmation pass, not a reconstruction.'
+    }
+  };
+
+  function practiceAddition(guide, index) {
+    if (!guide) return '';
+    if (index === 0) {
+      return 'To apply this idea, work on a draft that is already familiar instead of inventing a practice example. ' + guide.exercise + ' The purpose is ' + guide.focus + '. Keep the test narrow enough that you can see whether one revision changed the logic. A focused exercise makes the underlying habit easier to repeat when the stakes are higher.';
+    }
+    if (index === 1) {
+      return 'Evaluate the result with a concrete standard. ' + guide.success + ' Read the revised passage from the viewpoint of a skeptical but fair reader. Ask what question remains unanswered and whether the new sentence answers that question directly. Improvement should be visible in the argument, not merely in the amount of text on the page.';
+    }
+    if (index === 2) {
+      return 'Watch for the most common failure mode. ' + guide.mistake + ' Slow down long enough to name the job of the paragraph before revising it. If the edit does not change what the reader can reasonably accept, return to the claim, warrant, or source connection. Precision is usually more valuable than volume.';
+    }
+    return 'Carry the habit forward after this draft. ' + guide.transfer + ' Over time, the goal is to recognize the pressure point before a report has to name it. Use Fracture as a training partner: form a hypothesis about the weakness, revise deliberately, and compare the next result. That rhythm turns feedback into judgment you can use independently.';
+  }
+
   window.FractureBlogPosts.forEach(function (post) {
     const baseSections = post.sections.concat(deeperSections[post.slug] || []).slice(0, 4);
     const expansions = articleExpansions[post.slug] || [];
+    const guide = practiceGuides[post.slug];
     post.sections = baseSections.map(function (section, index) {
       return {
         heading: section.heading,
-        body: section.body + ' ' + (expansions[index] || '')
+        body: section.body + ' ' + (expansions[index] || '') + '\n\n' + practiceAddition(guide, index)
       };
     });
     post.readTime = '6 min read';

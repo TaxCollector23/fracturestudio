@@ -67,6 +67,10 @@
       font-size: 16px;
       line-height: 1.78;
     }
+
+    .article-section p + p {
+      margin-top: 16px;
+    }
   </style>
   <link rel="stylesheet" href="professional.css" />
 </head>
@@ -128,7 +132,10 @@
       + '<p class="article-excerpt">' + esc(post.excerpt) + '</p>'
       + '<article class="article-card">'
       + post.sections.map(function (section) {
-        return '<section class="article-section"><h2>' + esc(section.heading) + '</h2><p>' + esc(section.body) + '</p></section>';
+        const paragraphs = section.body.split(/\n\n+/).map(function (paragraph) {
+          return '<p>' + esc(paragraph) + '</p>';
+        }).join('');
+        return '<section class="article-section"><h2>' + esc(section.heading) + '</h2>' + paragraphs + '</section>';
       }).join('')
       + '</article>';
   })();
