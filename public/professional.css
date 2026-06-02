@@ -180,6 +180,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   color: #ffffff !important;
 }
 .btn-primary:hover { background: var(--accent-3) !important; transform: none !important; }
+.btn-primary[aria-busy="true"], .btn-sm[aria-busy="true"] { cursor: progress; opacity: .72; }
 .btn-secondary, .btn-sm {
   background: transparent !important;
   border: 1px solid var(--border) !important;

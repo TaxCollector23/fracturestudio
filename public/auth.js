@@ -37,6 +37,7 @@
   let authReadyResolve = null;
   let authObserverBound = false;
   let cloudReady = null;
+  let settingsListenersBound = false;
 
   function rememberReturnPath(destination) {
     const path = destination || (window.location.pathname + window.location.search);
@@ -649,16 +650,28 @@
     return getUser();
   }
 
-  async function initAuthUI() {
-    await refreshAccountUI();
-    const preferences = await getPreferences();
-    setValue('feedbackDepth', preferences.feedbackDepth);
-    setValue('feedbackTone', preferences.feedbackTone);
-    setValue('citationStyle', preferences.citationStyle);
-    setChecked('emailUpdates', preferences.emailUpdates);
-    setChecked('saveReports', preferences.saveReports);
-    await renderProjects();
+  function setButtonBusy(button, busy, busyLabel) {
+    if (!button) return;
+    if (!button.dataset.readyLabel) button.dataset.readyLabel = button.textContent;
+    button.disabled = Boolean(busy);
+    button.setAttribute('aria-busy', busy ? 'true' : 'false');
+    button.textContent = busy && busyLabel ? busyLabel : button.dataset.readyLabel;
+  }
 
+  async function runSettingsAction(button, busyLabel, task) {
+    setButtonBusy(button, true, busyLabel);
+    try {
+      await task();
+    } catch (error) {
+      setText('settingsMessage', error && error.message ? error.message : 'This action could not finish. Try again.');
+    } finally {
+      setButtonBusy(button, false);
+    }
+  }
+
+  function bindSettingsActions() {
+    if (settingsListenersBound) return;
+    settingsListenersBound = true;
     const googleBtn = document.getElementById('googleSignInBtn');
     const signInBtn = document.getElementById('emailSignInBtn');
     const createBtn = document.getElementById('emailCreateBtn');
@@ -671,19 +684,19 @@
     if (googleBtn) {
       googleBtn.addEventListener('click', function () {
         setText('settingsMessage', 'Opening Google sign in...');
-        signInGoogle().then(async function () {
+        runSettingsAction(googleBtn, 'Opening Google...', async function () {
+          await signInGoogle();
           setText('settingsMessage', 'Signed in with Google.');
           await refreshAccountUI();
           await renderProjects();
-        }).catch(function (error) {
-          setText('settingsMessage', error.message || 'Google sign-in is unavailable.');
         });
       });
     }
 
     if (signInBtn) {
-      signInBtn.addEventListener('click', async function () {
-        try {
+      signInBtn.addEventListener('click', function () {
+        setText('settingsMessage', 'Signing in with email...');
+        runSettingsAction(signInBtn, 'Signing in...', async function () {
           await signInEmail(
             (document.getElementById('emailInput') || {}).value || '',
             (document.getElementById('passwordInput') || {}).value || ''
@@ -691,15 +704,14 @@
           setText('settingsMessage', 'Signed in.');
           await refreshAccountUI();
           await renderProjects();
-        } catch (error) {
-          setText('settingsMessage', error.message || 'Email sign-in failed.');
-        }
+        });
       });
     }
 
     if (createBtn) {
-      createBtn.addEventListener('click', async function () {
-        try {
+      createBtn.addEventListener('click', function () {
+        setText('settingsMessage', 'Creating your email account...');
+        runSettingsAction(createBtn, 'Creating account...', async function () {
           await signUpEmail(
             (document.getElementById('nameInput') || {}).value || '',
             (document.getElementById('emailInput') || {}).value || '',
@@ -708,50 +720,73 @@
           setText('settingsMessage', 'Account created and signed in.');
           await refreshAccountUI();
           await renderProjects();
-        } catch (error) {
-          setText('settingsMessage', error.message || 'Account creation failed.');
-        }
+        });
       });
     }
 
     if (resetBtn) {
-      resetBtn.addEventListener('click', async function () {
-        try {
+      resetBtn.addEventListener('click', function () {
+        setText('settingsMessage', 'Requesting a password reset email...');
+        runSettingsAction(resetBtn, 'Requesting reset...', async function () {
           await sendPasswordReset((document.getElementById('emailInput') || {}).value || '');
           setText('settingsMessage', 'Password reset email sent. Check your inbox and spam folder.');
-        } catch (error) {
-          setText('settingsMessage', error.message || 'Password reset email could not be sent.');
-        }
+        });
       });
     }
 
     if (signOutBtn) {
-      signOutBtn.addEventListener('click', async function () {
-        await signOut();
-        setText('settingsMessage', 'Signed out.');
-        await refreshAccountUI();
-        await renderProjects();
+      signOutBtn.addEventListener('click', function () {
+        setText('settingsMessage', 'Signing out...');
+        runSettingsAction(signOutBtn, 'Signing out...', async function () {
+          await signOut();
+          setText('settingsMessage', 'Signed out.');
+          await refreshAccountUI();
+          await renderProjects();
+        });
       });
     }
 
     if (savePrefsBtn) {
-      savePrefsBtn.addEventListener('click', async function () {
-        await savePreferences(collectPreferences());
-        setText('settingsMessage', 'Settings saved.');
+      savePrefsBtn.addEventListener('click', function () {
+        setText('settingsMessage', 'Saving your settings...');
+        runSettingsAction(savePrefsBtn, 'Saving...', async function () {
+          await savePreferences(collectPreferences());
+          setText('settingsMessage', 'Settings saved.');
+        });
       });
     }
 
     if (refreshProjectsBtn) {
-      refreshProjectsBtn.addEventListener('click', renderProjects);
+      refreshProjectsBtn.addEventListener('click', function () {
+        setText('settingsMessage', 'Refreshing work history...');
+        runSettingsAction(refreshProjectsBtn, 'Refreshing...', async function () {
+          await renderProjects();
+          setText('settingsMessage', 'Work history refreshed.');
+        });
+      });
     }
 
     if (clearLocalBtn) {
-      clearLocalBtn.addEventListener('click', async function () {
-        try { localStorage.removeItem(KEYS.projects); } catch (_) {}
-        setText('settingsMessage', 'Browser-saved work cleared.');
-        await renderProjects();
+      clearLocalBtn.addEventListener('click', function () {
+        runSettingsAction(clearLocalBtn, 'Clearing...', async function () {
+          try { localStorage.removeItem(KEYS.projects); } catch (_) {}
+          setText('settingsMessage', 'Browser-saved work cleared.');
+          await renderProjects();
+        });
       });
     }
+  }
+
+  async function initAuthUI() {
+    bindSettingsActions();
+    await refreshAccountUI();
+    const preferences = await getPreferences();
+    setValue('feedbackDepth', preferences.feedbackDepth);
+    setValue('feedbackTone', preferences.feedbackTone);
+    setValue('citationStyle', preferences.citationStyle);
+    setChecked('emailUpdates', preferences.emailUpdates);
+    setChecked('saveReports', preferences.saveReports);
+    await renderProjects();
   }
 
   window.FractureAuth = {
