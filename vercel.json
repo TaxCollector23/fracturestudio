@@ -8,6 +8,7 @@
     { "source": "/mission", "destination": "/mission.html" },
     { "source": "/blog", "destination": "/blog.html" },
     { "source": "/changelog", "destination": "/changelog.html" },
+    { "source": "/past-work", "destination": "/past-work.html" },
     { "source": "/rebuttals", "destination": "/rebuttals.html" },
     { "source": "/settings", "destination": "/settings.html" },
     { "source": "/login", "destination": "/settings.html" },

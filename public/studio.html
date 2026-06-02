@@ -26,6 +26,7 @@
     <a href="studio.html" class="nav-link active">Studio</a>
     <a href="mission.html" class="nav-link">Fracture Method</a>
     <a href="blog.html" class="nav-link">Blog</a>
+    <a href="changelog.html" class="nav-link">Changelog</a>
     <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
     <a href="index.html" class="nav-cta nav-cta--secondary">Home</a>
     <a href="settings.html" class="nav-gear" aria-label="Settings">
@@ -44,11 +45,11 @@
       <div class="studio-headline">Fracture the draft.<br><em style="font-family:var(--serif);font-style:italic;">Plan the repair.</em></div>
     </div>
     <div class="studio-header-right">
-      <span class="tag">
-        <span style="width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 0 4px rgba(52,211,153,.18);flex-shrink:0;"></span>
-        Analysis Engine Ready
-      </span>
-      <span class="tag">Academic · Debate · Research</span>
+      <a class="studio-past-work-tab" href="past-work.html">
+        <span>Saved workspace</span>
+        <strong>Past Work</strong>
+        <small>Open earlier drafts and reports</small>
+      </a>
     </div>
   </div>
 
@@ -110,19 +111,6 @@
         <div class="progress-bar" id="progressBar"></div>
         <span class="progress-bar-label" id="auditProgressLabel">0%</span>
       </div>
-
-      <section class="studio-history">
-        <div class="studio-history-head">
-          <div>
-            <div class="node-kicker">Signed-In Workspace</div>
-            <div class="tool-title">Past Work</div>
-          </div>
-          <button class="btn-sm" id="refreshStudioHistory" type="button">Refresh</button>
-        </div>
-        <div class="studio-history-list" id="studioHistoryList">
-          <div class="studio-history-empty">Sign in to open saved drafts and prepare rebuttals without pasting your speech again.</div>
-        </div>
-      </section>
 
     </section>
   </div>

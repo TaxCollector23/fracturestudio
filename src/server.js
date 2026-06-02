@@ -82,6 +82,7 @@ app.get("/api/public-config", (_req, res) => {
 app.get("/mission", (_req, res) => res.sendFile(join(PUBLIC_DIR, "mission.html")));
 app.get("/blog", (_req, res) => res.sendFile(join(PUBLIC_DIR, "blog.html")));
 app.get("/changelog", (_req, res) => res.sendFile(join(PUBLIC_DIR, "changelog.html")));
+app.get("/past-work", (_req, res) => res.sendFile(join(PUBLIC_DIR, "past-work.html")));
 app.get("/rebuttals", (_req, res) => res.sendFile(join(PUBLIC_DIR, "rebuttals.html")));
 app.get(["/settings", "/login"], (_req, res) => res.sendFile(join(PUBLIC_DIR, "settings.html")));
 app.get("/auth/callback", (_req, res) => res.sendFile(join(PUBLIC_DIR, "auth-callback.html")));
