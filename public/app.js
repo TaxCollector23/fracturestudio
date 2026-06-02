@@ -20,9 +20,6 @@
   const progressBar     = document.getElementById('progressBar');
   const progressTrack   = document.getElementById('progressTrack');
   const auditProgressLabel = document.getElementById('auditProgressLabel');
-  const liveAuditStream = document.getElementById('liveAuditStream');
-  const liveAuditStatus = document.getElementById('liveAuditStatus');
-  const liveAuditText   = document.getElementById('liveAuditText');
   const finalReviewPlaceholder = document.getElementById('finalReviewPlaceholder');
   const jsonError       = document.getElementById('jsonError');
   const scorePill       = document.getElementById('scorePill');
@@ -139,6 +136,7 @@
     if (progressBar)  progressBar.style.width  = progress + '%';
     if (progressTrack) progressTrack.setAttribute('aria-valuenow', String(Math.floor(progress)));
     if (progressNote && message) progressNote.textContent = message;
+    if (isStreaming && !auditRendered) renderStreamingReadableReport();
   }
 
   function startProgress() {
@@ -164,15 +162,12 @@
     auditedDraft = '';
     auditRendered = false;
     resetSourceVerification();
-    if (liveAuditText) liveAuditText.innerHTML = '';
-    if (liveAuditStream) liveAuditStream.classList.add('hidden');
     if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = false;
-    if (liveAuditStatus) liveAuditStatus.textContent = 'Fracture is thinking';
     if (jsonError)  { jsonError.classList.add('hidden'); jsonError.textContent = ''; }
     if (scorePill)  scorePill.textContent = '—';
     if (exportBtn)  exportBtn.disabled = true;
     if (shareBtn)   shareBtn.disabled  = true;
-    if (reportContainer) { reportContainer.innerHTML = ''; reportContainer.classList.remove('visible'); }
+    if (reportContainer) { reportContainer.innerHTML = ''; reportContainer.classList.remove('visible', 'streaming'); }
     resetArgumentGraph();
     if (skeleton)   skeleton.classList.add('hidden');
     setProgress(0, 'Ready when you are');
@@ -184,19 +179,10 @@
     });
   }
 
-  function appendLiveAuditDelta(delta) {
-    if (!delta || !liveAuditText || !liveAuditStream) return;
-    liveAuditStream.classList.remove('hidden');
-    liveAuditStream.open = true;
+  function appendReadableAuditDelta(delta) {
+    if (!delta || !reportContainer || auditRendered) return;
     if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
-    renderLiveReadablePreview();
-    liveAuditText.scrollTop = liveAuditText.scrollHeight;
-  }
-
-  function completeLiveAuditStream() {
-    if (!liveAuditText) return;
-    renderLiveReadablePreview();
-    if (liveAuditStatus) liveAuditStatus.textContent = 'Full report ready below';
+    renderStreamingReadableReport();
   }
 
   function notifyAuditComplete() {
@@ -300,18 +286,16 @@
     return source.slice(start, end === -1 ? source.length : end);
   }
 
-  function livePreviewCard(title, body, tone) {
+  function streamingReportSection(title, body) {
     if (!body) return '';
-    return '<section class="live-report-card ' + (tone || '') + '">'
-      + '<div class="live-report-kicker">' + esc(title) + '</div>'
+    return '<section class="streaming-report-section">'
+      + '<div class="streaming-report-kicker">' + esc(title) + '</div>'
       + '<p>' + esc(body) + '</p>'
       + '</section>';
   }
 
-  function renderLiveReadablePreview() {
-    if (!liveAuditText || !liveAuditStream) return;
-    liveAuditStream.classList.remove('hidden');
-    liveAuditStream.open = true;
+  function renderStreamingReadableReport() {
+    if (!reportContainer || auditRendered) return;
     if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
 
     const verdict = streamedStringValue(rawJsonText, 'verdict');
@@ -325,30 +309,35 @@
     const opponentAttack = streamedStringValue(collapseSlice, 'strongest_attack') || streamedStringValue(collapseSlice, 'opponent_attack');
     const score = streamedNumber(rawJsonText, 'overall_score');
 
-    let html = '<div class="live-report-intro">'
-      + '<span class="live-report-pulse"></span>'
-      + '<span>' + (score ? 'Early score: ' + esc(score) + '/100. ' : '') + 'Readable findings appear here as each part of the audit is completed.</span>'
+    let html = '<article class="streaming-readable-report">'
+      + '<div class="streaming-report-status">'
+      + '<span class="streaming-report-pulse"></span>'
+      + '<span>Fracture is writing your review' + (score ? ' · Score ' + esc(score) + '/100' : '') + '</span>'
       + '</div>';
 
-    html += livePreviewCard('Early diagnosis', verdict, 'primary');
-    html += livePreviewCard('Best first move', firstMove, 'accent');
+    html += streamingReportSection('What Fracture is seeing', verdict);
+    html += streamingReportSection('Best first move', firstMove);
 
     problems.forEach(function (problem, index) {
       const details = [
         whyItMatters[index] ? 'Why it matters: ' + whyItMatters[index] : '',
         exactFixes[index] ? 'What to change: ' + exactFixes[index] : ''
       ].filter(Boolean).join(' ');
-      html += livePreviewCard('Priority ' + (index + 1), problem + (details ? ' ' + details : ''), 'priority');
+      html += streamingReportSection('Priority ' + (index + 1), problem + (details ? ' ' + details : ''));
     });
 
-    html += livePreviewCard('Collapse point', collapse, 'risk');
-    html += livePreviewCard('Likely challenge', opponentAttack, 'risk');
+    html += streamingReportSection('Collapse point', collapse);
+    html += streamingReportSection('Likely challenge', opponentAttack);
 
     if (!verdict && !firstMove && !problems.length && !collapse) {
-      html += '<div class="live-report-waiting">Fracture is reading the draft and identifying the first pressure points.</div>';
+      html += '<p class="streaming-report-writing">' + esc(PACING_PHRASES[pacingIndex] || 'Reading the argument') + '<span class="streaming-report-caret"></span></p>';
+    } else {
+      html += '<span class="streaming-report-caret" aria-hidden="true"></span>';
     }
 
-    liveAuditText.innerHTML = html;
+    html += '</article>';
+    reportContainer.innerHTML = html;
+    reportContainer.classList.add('visible', 'streaming');
   }
 
   function fallbackPriorityFixes(parsed) {
@@ -709,7 +698,6 @@
     if (!audit || typeof audit !== 'object') return;
     parsedAudit = audit;
     if (!rawJsonText.trim()) rawJsonText = JSON.stringify(audit, null, 2);
-    renderLiveReadablePreview();
     if (typeof audit.overall_score === 'number' && scorePill) {
       scorePill.textContent = String(audit.overall_score);
     }
@@ -972,6 +960,7 @@
     const c = reportContainer;
     if (outputPanel) outputPanel.hidden = false;
     if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
+    c.classList.remove('streaming');
     c.innerHTML = '';
 
     function section(title, innerHTML, open) {
@@ -1114,7 +1103,7 @@
     auditedDraft = essay;
     isStreaming = true;
     setBtns(true);
-    if (skeleton) skeleton.classList.remove('hidden');
+    if (skeleton) skeleton.classList.add('hidden');
     setStatus('live', 'Fracturing your argument...');
     startProgress();
 
@@ -1166,13 +1155,13 @@
             }
             if (json.fracture_model_delta) {
               rawJsonText += json.fracture_model_delta;
-              appendLiveAuditDelta(json.fracture_model_delta);
+              appendReadableAuditDelta(json.fracture_model_delta);
               continue;
             }
             const delta = (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) || '';
             if (delta) {
               rawJsonText += delta;
-              appendLiveAuditDelta(delta);
+              appendReadableAuditDelta(delta);
             }
           } catch (_) { /* ignore malformed SSE chunks */ }
         }
@@ -1183,7 +1172,6 @@
       if (exportBtn) exportBtn.disabled = false;
       if (shareBtn)  shareBtn.disabled  = false;
       stopProgress(true, 'Report ready');
-      completeLiveAuditStream();
       if (skeleton) skeleton.classList.add('hidden');
 
       try {
