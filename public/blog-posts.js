@@ -223,4 +223,270 @@
       ]
     }
   ];
+
+  const deeperSections = {
+    'read-fracture-report': [
+      {
+        heading: 'Separate source questions from reasoning questions',
+        body: 'A source note and a logic note are different jobs. If the source is incomplete, verify the author, title, date, and exact passage. If the warrant is missing, write the bridge sentence that explains why the evidence supports the claim. Treating those as separate tasks makes revision faster and more accurate.'
+      },
+      {
+        heading: 'Finish with three measurable missions',
+        body: 'Turn the report into a short plan: repair the collapse point, attach the strongest source to the claim it supports, and answer the fairest counterargument. A useful revision session ends with changes you can point to in the draft, not a vague intention to make the writing better.'
+      }
+    ],
+    'defensible-claim-before-style': [
+      {
+        heading: 'Test the claim against its strongest counterexample',
+        body: 'Ask what example would make the sentence look overstated. If one ordinary counterexample defeats the wording, add a qualifier or narrow the scope. Strong writing is not timid; it is calibrated carefully enough to survive a skeptical reader.'
+      },
+      {
+        heading: 'Give every paragraph one argumentative job',
+        body: 'A paragraph should establish a claim, prove a reason, explain a warrant, or answer an objection. When one paragraph tries to perform all four jobs at once, the reader has to reconstruct the logic alone. Separating the jobs usually improves both clarity and persuasiveness.'
+      }
+    ],
+    'twenty-minute-revision-sprint': [
+      {
+        heading: 'Keep a revision ledger',
+        body: 'Write down the quoted sentence, the problem, and the change you made. This prevents a common failure mode: rewriting a paragraph extensively while leaving its central reasoning gap untouched. The ledger also makes the next Fracture pass easier to compare.'
+      },
+      {
+        heading: 'Stop when the argument changes shape',
+        body: 'Once the thesis, collapse point, or main warrant changes, rerun the draft. Continuing to polish against an outdated diagnosis wastes time. A new structure deserves a new pressure test.'
+      }
+    ],
+    'hidden-assumptions': [
+      {
+        heading: 'Rank assumptions by how much they carry',
+        body: 'A minor contextual assumption may need a sentence of clarification. A load-bearing assumption may need evidence, a definition, and a qualification. The right question is not whether an assumption exists; it is how much of the conclusion depends on it.'
+      },
+      {
+        heading: 'Make the bridge visible',
+        body: 'When the reader can see the premise connecting evidence to conclusion, they can evaluate it fairly. Writing that sentence may reveal that the bridge is strong, too broad, or missing. Each outcome is useful because it gives the next edit a clear target.'
+      }
+    ],
+    'weak-to-strong-claim': [
+      {
+        heading: 'Match confidence to proof',
+        body: 'Use language such as suggests, indicates, or is likely to when the evidence supports a probability rather than a certainty. A qualified claim is often stronger than a sweeping claim because it asks the evidence to prove only what the evidence can actually reach.'
+      },
+      {
+        heading: 'Check the final impact sentence',
+        body: 'After proving the claim, tell the reader why it matters. A good impact sentence connects the argument to a decision, consequence, or judging standard. Without that step, a true claim can still feel directionless.'
+      }
+    ],
+    'counterarguments-as-constraints': [
+      {
+        heading: 'Choose the answer type before writing',
+        body: 'A rebuttal can deny the premise, narrow the claim, minimize the impact, offer a counterexample, or prove a stronger competing impact. Choosing the strategy first keeps the response from becoming a loose list of disagreements.'
+      },
+      {
+        heading: 'Write the crossfire question',
+        body: 'A useful question exposes the burden the opponent has not met. Ask what proves the causal link, what standard defines the term, or which evidence rules out the alternative explanation. The best questions make the missing warrant audible.'
+      }
+    ],
+    'debate-team-case-review': [
+      {
+        heading: 'Build a frontline from the collapse point',
+        body: 'The most load-bearing claim deserves a prepared defense. Write the likely attack, the shortest answer, the evidence card that protects it, and the weighing line that explains why the argument still matters. That is more valuable than collecting disconnected responses.'
+      },
+      {
+        heading: 'Practice with the rapid version first',
+        body: 'Begin with a ten-second answer. If the response cannot be stated clearly in ten seconds, the strategic idea is probably not settled yet. Expand to thirty seconds and two minutes only after the core response is easy to say out loud.'
+      }
+    ],
+    'specific-fallacies': [
+      {
+        heading: 'Distinguish a fallacy from a missing explanation',
+        body: 'Not every weak paragraph contains a named fallacy. Sometimes the argument simply skips a warrant or offers evidence that is too general for the conclusion. Accurate diagnosis matters because the repair for a false cause is different from the repair for an unexplained step.'
+      },
+      {
+        heading: 'Repair the claim at the right level',
+        body: 'If the flaw is central, revise the thesis or main warrant. If it appears in a side point, narrow that sentence instead of rewriting the entire piece. Severity should determine the size of the edit.'
+      }
+    ],
+    'score-drop-second-draft': [
+      {
+        heading: 'Compare diagnosis, not just total score',
+        body: 'A score can move because the argument changed shape. Read the collapse point, the first priority fix, and the weakest category before comparing totals. A stronger draft is one with fewer dangerous dependencies, even if one new issue appears after revision.'
+      },
+      {
+        heading: 'Use scores as pressure indicators',
+        body: 'Fracture scores guide attention; they are not grades and they are not guarantees. The most useful interpretation is practical: which part of the draft is carrying too much weight, and what change would make that part more defensible?'
+      }
+    ],
+    'source-check-routine': [
+      {
+        heading: 'Open the source before trusting the match',
+        body: 'Search metadata can locate a likely source, but the page itself decides whether the claim is supported. Confirm the quoted language, publication date, author, and context. If the source proves only a smaller point, narrow the claim to match it.'
+      },
+      {
+        heading: 'Build the bibliography while you work',
+        body: 'Attach the citation when you add the evidence instead of reconstructing the source list at the end. A working bibliography makes decorative citations easier to spot and gives every source a visible job in the argument.'
+      }
+    ]
+  };
+
+  const articleExpansions = {
+    'read-fracture-report': [
+      'A report can contain a dozen observations, but they are not equally urgent. The verdict is written to identify the first place where the draft loses force under questioning. Read it once without editing anything, then compare it with the collapse point. If both sections point to the same claim, that is the place to begin. This prevents the common mistake of spending revision time on wording while the main conclusion still depends on an undefended bridge.',
+      'A priority fix should become a visible change in the draft. Copy the quoted passage into a working note, write the repair beneath it, and then replace the sentence in context. Afterward, read the paragraph before and after the edit to make sure the new logic still fits the surrounding flow. The best repair often adds one warrant sentence rather than a large block of explanation. A small edit can materially strengthen the whole piece when it protects the right pressure point.',
+      'The map is most useful when you read its lines as questions. A claim node should answer what the writer wants accepted, an evidence node should answer what grounds that claim, and a warrant node should answer why the evidence reaches the conclusion. A missing or thin connection is not a cosmetic warning. It means the reader has been asked to perform part of the reasoning alone. Use the red notes as a revision queue, then return to the full prose once the structure can stand on its own.',
+      'Keep source verification separate from argument analysis. A source can be real while the reasoning attached to it remains weak, and a logically relevant example can still require a proper citation before submission. Confirm the author, title, date, and exact passage for every promoted bibliography entry. Then ask whether the passage proves the full claim or only a narrower version. A finished Fracture pass gives you both jobs clearly: strengthen the reasoning and verify the evidence it relies on.'
+    ],
+    'defensible-claim-before-style': [
+      'Writers often revise the sentence they can hear instead of the argument they can defend. That instinct is understandable because rhythm and word choice are easy to notice. The harder question is whether a skeptical reader can explain how the evidence reaches the conclusion. If the answer is no, stronger verbs will only make the gap sound more confident. Begin by naming the claim, the reason, the evidence, and the impact in separate lines. The missing line is usually the edit that matters most.',
+      'Scope is one of the fastest ways to improve a thesis. Words such as always, everyone, proves, and causes quietly expand the burden of proof. A source that supports one district, one time period, or one population may not support a universal conclusion. Narrowing the sentence is not a retreat; it is a way to make the claim match the evidence honestly. Once scope and proof align, the writing sounds more credible because the reader no longer has to ignore obvious exceptions.',
+      'A useful stress test is to write the strongest ordinary counterexample you can imagine. If one familiar case defeats the thesis, decide whether the exception changes the argument or simply calls for a qualifier. Then write the warrant in plain language: because this evidence shows X, the reader should accept Y. If that sentence feels forced, the evidence may be relevant background rather than direct support. This exercise makes the next research step much more specific and avoids collecting sources that never do a clear job.',
+      'Only after the structure holds should you revise style. At that stage, transitions can signal the argument’s movement, examples can make abstract reasoning concrete, and the conclusion can sharpen the significance of what has been proven. Style matters because readers need to follow the logic without unnecessary friction. It works best as a delivery system for an argument that already survives pressure. The result is writing that feels polished because it is controlled, not merely because it uses impressive language.'
+    ],
+    'twenty-minute-revision-sprint': [
+      'The first four minutes are a triage pass. Read the verdict, collapse point, and first two priority fixes without opening every section of the report. Write one sentence describing the bottleneck in your own words. If you cannot explain why it is dangerous, reread the opponent attack attached to the collapse point. This short pause keeps the sprint focused on the draft’s most consequential weakness instead of the most visible sentence-level flaw.',
+      'During the middle of the sprint, make one structural repair. Add the missing warrant, replace the weak evidence type, define the unclear term, or narrow the thesis until the available proof can reach it. Keep the original sentence nearby so you can compare the burden of proof before and after the change. Then read the repaired paragraph aloud. A revision is useful only if the new logic is both stronger and clear enough for a reader or listener to follow in real time.',
+      'Use the last few minutes for comparison rather than endless polishing. Run a new Fracture pass and inspect whether the collapse point changed. If the same warning returns, the edit probably added detail without repairing the reasoning bridge. If the warning moves to a smaller issue, the draft has improved in a meaningful way. Record that result in a short ledger: original pressure point, edit made, new pressure point. Over several drafts, the ledger reveals which kinds of problems you fix quickly and which ones need more deliberate practice.',
+      'A sprint is intentionally limited. It is not a substitute for research, peer review, or a full rewrite when the thesis itself needs to change. Its value is that it turns a large report into a manageable experiment. One clear hypothesis, one targeted edit, and one rerun produce better feedback than a scattered hour of adjustments. When the argument changes shape, stop the sprint and begin a fresh pass with the new structure.'
+    ],
+    'hidden-assumptions': [
+      'Assumptions are the quiet infrastructure of an argument. A writer cannot prove every shared premise from the ground up, and readers do not expect that. The problem begins when a conclusion depends on a premise that is controversial, undefined, or much larger than the evidence. Fracture surfaces those premises so the writer can decide whether to defend them, qualify them, or remove the dependency. That choice is often more valuable than adding another citation to the same paragraph.',
+      'To find an assumption manually, place the evidence beside the conclusion and ask what must be true for the jump to work. If a report shows that students sleep longer after a schedule change, a separate premise is still needed before claiming academic performance will improve. The bridge might be reasonable, but it should be visible and supported at the level the thesis requires. Writing the bridge as a full sentence makes it possible to test. Invisible reasoning feels obvious until an opponent says the missing sentence aloud.',
+      'Rank assumptions by how much they carry. A low-risk premise may need only a definition or a short clarification. A high-risk premise may require direct evidence, a narrower thesis, and a response to the strongest counterexample. Look especially closely at claims involving causation, universal language, motives, or moral judgments. Those claims often rely on more hidden premises than the writer realizes. The best revision protects the conclusion without making the paragraph bloated.',
+      'A useful defense has three parts: state the premise clearly, give the reader a reason to accept it, and explain how much of the conclusion depends on it. Sometimes the honest answer is that the assumption cannot bear that much weight. In that case, narrowing the claim is stronger than forcing a weak defense. Calibrated writing earns trust because it shows exactly what has been proven and what remains uncertain. That is the difference between confidence and overstatement.'
+    ],
+    'weak-to-strong-claim': [
+      'The first pass replaces vague judgment with a testable standard. Words such as bad, better, harmful, effective, and unfair can be useful starting points, but they do not yet tell the reader what must be proven. Name the outcome, the affected group, and the relevant context. A claim about school policy, for example, should identify whether it concerns attendance, performance, safety, or well-being. Precision turns a broad opinion into an argument that evidence can actually reach.',
+      'The second pass attaches evidence to the exact sentence it supports. A source may be reputable and still be too general for the claim. Background context explains why the topic matters; direct evidence establishes the specific step your conclusion needs. Label those jobs separately while drafting. If a paragraph contains three citations but you cannot say which sentence each one supports, the research has not yet become an argument. The goal is not more sources. The goal is a visible relationship between source and claim.',
+      'The third pass writes the warrant. Use a complete bridge sentence beginning with because, therefore, or this matters because, then revise away the scaffolding once the connection is clear. If the warrant merely repeats the claim, ask what mechanism connects the evidence to the outcome. If it reaches beyond the source, narrow the wording or find stronger proof. Readers often disagree at the warrant rather than the fact. Making that bridge explicit gives the paragraph a fair chance to persuade them.',
+      'Finish by calibrating confidence and impact. Choose language such as demonstrates, indicates, suggests, or may contribute based on what the evidence actually establishes. Then tell the reader why the proven point changes the decision, interpretation, or debate. A true statement without significance can feel directionless. An impact sentence gives the argument a destination. Together, a precise claim, direct evidence, visible warrant, and proportionate impact create a paragraph that can survive scrutiny.'
+    ],
+    'counterarguments-as-constraints': [
+      'A strong counterargument is not a detour from the draft. It is a specification for the next revision. If the fairest objection says the evidence is outdated, the writer needs a newer source or an explanation of why the older evidence remains applicable. If the objection says the policy has an alternate cause, the writer needs to address that cause directly. The attack narrows the research question. That is useful because vague revision advice becomes a concrete task.',
+      'Choose the rebuttal strategy before writing the rebuttal paragraph. You can deny the premise, accept part of the objection and limit its impact, offer a counterexample, clarify the scope, or show that a competing impact matters more. Each approach answers a different kind of attack. A causal objection needs a causal response, not a rhetorical flourish. A moral objection needs a principle, not an unrelated statistic. Strategy keeps the paragraph from becoming a loose list of disagreements.',
+      'Write one crossfire question after every major rebuttal. The question should expose the burden the other side has not met: what proves the link, what defines the term, which evidence rules out the alternative, or why the impact outweighs the competing harm. Good questions make missing reasoning audible. They also reveal whether your own answer is complete. If you cannot ask a precise question, you may not yet understand the structure of the clash.',
+      'Use rebuttals as design constraints throughout the document, not only in a final opposition paragraph. A thesis can include a qualifier that prevents an easy attack. An evidence paragraph can explain why an alternate explanation is less likely. A conclusion can weigh impacts rather than pretending no tradeoff exists. When counterarguments shape the architecture of the draft, the writing becomes calmer and more persuasive because it has already met the reader’s strongest questions.'
+    ],
+    'debate-team-case-review': [
+      'Run the case before practice so the team enters the room with a shared diagnosis. The most useful report is not the one with the longest list of comments. It is the one that identifies the claim, warrant, or assumption most likely to collapse under crossfire. Put that pressure point at the top of the practice agenda. A team that knows its fragile link can spend time building a defense instead of discovering the weakness while the clock is running.',
+      'Divide revisions by argumentative job. One teammate can verify source passages and prepare clean citations. Another can rewrite warrants and impact chains. A third can generate the strongest opposing responses and turn them into crossfire questions. Bring the pieces back together and test whether they protect the same thesis. Specialized work is useful only when the final case still sounds like one coherent argument rather than several disconnected research files.',
+      'Build a frontline around the collapse point. Write the likely attack, the ten-second answer, the thirty-second answer, the evidence card that protects the response, and the weighing line that explains why the issue matters in the round. Then practice expanding and compressing the same idea. If the core response cannot be stated clearly in ten seconds, the strategy is probably not settled. Clarity under time pressure comes from structure, not from memorizing a long block.',
+      'Track recurring weaknesses across cases. If the same missing warrant appears in several topics, the team has found a training priority. If sources are consistently related but not directly attached to the claim, the research workflow needs attention. Saved reports make those patterns visible. Use them to design drills: one practice for causal chains, one for impact weighing, one for source-to-claim explanation. Improvement becomes much easier to measure when each session has a named target.'
+    ],
+    'specific-fallacies': [
+      'A fallacy label is useful only when it changes the revision. Telling a writer that a passage contains a false cause, straw man, or overgeneralization does not finish the diagnosis. The feedback must identify the exact sentence, explain the reasoning pattern, and show what the paragraph needs instead. Otherwise, the label becomes academic decoration. Fracture treats the name as a starting point for repair, not as a verdict on the writer.',
+      'Severity depends on where the flaw sits in the structure. A small overstatement in an example may require a qualifier. A false cause inside the main warrant can undermine the entire conclusion. Ask what depends on the sentence before deciding how much to rewrite. This is why the argument map matters: it reveals whether the flawed step is peripheral or load-bearing. The right repair matches the size of the dependency.',
+      'Do not force every weak passage into a named category. Sometimes evidence is merely too general, a transition skips a step, or a key term has never been defined. Accurate diagnosis matters because each problem needs a different response. A missing warrant calls for an explanation. A false dilemma calls for additional options. A source mismatch calls for better evidence or a narrower claim. Precision makes feedback practical.',
+      'The strongest repair usually changes reasoning, not vocabulary. Add the missing alternative, qualify the causal statement, represent the opposing position fairly, or attach evidence to the specific inference it supports. Then reread the surrounding paragraph to make sure the new sentence still advances the thesis. A repaired argument should become easier to understand as it becomes more defensible. Complexity is not proof of rigor.'
+    ],
+    'score-drop-second-draft': [
+      'A Fracture score is a pressure indicator, not a grade. It describes how well the current argument survives close questioning under the selected lens. A low result can feel disappointing when the prose is polished, but the number is useful only if it points to a repair. Read the verdict and collapse point before reacting to the total. The important question is not whether the draft sounds good. It is what the reader is still being asked to accept without enough support.',
+      'Compare categories carefully. A low logic score points toward warrants, contradictions, alternate causes, or overclaims. A weak evidence result points toward source-to-claim fit and the type of proof the argument needs. A rhetoric issue may mean that the sequence is hard to follow even when the ideas are promising. Do not treat every category as the same problem. Each one creates a different revision plan.',
+      'A second draft can briefly reveal new weaknesses. When you strengthen the thesis, Fracture may identify a more specific warrant that now needs support. That is not failure. It means the analysis has moved from a broad structural problem to a narrower one. Compare the diagnosis, not just the number. A healthier argument often has a smaller and more precise pressure point even before the total score rises substantially.',
+      'Revise one category at a time and keep a short record. Write down the original warning, the edit, and the new result. If the same problem returns, adjust the logic rather than merely adding words. If the pressure point changes, move to the next mission. This rhythm turns scoring into a learning tool. Over time, the writer gains a clearer sense of what makes an argument resilient before the report even appears.'
+    ],
+    'source-check-routine': [
+      'Every source needs a visible job. A bibliography is useful for documentation, but it does not prove that the argument used the source correctly. Attach each citation to the specific claim it supports and write down the passage or data point that does the work. If the source only establishes background context, label it honestly. Decorative citations create an appearance of research without protecting the conclusion.',
+      'Start with source identity. Confirm the author, title, publisher or site, publication date, and stable locator before building the citation. Missing fields are not merely formatting problems. They often reveal that the writer cannot return to the exact source or verify what it actually said. Open the page, locate the relevant language, and check whether the context changes the meaning. Search results help you find evidence; the source itself decides whether the claim is supported.',
+      'Match the evidence type to the claim. A current policy claim may need official data or a well-designed study. A historical interpretation may need a primary source alongside scholarly context. A moral claim may need a principle or framework rather than another statistic. A causal claim needs evidence that addresses alternate explanations. Naming the evidence type makes research faster because the writer knows what kind of support can actually repair the argument.',
+      'Build the bibliography as the draft develops. Fracture promotes only strong public-web matches into its working list and keeps uncertain results in the review table. Treat that list as a starting point, then confirm each passage manually before final submission. Format the final references in the required style and preserve the source-to-claim connection in your notes. A careful routine protects both credibility and reasoning.'
+    ]
+  };
+
+  const practiceGuides = {
+    'read-fracture-report': {
+      focus: 'turning a long diagnosis into a short, defensible revision plan',
+      exercise: 'Choose one existing draft, read only the verdict and collapse point, and write the single sentence you would repair first. Then explain in one line what that edit protects elsewhere in the argument.',
+      success: 'You should be able to name the load-bearing sentence, the repair, and the reason it matters without rereading the entire report.',
+      mistake: 'Do not treat every observation as equally urgent. A report is most useful when it helps you choose an editing order.',
+      transfer: 'Repeat the same sequence after each new draft so that the report becomes a decision tool rather than a pile of comments.'
+    },
+    'defensible-claim-before-style': {
+      focus: 'matching the confidence and scope of a sentence to the proof that can actually support it',
+      exercise: 'Take the most polished sentence in your draft and rewrite it as four plain lines: claim, reason, evidence, and impact. Circle the first line that cannot survive a skeptical question.',
+      success: 'The revised paragraph should remain persuasive even when its adjectives and rhetorical flourishes are removed.',
+      mistake: 'Do not confuse confidence with proof. A sentence can sound decisive while quietly increasing the burden of proof beyond what the evidence reaches.',
+      transfer: 'Run this test before line editing any important paragraph, especially when a thesis uses universal or causal language.'
+    },
+    'twenty-minute-revision-sprint': {
+      focus: 'using a limited editing window to repair one structural weakness and measure whether the argument changed',
+      exercise: 'Set a timer, record the original collapse point, make one targeted revision, and rerun the audit before you polish unrelated sentences. Keep the original and revised versions beside each other.',
+      success: 'The new report should move the pressure point, narrow the warning, or clearly explain why a deeper rewrite is necessary.',
+      mistake: 'Do not spend the sprint collecting minor edits. The exercise is valuable because it forces one testable intervention.',
+      transfer: 'Use the same ledger across revisions so that progress is visible and recurring weaknesses become easier to recognize.'
+    },
+    'hidden-assumptions': {
+      focus: 'making invisible premises explicit enough to test, defend, qualify, or remove',
+      exercise: 'Place one important evidence sentence next to its conclusion and complete this line: this evidence supports the claim only if we accept that. Write the missing premise without softening it.',
+      success: 'A reader should be able to see which assumption is shared background and which assumption carries enough weight to require a defense.',
+      mistake: 'Do not respond to every hidden premise by adding more words. Some assumptions are better handled by narrowing the conclusion.',
+      transfer: 'Use the exercise whenever a paragraph moves from a fact to a policy, causal, or moral judgment.'
+    },
+    'weak-to-strong-claim': {
+      focus: 'building a claim that is precise, directly supported, visibly warranted, and worth caring about',
+      exercise: 'Rewrite one weak sentence four times: first define the outcome, then add direct evidence, then state the warrant, then explain the impact. Read the four versions in order.',
+      success: 'The final version should ask the evidence to prove exactly one clear proposition and tell the reader why accepting it matters.',
+      mistake: 'Do not add a citation simply because it is related to the topic. The source must perform a specific job for a specific sentence.',
+      transfer: 'Use this four-step pattern when planning body paragraphs so structure is present before the prose becomes complicated.'
+    },
+    'counterarguments-as-constraints': {
+      focus: 'using the fairest objection to decide what the next version of the argument must be able to survive',
+      exercise: 'Write the strongest objection to your main claim without weakening it. Under that objection, choose one response strategy and write one crossfire question that exposes the remaining burden.',
+      success: 'Your rebuttal should answer the actual attack at the same level of seriousness rather than changing the subject.',
+      mistake: 'Do not answer a causal objection with a moral claim or an evidence objection with a rhetorical flourish.',
+      transfer: 'Carry the strongest objection into the architecture of the draft so the answer appears before the reader has to request it.'
+    },
+    'debate-team-case-review': {
+      focus: 'turning a shared audit into a coordinated practice plan that improves decisions under time pressure',
+      exercise: 'Give the team one completed report and assign three jobs: protect the collapse point, verify the decisive evidence card, and write the shortest usable frontline. Reassemble the case and test it aloud.',
+      success: 'Every teammate should be able to state the core response in ten seconds and expand it without changing the underlying strategy.',
+      mistake: 'Do not mistake a large block file for preparedness. Preparedness means the team knows which line matters and why.',
+      transfer: 'Track recurring report patterns across cases and turn them into focused drills for the next practice session.'
+    },
+    'specific-fallacies': {
+      focus: 'diagnosing reasoning precisely enough that the repair fits the actual flaw and its structural importance',
+      exercise: 'Choose one flagged sentence and describe the problem without using the fallacy name. Then name the fallacy and compare whether the label adds useful precision.',
+      success: 'The explanation should identify the exact inference that fails and the smallest revision that restores a fair, defensible claim.',
+      mistake: 'Do not force every weak sentence into a named category. Missing evidence and missing warrants are often more accurate diagnoses.',
+      transfer: 'Use fallacy labels as compact reminders after the full reasoning problem is understood, not as substitutes for explanation.'
+    },
+    'score-drop-second-draft': {
+      focus: 'reading score changes as evidence about the argument rather than as a verdict on the writer',
+      exercise: 'Compare two reports and record three things: the collapse point, the weakest category, and the first mission. Ignore the total score until you can explain how those changed.',
+      success: 'You should be able to describe whether the argument has fewer dangerous dependencies even if the total moved only slightly.',
+      mistake: 'Do not chase the number by adding length. A longer paragraph can preserve the same structural weakness.',
+      transfer: 'Keep a revision history so each audit teaches you which repairs reliably make your reasoning more resilient.'
+    },
+    'source-check-routine': {
+      focus: 'connecting each source to a precise claim while preserving a bibliography that can be audited later',
+      exercise: 'Select three citations from a draft, open each original page, locate the exact supporting passage, and write the claim beside it. Mark any citation that proves only background context.',
+      success: 'A reader should be able to move from claim to source to passage without guessing what the evidence was meant to establish.',
+      mistake: 'Do not let a polished bibliography hide a weak source-to-claim connection. Documentation and reasoning are related but separate tests.',
+      transfer: 'Add the citation and passage note at the moment evidence enters the draft so the final source review is a confirmation pass, not a reconstruction.'
+    }
+  };
+
+  function practiceAddition(guide, index) {
+    if (!guide) return '';
+    if (index === 0) {
+      return 'Try this on a draft you already know. ' + guide.exercise + ' The goal is ' + guide.focus + '. Keep the test small so you can see whether one edit changed the logic.';
+    }
+    if (index === 1) {
+      return 'Check the result with a clear standard. ' + guide.success + ' Read the new passage like a fair but doubtful reader. Ask what question is still open. A better draft should add proof or logic, not just more words.';
+    }
+    if (index === 2) {
+      return 'Watch for the common mistake. ' + guide.mistake + ' Name the job of the paragraph before you revise it. If the edit does not change what the reader can accept, return to the claim, warrant, or source link.';
+    }
+    return 'Use the habit again after this draft. ' + guide.transfer + ' Over time, try to spot the weak point before the report names it. Make one careful edit, run Fracture again, and compare the result.';
+  }
+
+  window.FractureBlogPosts.forEach(function (post) {
+    const baseSections = post.sections.concat(deeperSections[post.slug] || []).slice(0, 4);
+    const expansions = articleExpansions[post.slug] || [];
+    const guide = practiceGuides[post.slug];
+    post.sections = baseSections.map(function (section, index) {
+      return {
+        heading: section.heading,
+        body: section.body + ' ' + (expansions[index] || '') + '\n\n' + practiceAddition(guide, index)
+      };
+    });
+    post.readTime = '6 min read';
+  });
 })();

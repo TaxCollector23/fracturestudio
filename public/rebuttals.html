@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Prepare strategic rebuttals, crossfire questions, and weighing lines from your saved Fracture Studio work." />
+  <title>Rebuttals - Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">ARGUMENT ANALYSIS ENGINE</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="studio.html" class="nav-link">Studio</a>
+    <a href="rebuttals.html" class="nav-link active">Rebuttals</a>
+    <a href="mission.html" class="nav-link">Fracture Method</a>
+    <a href="blog.html" class="nav-link">Blog</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="studio.html" class="nav-cta">Open Studio</a>
+    <a href="settings.html" class="nav-gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<main class="rebuttals-shell">
+  <header class="rebuttals-header">
+    <div class="label">Debate Preparation</div>
+    <h1>Prepare for the<br><em>strongest reply.</em></h1>
+    <p>Rebuttals uses your current Studio draft and saved report. Choose past work, then generate strategic attacks, practical answers, crossfire questions, and weighing lines without pasting the speech again.</p>
+  </header>
+
+  <div class="rebuttals-grid">
+    <section class="tool-card rebuttals-source">
+      <div class="node-kicker">Saved Workspace</div>
+      <div class="tool-title">Argument to Prepare</div>
+      <p class="tool-copy">Your latest Studio draft opens automatically. Signed-in accounts can reopen earlier work from the same list.</p>
+
+      <label class="rebuttals-label" for="rebuttalProjectSelect">Saved argument</label>
+      <select class="rebuttals-select" id="rebuttalProjectSelect">
+        <option value="">Current Studio draft</option>
+      </select>
+
+      <div class="tool-actions rebuttals-source-actions">
+        <button class="btn-sm" id="loadRebuttalProject" type="button">Load Saved Work</button>
+        <a class="btn-sm" href="studio.html">Return to Studio</a>
+      </div>
+
+      <div class="rebuttals-context">
+        <div class="node-kicker">Loaded Argument</div>
+        <strong id="rebuttalDraftTitle">No Studio draft loaded yet</strong>
+        <p id="rebuttalDraftPreview">Open Studio, add your argument, and choose Prepare Rebuttals. Your draft will appear here automatically.</p>
+      </div>
+
+      <div class="rebuttals-context">
+        <div class="node-kicker">Fracture Report Context</div>
+        <p id="rebuttalReportSummary">Run Fracture it first for report-aware preparation, or generate a first pass from the draft alone.</p>
+      </div>
+    </section>
+
+    <section class="tool-card rebuttals-workspace">
+      <div class="argument-map-head">
+        <div>
+          <div class="node-kicker">Strategic Preparation</div>
+          <div class="tool-title">Rebuttal Plan</div>
+          <p class="tool-copy">Fracture pressures the reasoning first: claims, warrants, assumptions, definitions, scope, causation, burdens, impacts, and weighing.</p>
+        </div>
+        <span class="graph-status">Streaming AI</span>
+      </div>
+
+      <label class="rebuttals-label" for="rebuttalFocusInput">Optional focus</label>
+      <textarea class="tool-textarea" id="rebuttalFocusInput" placeholder="Optional: describe the round, judge, or opponent concern you want Fracture to prepare for."></textarea>
+
+      <div class="tool-actions">
+        <button class="btn-sm tool-run" id="generateRebuttalsBtn" type="button" disabled>Generate Rebuttal Plan</button>
+        <span class="tool-status" id="rebuttalStatus">Choose saved work</span>
+      </div>
+      <div class="tool-progress"><span id="rebuttalProgress"></span></div>
+      <div class="tool-output rebuttals-output" id="rebuttalOutput" aria-live="polite">Your preparation plan will appear here as Fracture writes it.</div>
+    </section>
+  </div>
+</main>
+
+<script src="auth.js"></script>
+<script src="shared.js"></script>
+<script src="rebuttals.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Fracture Studio helps writers test claims, evidence, assumptions, logic, and rhetoric with clear academic feedback." />
   <title>Studio — Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="professional.css" />
 </head>
@@ -14,19 +15,19 @@
 <!-- ── Nav ─────────────────────────────────────────────────────────── -->
 <nav class="nav">
   <a href="index.html" class="nav-brand">
-    <div class="nav-logo"><span class="nav-logo-text">F/</span></div>
+    <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
     <div>
       <div class="nav-name">Fracture Studio</div>
-      <div class="nav-sub">REVIEW WORKSPACE</div>
+      <div class="nav-sub">ARGUMENT ANALYSIS ENGINE</div>
     </div>
   </a>
   <div class="nav-links">
-    <a href="index.html" class="nav-link">Overview</a>
-    <a href="studio.html" class="nav-link active">Workspace</a>
-    <a href="mission.html" class="nav-link">Method</a>
-    <a href="blog.html" class="nav-link">Notes</a>
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="studio.html" class="nav-link active">Studio</a>
+    <a href="mission.html" class="nav-link">Fracture Method</a>
+    <a href="blog.html" class="nav-link">Blog</a>
     <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
-    <a href="index.html" class="nav-cta nav-cta--secondary">Overview</a>
+    <a href="index.html" class="nav-cta nav-cta--secondary">Home</a>
     <a href="settings.html" class="nav-gear" aria-label="Settings">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
     </a>
@@ -39,8 +40,8 @@
   <!-- Header -->
   <div class="studio-header">
     <div class="studio-title-block">
-      <div class="studio-title">Workspace / Draft Review</div>
-      <div class="studio-headline">Inspect the reasoning.<br><em style="font-family:var(--serif);font-style:italic;">Plan the repair.</em></div>
+      <div class="studio-title">Studio / Argument Audit</div>
+      <div class="studio-headline">Fracture the draft.<br><em style="font-family:var(--serif);font-style:italic;">Plan the repair.</em></div>
     </div>
     <div class="studio-header-right">
       <span class="tag">
@@ -71,6 +72,7 @@
         </div>
       </div>
 
+      <label class="sr-only" for="essayInput">Argument draft</label>
       <textarea
         id="essayInput"
         placeholder="Paste your argumentative writing here. Fracture will:
@@ -92,10 +94,11 @@
         <button class="btn-sm" id="clearBtn" type="button">Clear</button>
         <button class="btn-sm" id="loadBtn" type="button">Load Saved</button>
         <button class="btn-sm" id="saveBtn" type="button">Save</button>
-        <button class="btn-primary" id="analyzeBtn" type="button">Run Review</button>
+        <a class="btn-sm" id="rebuttalsBtn" href="rebuttals.html">Prepare Rebuttals</a>
+        <button class="btn-primary" id="analyzeBtn" type="button">Fracture it</button>
       </div>
 
-      <div class="status-row" id="statusRow">
+      <div class="status-row" id="statusRow" role="status" aria-live="polite">
         <span class="status-dot" id="statusDot"></span>
         <span class="status-label" id="statusLabel">Idle</span>
         <span id="statusDetail" style="color:var(--text-3);font-size:11px;">Waiting for an argument.</span>
@@ -103,34 +106,46 @@
       </div>
 
       <div class="progress-note" id="progressNote">Ready when you are</div>
-      <div class="progress-wrap">
+      <div class="progress-wrap" id="progressTrack" role="progressbar" aria-label="Argument analysis progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <div class="progress-bar" id="progressBar"></div>
+        <span class="progress-bar-label" id="auditProgressLabel">0%</span>
       </div>
 
-      <div class="argument-map" id="argumentGraph">
-        <div class="argument-map-head">
+      <section class="studio-history">
+        <div class="studio-history-head">
           <div>
-            <div class="panel-title">Reasoning Outline</div>
-            <div class="panel-sub">The claim, evidence, premise, and vulnerability map appears after review.</div>
+            <div class="node-kicker">Signed-In Workspace</div>
+            <div class="tool-title">Past Work</div>
           </div>
-          <span class="graph-status">Awaiting Fracture</span>
+          <button class="btn-sm" id="refreshStudioHistory" type="button">Refresh</button>
         </div>
-        <div class="argument-map-empty">
-          <div class="empty-orbit">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <p>Add a draft and run the review to reveal its reasoning structure.</p>
+        <div class="studio-history-list" id="studioHistoryList">
+          <div class="studio-history-empty">Sign in to open saved drafts and prepare rebuttals without pasting your speech again.</div>
         </div>
-      </div>
+      </section>
+
     </section>
+  </div>
+
+  <section class="studio-review-stage" aria-label="Fracture review workspace">
+    <div class="analysis-stage-card analysis-stage-map">
+      <div class="analysis-stage-head">
+        <div>
+          <div class="node-kicker">Visual Structure</div>
+          <div class="tool-title">Argument Map</div>
+        </div>
+        <span class="graph-status">Loads After Audit</span>
+      </div>
+      <div class="analysis-stage-empty" id="argumentMapPlaceholder" aria-hidden="true"></div>
+      <div class="argument-map" id="argumentGraph" hidden></div>
+    </div>
 
     <!-- Output Panel -->
-    <section class="panel panel--output" id="outputPanel">
+    <section class="panel panel--output analysis-stage-card analysis-stage-report" id="outputPanel">
       <div class="output-header">
         <div>
-          <div class="panel-title">Review Record</div>
+          <div class="node-kicker">Fracture Engine</div>
+          <div class="panel-title">Final Review</div>
           <div class="panel-sub">A structured account of the draft's strongest and weakest reasoning.</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -139,27 +154,56 @@
         </div>
       </div>
 
-      <div class="skeleton hidden" id="skeleton"></div>
+      <div class="analysis-stage-empty" id="finalReviewPlaceholder" aria-hidden="true"></div>
 
-      <details id="rawJsonBlock" style="position:relative;z-index:1;">
-        <summary class="json-raw-summary">View Structured Data</summary>
-        <div class="json-raw-wrap" style="border-top:none;border-radius:0 0 12px 12px;">
-          <pre class="json-container" id="jsonOutput">Awaiting analysis...</pre>
-        </div>
-      </details>
+      <div class="skeleton hidden" id="skeleton"></div>
 
       <div id="reportContainer" class="report"></div>
       <div class="json-error hidden" id="jsonError"></div>
 
       <div class="json-toolbar">
         <div class="toolbar-left">
-          <button class="btn-sm" id="exportBtn" type="button" disabled>Export Report Data</button>
+          <button class="btn-sm" id="exportBtn" type="button" disabled>Export PDF Report</button>
           <button class="btn-sm" id="shareBtn" type="button" disabled>Share Link</button>
         </div>
-        <button class="btn-sm" id="copyBtn" type="button" disabled>Copy Report Data</button>
       </div>
     </section>
-  </div>
+  </section>
+
+  <section class="studio-followup tool-card" id="fractureChatCard">
+    <div class="argument-map-head">
+      <div>
+        <div class="node-kicker">Focused Coaching</div>
+        <div class="tool-title">Fracture Chat</div>
+        <p class="tool-copy">Ask for a clearer warrant, a stronger rewrite, a fair counterargument, or the best next revision.</p>
+      </div>
+      <span class="graph-status">Streaming AI</span>
+    </div>
+    <div class="chat-point hidden" id="chatSelectedPoint"></div>
+    <label class="sr-only" for="chatInput">Question for Fracture Chat</label>
+    <textarea class="tool-textarea" id="chatInput" placeholder="Ask Fracture Chat about your draft or select a mapped claim above."></textarea>
+    <div class="tool-actions">
+      <button class="btn-sm tool-run" id="chatBtn" type="button" disabled>Ask Fracture Chat</button>
+      <div class="tool-actions-secondary">
+        <button class="tool-clear" id="chatClearBtn" type="button">Clear conversation</button>
+        <span class="tool-status" id="chatStatus">Ready</span>
+      </div>
+    </div>
+    <div class="tool-progress"><span id="chatProgress"></span></div>
+    <div class="tool-output chat-transcript" id="chatOutput" aria-live="polite"></div>
+  </section>
+
+  <section class="studio-sources-stage analysis-stage-card" aria-label="Works cited area">
+    <div class="analysis-stage-head">
+      <div>
+        <div class="node-kicker">Source Review</div>
+        <div class="tool-title">Works Cited</div>
+      </div>
+      <span class="graph-status">Loads After Audit</span>
+    </div>
+    <div class="analysis-stage-empty analysis-stage-empty--sources" id="worksCitedPlaceholder" aria-hidden="true"></div>
+    <div class="studio-sources" id="sourceVerificationArea" aria-label="Works cited and source review"></div>
+  </section>
 
   <!-- Studio Footer -->
   <div class="studio-footer">

@@ -7,6 +7,8 @@
   const FIREBASE_AUTH_CDN = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/firebase-auth.js';
   const FIREBASE_FIRESTORE_CDN = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/firebase-firestore.js';
   const RETURN_PATH_KEY = 'fracture_auth_return';
+  const GUEST_ACCESS_KEY = 'fracture_guest_access';
+  const ACTIVE_WORKSPACE_KEY = 'fracture_active_workspace';
   const DEFAULT_FIREBASE_CONFIG = {
     apiKey: 'AIzaSyCfvIx3BFLSW3jM7UVI55xEUWU6ruw_KGQ',
     authDomain: 'gen-lang-client-0002047847.firebaseapp.com',
@@ -60,6 +62,25 @@
     return null;
   }
 
+  function hasGuestAccess() {
+    try {
+      return sessionStorage.getItem(GUEST_ACCESS_KEY) === 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function continueWithoutEmail() {
+    try { sessionStorage.setItem(GUEST_ACCESS_KEY, 'true'); } catch (_) {}
+    const modal = document.getElementById('fractureAuthModal');
+    if (modal) modal.classList.add('hidden');
+    const returnPath = consumeReturnPath();
+    if (returnPath && isStudioHref(returnPath) && !isStudioPage()) {
+      window.location.href = returnPath;
+    }
+    return true;
+  }
+
   async function loadConfig() {
     if (configPromise) return configPromise;
     configPromise = fetch('/api/public-config', { cache: 'no-store' })
@@ -92,6 +113,22 @@
     } catch (_) {
       return false;
     }
+  }
+
+  function getActiveWorkspace() {
+    return readJson(ACTIVE_WORKSPACE_KEY, null);
+  }
+
+  function setActiveWorkspace(workspace) {
+    const next = workspace && typeof workspace === 'object'
+      ? Object.assign({}, workspace, { updated: workspace.updated || new Date().toISOString() })
+      : null;
+    if (!next) {
+      try { localStorage.removeItem(ACTIVE_WORKSPACE_KEY); } catch (_) {}
+      return null;
+    }
+    writeJson(ACTIVE_WORKSPACE_KEY, next);
+    return next;
   }
 
   function friendlyAuthError(error) {
@@ -188,23 +225,6 @@
     const text = String(draft || '').replace(/\s+/g, ' ').trim();
     if (!text) return 'Untitled argument';
     return text.length > 70 ? text.slice(0, 67) + '...' : text;
-  }
-
-  function localSaveProject(draft, analysis) {
-    const projects = readJson(KEYS.projects, []);
-    const now = new Date().toISOString();
-    const item = {
-      id: 'browser-' + Date.now(),
-      title: titleFromDraft(draft),
-      draft: draft || '',
-      analysis: analysis || null,
-      created: now,
-      updated: now,
-      mode: 'browser'
-    };
-    projects.unshift(item);
-    writeJson(KEYS.projects, projects.slice(0, 50));
-    return item;
   }
 
   async function syncProfile(firebaseUser) {
@@ -313,17 +333,24 @@
             updatedAt: now
           }
         );
-        return {
+        return setActiveWorkspace({
           id: result.id,
           title: titleFromDraft(draft),
           draft: draft || '',
           analysis: analysis || null,
           updated: new Date().toISOString(),
           mode: 'cloud'
-        };
+        });
       } catch (_) {}
     }
-    return localSaveProject(draft, analysis);
+    return setActiveWorkspace({
+      id: '',
+      title: titleFromDraft(draft),
+      draft: draft || '',
+      analysis: analysis || null,
+      updated: new Date().toISOString(),
+      mode: 'guest'
+    });
   }
 
   async function listProjects() {
@@ -350,7 +377,31 @@
         });
       } catch (_) {}
     }
-    return readJson(KEYS.projects, []);
+    return [];
+  }
+
+  async function getProject(projectId) {
+    const cleanId = String(projectId || '').trim();
+    if (!cleanId) return getActiveWorkspace();
+    const user = await getUser();
+    if (!user) return null;
+    try {
+      const services = await getServices();
+      const projectRef = services.firestoreModule.doc(services.db, 'users', user.id, 'projects', cleanId);
+      const result = await services.firestoreModule.getDoc(projectRef);
+      if (!result.exists()) return null;
+      const project = result.data();
+      const updatedAt = project.updatedAt && typeof project.updatedAt.toDate === 'function'
+        ? project.updatedAt.toDate().toISOString()
+        : null;
+      return setActiveWorkspace(Object.assign({}, project, {
+        id: result.id,
+        updated: updatedAt,
+        mode: 'cloud'
+      }));
+    } catch (_) {
+      return null;
+    }
   }
 
   async function getPreferences() {
@@ -452,9 +503,10 @@
       const url = new URL(href, window.location.href);
       return /\/studio(?:\/case)?$/.test(url.pathname)
         || /\/analyze$/.test(url.pathname)
-        || /\/studio\.html$/.test(url.pathname);
+        || /\/studio\.html$/.test(url.pathname)
+        || /\/rebuttals(?:\.html)?$/.test(url.pathname);
     } catch (_) {
-      return /studio\.html|\/studio|\/analyze/.test(href);
+      return /studio\.html|\/studio|\/analyze|\/rebuttals/.test(href);
     }
   }
 
@@ -478,15 +530,17 @@
       + '<button class="btn-primary auth-wide" id="authModalGoogle" type="button">Continue with Google</button>'
       + '<div class="auth-divider"><span>or continue with email</span></div>'
       + '<div class="auth-email-fields">'
-      + '<input id="authModalName" type="text" placeholder="Full name for new accounts" autocomplete="name" />'
-      + '<input id="authModalEmail" type="email" placeholder="you@example.com" autocomplete="email" />'
-      + '<input id="authModalPassword" type="password" placeholder="Password" autocomplete="current-password" />'
+      + '<input id="authModalName" aria-label="Full name for new accounts" type="text" placeholder="Full name for new accounts" autocomplete="name" />'
+      + '<input id="authModalEmail" aria-label="Email address" type="email" placeholder="you@example.com" autocomplete="email" />'
+      + '<input id="authModalPassword" aria-label="Password" type="password" placeholder="Password" autocomplete="current-password" />'
       + '</div>'
       + '<div class="auth-email-actions">'
       + '<button class="btn-sm" id="authModalEmailSignIn" type="button">Sign In</button>'
       + '<button class="btn-sm" id="authModalEmailCreate" type="button">Create Account</button>'
       + '</div>'
       + '<button class="auth-reset-link" id="authModalPasswordReset" type="button">Forgot password?</button>'
+      + '<div class="auth-divider auth-guest-divider"><span>or continue without email</span></div>'
+      + '<button class="btn-sm auth-guest" id="authModalGuest" type="button">Continue as Guest</button>'
       + '<p class="auth-message" id="authModalStatus"></p>'
       + '</div>';
     document.body.appendChild(modal);
@@ -496,6 +550,7 @@
     const signInBtn = document.getElementById('authModalEmailSignIn');
     const createBtn = document.getElementById('authModalEmailCreate');
     const resetBtn = document.getElementById('authModalPasswordReset');
+    const guestBtn = document.getElementById('authModalGuest');
     const nameInput = document.getElementById('authModalName');
     const emailInput = document.getElementById('authModalEmail');
     const passwordInput = document.getElementById('authModalPassword');
@@ -541,6 +596,10 @@
         setText('authModalStatus', error.message || 'Password reset email could not be sent.');
       }
     });
+
+    guestBtn.addEventListener('click', function () {
+      continueWithoutEmail();
+    });
     return modal;
   }
 
@@ -558,8 +617,8 @@
 
   async function requireAuthForStudio() {
     const user = await getUser();
-    if (user) return true;
-    showAuthModal(true, 'Create or enter your account before opening the Studio. Your drafts and reports can then be saved securely in the cloud.');
+    if (user || hasGuestAccess()) return true;
+    showAuthModal(true, 'Sign in to save cloud history, or continue as a guest to start immediately. Guest drafts are temporary.');
     return false;
   }
 
@@ -569,7 +628,7 @@
       const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
       if (!link || !isStudioHref(link.getAttribute('href'))) return;
       const user = await getUser();
-      if (user) return;
+      if (user || hasGuestAccess()) return;
       event.preventDefault();
       try {
         const destination = new URL(link.getAttribute('href'), window.location.href);
@@ -577,7 +636,7 @@
       } catch (_) {
         rememberReturnPath('/studio');
       }
-      showAuthModal(false, 'Sign in first, then Studio opens with cloud-saved drafts and report history enabled.');
+      showAuthModal(false, 'Sign in for cloud-saved drafts and report history, or continue as a guest to start immediately. Guest drafts are temporary.');
     }, true);
 
     if (isStudioPage()) {
@@ -700,6 +759,9 @@
     getUser: getUser,
     saveProject: saveProject,
     listProjects: listProjects,
+    getProject: getProject,
+    getActiveWorkspace: getActiveWorkspace,
+    setActiveWorkspace: setActiveWorkspace,
     signInGoogle: signInGoogle,
     signInEmail: signInEmail,
     signUpEmail: signUpEmail,
@@ -707,6 +769,8 @@
     signOut: signOut,
     getPreferences: getPreferences,
     savePreferences: savePreferences,
+    hasGuestAccess: hasGuestAccess,
+    continueWithoutEmail: continueWithoutEmail,
     initAuthGate: initAuthGate,
     showAuthModal: showAuthModal,
     requireAuthForStudio: requireAuthForStudio,

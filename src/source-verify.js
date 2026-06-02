@@ -1,8 +1,16 @@
-const CLAIM_LIMIT = 10;
-const RESULTS_PER_CLAIM = 4;
-const SEARCH_TIMEOUT_MS = 8000;
-const PAGE_TIMEOUT_MS = 7000;
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+
+const CLAIM_LIMIT = 6;
+const RESULTS_PER_CLAIM = 3;
+const SEARCH_TIMEOUT_MS = 4500;
+const PAGE_TIMEOUT_MS = 4000;
+const PAGE_MAX_BYTES = 350000;
+const MAX_REDIRECTS = 3;
+const VERIFY_DEADLINE_MS = 50000;
+const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const USER_AGENT = "FractureStudioSourceVerifier/1.0 (+https://fracturestudio.vercel.app)";
+const searchCache = new Map();
 
 const STOP_WORDS = new Set([
   "about", "after", "again", "against", "also", "because", "before", "being",
@@ -34,19 +42,23 @@ const VAGUE_SOURCE_PATTERNS = [
 export async function verifySources(input = {}) {
   const essay = typeof input.essay === "string" ? input.essay.trim() : "";
   const audit = input.audit && typeof input.audit === "object" ? input.audit : null;
+  const citationStyle = normalizeCitationStyle(input.citationStyle);
   const extractedClaims = extractClaims(essay, audit).slice(0, CLAIM_LIMIT);
 
   if (!essay && !extractedClaims.length) {
     return {
+      citation_style: citationStyle,
+      bibliography_title: citationStyle === "apa" ? "References" : "Works Cited",
       claims: [],
       works_cited: [],
       summary: {
         total_claims: 0,
-        supported: 0,
-        partially_supported: 0,
-        unsupported: 0,
-        contradicted: 0,
+        likely_supported: 0,
+        partial_match: 0,
+        needs_source_review: 0,
+        possible_conflict: 0,
         source_not_found: 0,
+        citation_incomplete: 0,
         source_too_vague: 0,
         needs_review: 0,
         note: "No essay text or audit claims were provided."
@@ -56,36 +68,43 @@ export async function verifySources(input = {}) {
 
   const claims = [];
   const citedSources = new Map();
+  const deadline = Date.now() + VERIFY_DEADLINE_MS;
 
   for (const claim of extractedClaims) {
-    const result = await verifyClaim(claim);
+    const result = Date.now() < deadline - 1500
+      ? await verifyClaim(claim, citationStyle)
+      : finalizeClaim(claim, [], "needs_review", "The source-review time limit was reached. Check this claim manually or run Verify Sources again.", citationStyle);
     claims.push(result);
-    for (const source of result.sources) {
-      if (source.url && !citedSources.has(source.url)) {
-        citedSources.set(source.url, source);
-      }
+    const bestSource = result.sources.find((source) => source.match_score >= 0.72 && source.url);
+    if (result.support_status === "likely_supported" && bibliographyReady(result, bestSource) && !citedSources.has(bestSource.url)) {
+      citedSources.set(bestSource.url, bestSource);
     }
   }
 
   const worksCited = Array.from(citedSources.values()).map((source) => ({
     url: source.url,
     title: source.title || source.site_name || source.url,
-    entry: buildWorksCitedEntry(source)
+    style: citationStyle,
+    entry: buildCitationEntry(source, citationStyle),
+    mla: buildMlaEntry(source),
+    apa: buildApaEntry(source)
   }));
 
   return {
+    citation_style: citationStyle,
+    bibliography_title: citationStyle === "apa" ? "References" : "Works Cited",
     claims,
     works_cited: worksCited,
-    summary: buildSummary(claims, worksCited)
+    summary: buildSummary(claims, worksCited, citationStyle)
   };
 }
 
 export function extractClaims(essay = "", audit = null) {
   const seen = new Set();
   const claims = [];
-  const addClaim = (text, origin = "essay", priority = 4) => {
+  const addClaim = (text, origin = "essay", priority = 4, options = {}) => {
     const quote = cleanText(text);
-    if (!quote || quote.length < 18) return;
+    if (!quote || quote.length < (options.quotedPassage ? 12 : 18)) return;
     const key = quote.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
@@ -94,69 +113,95 @@ export function extractClaims(essay = "", audit = null) {
       text: quote,
       origin,
       priority,
-      query: buildSearchQuery(quote),
-      citation_issues: detectCitationIssues(quote)
+      quoted_passage: options.quotedPassage || "",
+      query: buildSearchQuery(quote, options.quotedPassage),
+      citation_issues: options.quotedPassage
+        ? Array.from(new Set([...detectCitationIssues(quote), "source_needed"]))
+        : detectCitationIssues(quote)
     });
   };
 
+  for (const quote of extractQuotedPassages(essay)) {
+    addClaim(quote, "draft.quoted_passage", 1, { quotedPassage: quote });
+  }
+
   if (audit) {
-    addClaim(audit?.collapse_point?.quote, "audit.collapse_point", 1);
+    addAuditClaim(audit?.collapse_point?.quote, "audit.collapse_point", 2);
     for (const claim of ensureArray(audit?.argument_strength?.claims)) {
-      addClaim(claim?.quote, "audit.argument_strength.claims", 2);
+      addAuditClaim(claim?.quote, "audit.argument_strength.claims", 3);
     }
     for (const fix of ensureArray(audit?.priority_fixes)) {
-      addClaim(fix?.quote, "audit.priority_fixes", 3);
+      addAuditClaim(fix?.quote, "audit.priority_fixes", 4);
     }
   }
 
   for (const sentence of splitSentences(essay)) {
-    if (looksFactual(sentence)) addClaim(sentence, "essay", 4);
+    if (looksFactual(sentence)) addClaim(sentence, "essay", 5);
   }
 
   return claims
     .sort((a, b) => a.priority - b.priority || b.text.length - a.text.length)
     .map((claim, index) => ({ ...claim, id: `claim_${index + 1}` }));
+
+  function addAuditClaim(text, origin, priority) {
+    const cleaned = cleanText(text);
+    if (looksCitationRelevant(cleaned)) addClaim(cleaned, origin, priority);
+  }
 }
 
-async function verifyClaim(claim) {
-  if (isSourceTooVague(claim.text)) {
-    return finalizeClaim(claim, [], "source_too_vague", "The claim invokes a source without enough identifying detail to verify it directly.");
-  }
+async function verifyClaim(claim, citationStyle) {
+  const citationTooVague = isSourceTooVague(claim.text);
 
   let search;
   try {
     search = await searchOpenWeb(claim.query);
   } catch (err) {
-    return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`);
+    return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`, citationStyle);
   }
 
   if (!search.results.length && search.fallback_error) {
-    return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${search.fallback_error}`);
+    return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${search.fallback_error}`, citationStyle);
   }
 
   if (!search.results.length) {
-    return finalizeClaim(claim, [], "source_not_found", "No usable public web result was found for this claim.");
+    return finalizeClaim(
+      claim,
+      [],
+      citationTooVague ? "citation_incomplete" : "source_not_found",
+      citationTooVague
+        ? "The draft does not identify the source precisely enough, and the public search did not find a dependable match."
+        : "No usable public web result was found for this claim.",
+      citationStyle
+    );
   }
 
-  const sources = [];
-  for (const result of search.results.slice(0, RESULTS_PER_CLAIM)) {
+  const sources = await Promise.all(search.results.slice(0, RESULTS_PER_CLAIM).map(async (result) => {
     const metadata = await fetchPageMetadata(result.url);
-    sources.push(normalizeSource({ ...result, ...metadata }));
-  }
+    return normalizeSource({ ...result, ...metadata });
+  }));
 
-  const status = classifySupport(claim.text, sources);
-  return finalizeClaim(claim, sources, status.status, status.reason);
+  const scoredSources = sources
+    .map((source) => ({
+      ...source,
+      match_score: sourceMatchScore(claim.text, source),
+      quote_match: claim.quoted_passage ? quotedPassageMatch(claim.quoted_passage, source) : null
+    }))
+    .sort((a, b) => b.match_score - a.match_score);
+  const status = classifySupport(claim, scoredSources, citationTooVague);
+  return finalizeClaim(claim, scoredSources, status.status, status.reason, citationStyle);
 }
 
-function finalizeClaim(claim, sources, supportStatus, verificationNote) {
+function finalizeClaim(claim, sources, supportStatus, verificationNote, citationStyle) {
   return {
     id: claim.id,
     claim: claim.text,
     origin: claim.origin,
     search_query: claim.query,
+    quoted_passage: claim.quoted_passage || null,
     support_status: supportStatus,
     confidence: confidenceFor(supportStatus, sources),
     verification_note: verificationNote,
+    verification_scope: "Public web search and retrieved page text comparison. Open the source before treating the claim as verified.",
     citation_issues: claim.citation_issues,
     citation_issue_fields: citationIssueFields(claim.text, sources),
     sources: sources.map((source) => ({
@@ -167,44 +212,60 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote) {
       published_date: source.published_date,
       accessed_date: source.accessed_date,
       snippet: source.snippet,
-      mla: buildWorksCitedEntry(source)
+      match_score: source.match_score,
+      quote_match: source.quote_match,
+      page_retrieved: source.page_retrieved,
+      mla: buildMlaEntry(source),
+      apa: buildApaEntry(source),
+      citation: buildCitationEntry(source, citationStyle)
     }))
   };
 }
 
 async function searchOpenWeb(query) {
   const ddgUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-  let fallbackError = "";
+  const liteUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+  const readerLiteUrl = `https://r.jina.ai/http://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+  const errors = [];
+  const cached = searchCache.get(query);
+
+  if (cached && Date.now() - cached.createdAt < SEARCH_CACHE_TTL_MS) {
+    return cached.value;
+  }
 
   try {
     const html = await fetchText(ddgUrl, SEARCH_TIMEOUT_MS);
     const results = parseDuckDuckGoResults(html);
-    if (results.length) return { results };
+    if (results.length) return cacheSearch(query, { results });
   } catch (err) {
-    fallbackError = err?.message || String(err);
+    errors.push(`standard search: ${err?.message || String(err)}`);
   }
 
   try {
-    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=${RESULTS_PER_CLAIM}&namespace=0&format=json&origin=*`;
-    const json = await fetchJson(wikiUrl, SEARCH_TIMEOUT_MS);
-    const titles = ensureArray(json?.[1]);
-    const descriptions = ensureArray(json?.[2]);
-    const urls = ensureArray(json?.[3]);
-    const results = urls.map((url, index) => ({
-      title: titles[index] || url,
-      url,
-      snippet: descriptions[index] || ""
-    }));
-    return {
-      results,
-      fallback_error: fallbackError
-    };
+    const html = await fetchText(liteUrl, SEARCH_TIMEOUT_MS);
+    const results = parseDuckDuckGoLiteResults(html);
+    if (results.length) return cacheSearch(query, { results });
   } catch (err) {
-    return {
-      results: [],
-      fallback_error: fallbackError || err?.message || String(err)
-    };
+    errors.push(`lightweight search: ${err?.message || String(err)}`);
   }
+
+  try {
+    const markdown = await fetchText(readerLiteUrl, SEARCH_TIMEOUT_MS);
+    const results = parseReaderSearchResults(markdown);
+    if (results.length) return cacheSearch(query, { results });
+  } catch (err) {
+    errors.push(`reader search: ${err?.message || String(err)}`);
+  }
+
+  return cacheSearch(query, {
+    results: [],
+    fallback_error: errors.length ? errors.join("; ") : ""
+  });
+}
+
+function cacheSearch(query, value) {
+  searchCache.set(query, { createdAt: Date.now(), value });
+  return value;
 }
 
 function parseDuckDuckGoResults(html) {
@@ -214,7 +275,7 @@ function parseDuckDuckGoResults(html) {
 
   while ((match = resultPattern.exec(html)) && results.length < RESULTS_PER_CLAIM) {
     const url = normalizeDuckDuckGoUrl(decodeHtml(match[1]));
-    if (!url || !/^https?:\/\//i.test(url)) continue;
+    if (!isUsableSourceUrl(url)) continue;
     results.push({
       title: cleanText(stripHtml(match[2])),
       url,
@@ -227,7 +288,7 @@ function parseDuckDuckGoResults(html) {
   const loosePattern = /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
   while ((match = loosePattern.exec(html)) && results.length < RESULTS_PER_CLAIM) {
     const url = normalizeDuckDuckGoUrl(decodeHtml(match[1]));
-    if (!url || !/^https?:\/\//i.test(url)) continue;
+    if (!isUsableSourceUrl(url)) continue;
     results.push({
       title: cleanText(stripHtml(match[2])),
       url,
@@ -238,30 +299,72 @@ function parseDuckDuckGoResults(html) {
   return dedupeResults(results);
 }
 
+function parseDuckDuckGoLiteResults(html) {
+  const results = [];
+  const resultPattern = /<a([^>]*class=['"][^'"]*result-link[^'"]*['"][^>]*)>([\s\S]*?)<\/a>[\s\S]*?<td[^>]+class=['"][^'"]*result-snippet[^'"]*['"][^>]*>([\s\S]*?)<\/td>/gi;
+  let match;
+
+  while ((match = resultPattern.exec(html)) && results.length < RESULTS_PER_CLAIM) {
+    const href = match[1].match(/href=['"]([^'"]+)['"]/i);
+    const url = normalizeDuckDuckGoUrl(decodeHtml(href?.[1] || ""));
+    if (!isUsableSourceUrl(url)) continue;
+    results.push({
+      title: cleanText(stripHtml(match[2])),
+      url,
+      snippet: cleanText(stripHtml(match[3]))
+    });
+  }
+
+  return dedupeResults(results);
+}
+
+function parseReaderSearchResults(markdown) {
+  const results = [];
+  const lines = String(markdown || "").split(/\r?\n/);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^\d+\.\[([^\]]+)\]\((https?:\/\/duckduckgo\.com\/l\/\?[^)]+)\)$/i);
+    if (!match) continue;
+    const url = normalizeDuckDuckGoUrl(decodeHtml(match[2]));
+    if (!isUsableSourceUrl(url)) continue;
+    results.push({
+      title: cleanText(match[1]),
+      url,
+      snippet: cleanText(lines[index + 1] || "")
+    });
+    if (results.length >= RESULTS_PER_CLAIM) break;
+  }
+
+  return dedupeResults(results);
+}
+
 async function fetchPageMetadata(url) {
   try {
-    const html = await fetchText(url, PAGE_TIMEOUT_MS);
+    const html = await fetchPublicPageText(url, PAGE_TIMEOUT_MS);
     return {
       title: firstMeta(html, ["og:title", "twitter:title"]) || htmlTitle(html),
       author: firstMeta(html, ["author", "article:author", "byl"]),
       site_name: firstMeta(html, ["og:site_name", "application-name"]) || hostName(url),
       published_date: firstMeta(html, ["article:published_time", "date", "dc.date", "citation_publication_date"]),
-      description: firstMeta(html, ["og:description", "twitter:description", "description"])
+      description: firstMeta(html, ["og:description", "twitter:description", "description"]),
+      page_excerpt: pageExcerpt(html),
+      page_retrieved: true
     };
   } catch (_) {
     return {
-      site_name: hostName(url)
+      site_name: hostName(url),
+      page_retrieved: false
     };
   }
 }
 
-async function fetchText(url, timeoutMs) {
+async function fetchText(url, timeoutMs, userAgent = USER_AGENT) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": userAgent,
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
       },
       signal: controller.signal
@@ -273,25 +376,62 @@ async function fetchText(url, timeoutMs) {
   }
 }
 
-async function fetchJson(url, timeoutMs) {
+async function fetchPublicPageText(url, timeoutMs, redirectCount = 0) {
+  if (redirectCount > MAX_REDIRECTS) throw new Error("Too many redirects");
+  await assertPublicHttpsUrl(url);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
         "User-Agent": USER_AGENT,
-        Accept: "application/json"
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
       },
+      redirect: "manual",
       signal: controller.signal
     });
+    if (res.status >= 300 && res.status < 400) {
+      const destination = new URL(res.headers.get("location") || "", url).href;
+      return fetchPublicPageText(destination, timeoutMs, redirectCount + 1);
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    return readBoundedText(res, PAGE_MAX_BYTES);
   } finally {
     clearTimeout(timer);
   }
 }
 
-function classifySupport(claimText, sources) {
+async function assertPublicHttpsUrl(url) {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:") throw new Error("Only HTTPS public pages are allowed");
+  const host = parsed.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost") || isPrivateAddress(host)) {
+    throw new Error("Private-network pages are not allowed");
+  }
+  const results = await lookup(host, { all: true, verbatim: true });
+  if (!results.length || results.some((entry) => isPrivateAddress(entry.address))) {
+    throw new Error("Private-network pages are not allowed");
+  }
+}
+
+async function readBoundedText(response, limit) {
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let total = 0;
+  let text = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) throw new Error("Retrieved page is too large");
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
+function classifySupport(claim, sources, citationTooVague) {
+  const claimText = claim.text;
   const claimTerms = importantTerms(claimText);
   if (!claimTerms.length) {
     return {
@@ -303,34 +443,66 @@ function classifySupport(claimText, sources) {
   let bestOverlap = 0;
   let hasContradictionCue = false;
   for (const source of sources) {
-    const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""}`.toLowerCase();
-    const overlap = claimTerms.filter((term) => sourceText.includes(term)).length / claimTerms.length;
+    const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""} ${source.page_excerpt || ""}`.toLowerCase();
+    const contradictionText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""}`.toLowerCase();
+    const overlap = source.match_score ?? claimTerms.filter((term) => sourceText.includes(term)).length / claimTerms.length;
     bestOverlap = Math.max(bestOverlap, overlap);
-    if (hasNegationConflict(claimText, sourceText)) hasContradictionCue = true;
+    if (hasNegationConflict(claimText, contradictionText)) hasContradictionCue = true;
+  }
+
+  if (claim.quoted_passage) {
+    if (sources.some((source) => source.quote_match)) {
+      return {
+        status: "likely_supported",
+        reason: "A retrieved public page contains this quoted passage. Treat this as a tentative source match: open the page and confirm the speaker, context, and citation details before using it."
+      };
+    }
+    if (!sources.some((source) => source.page_retrieved)) {
+      return {
+        status: "needs_source_review",
+        reason: "Search found possible public pages, but their page text could not be retrieved. Open the source and locate the quotation manually before using it."
+      };
+    }
+    return {
+      status: "quote_not_supported",
+      reason: "The retrieved public pages did not contain this quoted passage. It is not supported by the retrieved pages; locate the original text or remove the quotation."
+    };
   }
 
   if (hasContradictionCue && bestOverlap >= 0.5) {
     return {
-      status: "contradicted",
-      reason: "The retrieved source metadata appears to discuss the same subject but contains a conflicting negation cue."
+      status: "possible_conflict",
+      reason: "The retrieved source metadata appears to discuss the same subject but contains a conflicting negation cue. Inspect the full source before relying on the claim."
+    };
+  }
+  if (citationTooVague) {
+    return {
+      status: "citation_incomplete",
+      reason: "A potentially relevant public page was found, but the draft does not identify the source precisely enough to connect it confidently to this claim."
+    };
+  }
+  if (ensureArray(claim.citation_issues).includes("source_needed") && bestOverlap >= 0.72) {
+    return {
+      status: "needs_source_review",
+      reason: "Search found a closely related public page, but the draft does not identify a source. Open the page and confirm the exact passage before adding it to the bibliography."
     };
   }
   if (bestOverlap >= 0.72) {
     return {
-      status: "supported",
-      reason: "Retrieved source metadata closely matches the claim's distinctive terms."
+      status: "likely_supported",
+      reason: "Public retrieval closely matches the claim's distinctive terms. Treat this as a tentative source match: open the source and confirm the exact passage before final submission."
     };
   }
   if (bestOverlap >= 0.42) {
     return {
-      status: "partially_supported",
-      reason: "Retrieved sources match part of the claim, but the metadata does not verify every important detail."
+      status: "partial_match",
+      reason: "Retrieved sources match part of the claim, but the metadata does not verify every important detail. Narrow the claim or cite the exact passage."
     };
   }
   if (sources.length) {
     return {
-      status: "unsupported",
-      reason: "Search returned sources, but their metadata does not clearly support the claim."
+      status: "needs_source_review",
+      reason: "Search returned public pages, but their metadata does not clearly support the claim. Inspect the pages and replace the citation if the match is weak."
     };
   }
   return {
@@ -370,7 +542,7 @@ function citationIssueFields(text, sources) {
   };
 }
 
-function buildWorksCitedEntry(source) {
+function buildMlaEntry(source) {
   const author = source.author ? `${source.author}. ` : "";
   const title = source.title ? `"${trimTrailingPunctuation(source.title)}." ` : "";
   const site = source.site_name ? `${trimTrailingPunctuation(source.site_name)}, ` : "";
@@ -380,14 +552,28 @@ function buildWorksCitedEntry(source) {
   return cleanText(`${author}${title}${site}${date}${url}. ${accessed}`);
 }
 
-function buildSummary(claims, worksCited) {
+function buildApaEntry(source) {
+  const author = source.author ? `${trimTrailingPunctuation(source.author)}. ` : "";
+  const date = source.published_date ? `(${formatDateForApa(source.published_date)}). ` : "(n.d.). ";
+  const title = source.title ? `${sentenceCase(trimTrailingPunctuation(source.title))}. ` : "";
+  const site = source.site_name ? `${trimTrailingPunctuation(source.site_name)}. ` : "";
+  return cleanText(`${author}${date}${title}${site}${source.url || ""}`);
+}
+
+function buildCitationEntry(source, style) {
+  return style === "apa" ? buildApaEntry(source) : buildMlaEntry(source);
+}
+
+function buildSummary(claims, worksCited, citationStyle) {
   const counts = {
     total_claims: claims.length,
-    supported: 0,
-    partially_supported: 0,
-    unsupported: 0,
-    contradicted: 0,
+    likely_supported: 0,
+    partial_match: 0,
+    needs_source_review: 0,
+    possible_conflict: 0,
     source_not_found: 0,
+    quote_not_supported: 0,
+    citation_incomplete: 0,
     source_too_vague: 0,
     needs_review: 0
   };
@@ -401,23 +587,41 @@ function buildSummary(claims, worksCited) {
   return {
     ...counts,
     works_cited_count: worksCited.length,
-    note: "Automated verification uses public search metadata and should be treated as a triage layer, not a final scholarly source review."
+    all_sources_likely_supported: claims.length > 0 && claims.every((claim) => claim.support_status === "likely_supported"),
+    citation_style: citationStyle,
+    style_edition: citationStyle === "apa" ? "APA 7th edition" : "MLA 9th edition",
+    note: claims.length > 0 && claims.every((claim) => claim.support_status === "likely_supported")
+      ? "Every checked citation has a tentative public-web match. Open each retrieved page and confirm the exact passage before final submission."
+      : "Automated verification searched public pages and retrieved page text for comparison. Treat matches as tentative, and review each not-supported or incomplete citation before final submission."
   };
 }
 
-function buildSearchQuery(text) {
-  const quoted = extractQuotedSource(text);
-  if (quoted) return quoted;
+function buildSearchQuery(text, quotedPassage = "") {
+  const quoted = quotedPassage || extractQuotedSource(text);
+  if (quoted) return `"${quoted.slice(0, 240)}"`;
   const terms = importantTerms(text).slice(0, 10);
-  return terms.length ? terms.join(" ") : text.slice(0, 160);
+  return Array.from(new Set(terms.filter(Boolean))).join(" ") || text.slice(0, 160);
 }
 
 function extractQuotedSource(text) {
-  const quoted = text.match(/["“]([^"”]{8,120})["”]/);
+  const quoted = text.match(/["“]([^"”]{8,240})["”]/);
   if (quoted) return quoted[1];
   const according = text.match(/\baccording to\s+([^,.]{4,100})/i);
   if (according) return according[1];
   return "";
+}
+
+export function extractQuotedPassages(text = "") {
+  const passages = [];
+  const pattern = /"([^"\r\n]{12,500})"|“([^”\r\n]{12,500})”/g;
+  let match;
+
+  while ((match = pattern.exec(String(text || "")))) {
+    const passage = cleanText(match[1] || match[2] || "");
+    if (passage) passages.push(passage);
+  }
+
+  return Array.from(new Set(passages));
 }
 
 function importantTerms(text) {
@@ -428,11 +632,31 @@ function importantTerms(text) {
     .slice(0, 16);
 }
 
+function sourceMatchScore(claimText, source) {
+  const claimTerms = importantTerms(claimText);
+  if (!claimTerms.length) return 0;
+  const sourceText = `${source.title || ""} ${source.snippet || ""} ${source.description || ""} ${source.page_excerpt || ""}`.toLowerCase();
+  const overlap = claimTerms.filter((term) => sourceText.includes(term)).length / claimTerms.length;
+  return Number(overlap.toFixed(2));
+}
+
+function quotedPassageMatch(quotedPassage, source) {
+  const quoted = normalizeComparableText(quotedPassage);
+  if (!quoted) return false;
+  const retrievedText = normalizeComparableText(source.page_excerpt || "");
+  return retrievedText.includes(quoted);
+}
+
 function looksFactual(sentence) {
   const text = String(sentence || "").trim();
   if (text.length < 18) return false;
   if (FACTUAL_SIGNALS.some((pattern) => pattern.test(text))) return true;
   return /\b(is|are|was|were|has|have|had)\b/i.test(text) && /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/.test(text);
+}
+
+function looksCitationRelevant(text) {
+  const cleaned = String(text || "").trim();
+  return cleaned.length >= 18 && FACTUAL_SIGNALS.slice(0, 6).some((pattern) => pattern.test(cleaned));
 }
 
 function isSourceTooVague(text) {
@@ -459,6 +683,44 @@ function normalizeDuckDuckGoUrl(url) {
   }
 }
 
+function isUsableSourceUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return /^https:\/\//i.test(url)
+      && host !== "duckduckgo.com"
+      && !host.endsWith(".duckduckgo.com")
+      && host !== "r.jina.ai"
+      && host !== "localhost"
+      && !host.endsWith(".localhost")
+      && !isPrivateAddress(host);
+  } catch (_) {
+    return false;
+  }
+}
+
+function isPrivateAddress(value) {
+  const address = String(value || "").toLowerCase().replace(/^\[|\]$/g, "");
+  if (!isIP(address)) return false;
+  if (address === "::1" || address === "::" || address.startsWith("fc") || address.startsWith("fd") || address.startsWith("fe8") || address.startsWith("fe9") || address.startsWith("fea") || address.startsWith("feb")) return true;
+  if (address.startsWith("::ffff:")) return isPrivateAddress(address.slice(7));
+  const parts = address.split(".").map(Number);
+  if (parts.length !== 4) return false;
+  return parts[0] === 0
+    || parts[0] === 10
+    || parts[0] === 127
+    || (parts[0] === 169 && parts[1] === 254)
+    || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
+    || (parts[0] === 192 && parts[1] === 168)
+    || (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127)
+    || parts[0] >= 224;
+}
+
+function bibliographyReady(claim, source) {
+  if (!source || !source.url || source.page_retrieved !== true) return false;
+  if (source.quote_match === true) return true;
+  return !ensureArray(claim.citation_issues).includes("source_needed") && source.match_score >= 0.72;
+}
+
 function normalizeSource(source) {
   const accessedDate = todayIso();
   return {
@@ -469,7 +731,9 @@ function normalizeSource(source) {
     published_date: cleanText(source.published_date || ""),
     accessed_date: accessedDate,
     snippet: cleanText(source.snippet || source.description || ""),
-    description: cleanText(source.description || "")
+    description: cleanText(source.description || ""),
+    page_excerpt: cleanText(source.page_excerpt || ""),
+    page_retrieved: source.page_retrieved === true
   };
 }
 
@@ -501,15 +765,26 @@ function hasNegationConflict(claimText, sourceText) {
 
 function confidenceFor(status, sources) {
   const base = {
-    supported: 0.74,
-    partially_supported: 0.55,
-    unsupported: 0.42,
-    contradicted: 0.48,
+    likely_supported: 0.7,
+    partial_match: 0.52,
+    needs_source_review: 0.36,
+    possible_conflict: 0.44,
     source_not_found: 0.35,
+    quote_not_supported: 0.28,
+    citation_incomplete: 0.32,
     source_too_vague: 0.3,
     needs_review: 0.2
   }[status] || 0.25;
   return Number(Math.min(0.85, base + Math.min(sources.length, 3) * 0.03).toFixed(2));
+}
+
+function normalizeComparableText(text) {
+  return cleanText(text)
+    .toLowerCase()
+    .replace(/[“”]/g, "\"")
+    .replace(/[‘’]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function dedupeResults(results) {
@@ -534,6 +809,7 @@ function decodeHtml(text) {
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, "\"")
     .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&#x2F;/g, "/");
@@ -562,6 +838,31 @@ function formatDateForMla(value) {
   if (Number.isNaN(date.getTime())) return String(value || "").trim();
   const months = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "June", "July", "Aug.", "Sept.", "Oct.", "Nov.", "Dec."];
   return `${date.getUTCDate()} ${months[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+}
+
+function formatDateForApa(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value || "").trim();
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return `${date.getUTCFullYear()}, ${months[date.getUTCMonth()]} ${date.getUTCDate()}`;
+}
+
+function pageExcerpt(html) {
+  return cleanText(String(html || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " "))
+    .slice(0, 6000);
+}
+
+function sentenceCase(value) {
+  const text = String(value || "").trim();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
+}
+
+function normalizeCitationStyle(value) {
+  return String(value || "").toLowerCase() === "apa" ? "apa" : "mla";
 }
 
 function todayIso() {

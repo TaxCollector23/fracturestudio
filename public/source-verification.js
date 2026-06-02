@@ -15,12 +15,61 @@
     return Array.isArray(value) ? value : [];
   }
 
+  function citationStyle(value) {
+    return text(value, '').toLowerCase() === 'apa' ? 'apa' : 'mla';
+  }
+
   function statusTone(status) {
-    const normalized = text(status, 'needs review').toLowerCase();
-    if (/\b(verified|supported|match|accurate|pass|strong|ok)\b/.test(normalized)) return 'ok';
-    if (/\b(partial|mixed|unclear|review|warning|weak)\b/.test(normalized)) return 'warn';
-    if (/\b(false|unsupported|missing|failed|fabricated|mismatch|error|not found)\b/.test(normalized)) return 'bad';
+    const normalized = text(status, 'needs review').toLowerCase().replace(/_/g, ' ');
+    if (/\b(likely supported|verified|accurate|pass|strong|ok)\b/.test(normalized)) return 'ok';
+    if (/\b(partial|match|mixed|unclear|review|warning|weak|incomplete)\b/.test(normalized)) return 'warn';
+    if (/\b(false|unsupported|not supported|missing|failed|fabricated|mismatch|error|not found|conflict)\b/.test(normalized)) return 'bad';
     return 'warn';
+  }
+
+  function statusLabel(status) {
+    const labels = {
+      likely_supported: 'Tentative source match',
+      partial_match: 'Tentative partial match',
+      needs_source_review: 'Needs a closer look',
+      possible_conflict: 'Possible conflict',
+      source_not_found: 'Not supported by public retrieval',
+      quote_not_supported: 'Quoted passage not supported',
+      citation_incomplete: 'Citation details missing',
+      source_too_vague: 'Claim is too vague to check',
+      needs_review: 'Needs review'
+    };
+    const key = text(status, 'needs_review').toLowerCase().replace(/\s+/g, '_');
+    return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, function (char) { return char.toUpperCase(); });
+  }
+
+  function citationIssues(items) {
+    const labels = {
+      missing_author: 'author',
+      missing_title: 'title',
+      missing_date: 'publication date',
+      missing_locator: 'link or page location',
+      vague_source_reference: 'specific source name',
+      source_needed: 'supporting source'
+    };
+    const missing = asArray(items).map(function (item) { return labels[item] || String(item).replace(/_/g, ' '); });
+    return missing.length ? 'Citation details to add: ' + missing.join(', ') + '.' : '';
+  }
+
+  function nextStep(status) {
+    const key = text(status, 'needs_review').toLowerCase().replace(/\s+/g, '_');
+    const steps = {
+      likely_supported: 'Open the source and confirm the exact passage before submitting your work.',
+      partial_match: 'Open the source. It appears related, but your sentence may need to be narrower or more precise.',
+      needs_source_review: 'Inspect the suggested pages and replace the citation if none directly support your sentence.',
+      possible_conflict: 'Read the source carefully. The retrieved page may disagree with part of your sentence.',
+      source_not_found: 'Public retrieval did not support this sentence. Find a direct source or remove the unsupported detail.',
+      quote_not_supported: 'Public retrieval did not support this quotation. Locate the original passage or remove the quotation.',
+      citation_incomplete: 'Add the missing citation details so the source can be checked with confidence.',
+      source_too_vague: 'Rewrite the claim with clearer names, dates, or terms before checking it again.',
+      needs_review: 'Review the source manually before relying on this claim.'
+    };
+    return steps[key] || steps.needs_review;
   }
 
   function makeEl(tag, className, content) {
@@ -47,8 +96,7 @@
       '.fracture-source-card{position:relative;overflow:hidden;border:1px solid var(--border,#2c3340);border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018));box-shadow:0 18px 42px rgba(0,0,0,.24)}',
       '.fracture-source-card::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e)}',
       '.fracture-source-head{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:18px 18px 14px;border-bottom:1px solid var(--border,#2c3340)}',
-      '.fracture-warning-triangle{position:relative;width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-bottom:32px solid #ef4444;filter:drop-shadow(0 8px 16px rgba(239,68,68,.28))}',
-      '.fracture-warning-triangle span{position:absolute;left:-4px;top:10px;color:white;font-size:18px;font-weight:900;line-height:1;font-family:Arial,sans-serif}',
+      '.fracture-source-mark{display:grid;width:36px;height:32px;place-items:center;background:#ef4444;color:#fff;clip-path:polygon(50% 0,100% 100%,0 100%);font-size:16px;font-weight:900;font-family:Arial,sans-serif;padding-top:8px}',
       '.fracture-source-kicker{font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:.16em;color:var(--text-3,#9ca3af);font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace)}',
       '.fracture-source-title{margin-top:5px;font-size:18px;font-weight:760;color:var(--text-1,#f7f2e8)}',
       '.fracture-source-summary{margin-top:5px;font-size:13px;line-height:1.45;color:var(--text-2,#cbd5e1)}',
@@ -59,9 +107,14 @@
       '.fracture-source-section + .fracture-source-section{margin-top:18px}',
       '.fracture-source-section h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--text-3,#9ca3af);font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace)}',
       '.fracture-source-rows{display:grid;gap:10px}',
-      '.fracture-source-row{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(130px,.55fr) minmax(0,1fr);gap:12px;align-items:start;border:1px solid var(--border,#2c3340);border-radius:8px;padding:12px;background:rgba(255,255,255,.025)}',
+      '.fracture-source-row{display:grid;gap:11px;border:1px solid var(--border,#2c3340);border-radius:8px;padding:14px;background:rgba(255,255,255,.025)}',
+      '.fracture-source-row-head{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}',
       '.fracture-source-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-3,#9ca3af);font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);margin-bottom:5px}',
       '.fracture-source-text{font-size:13px;line-height:1.45;color:var(--text-2,#cbd5e1);word-break:break-word}',
+      '.fracture-source-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}',
+      '.fracture-source-guidance{border-top:1px solid var(--border,#2c3340);padding-top:10px}',
+      '.fracture-source-link{color:var(--accent-2,#93c5fd);font-size:13px;text-decoration:none}',
+      '.fracture-source-link:hover{text-decoration:underline}',
       '.fracture-source-status{display:inline-flex;align-items:center;gap:7px;max-width:100%;border-radius:999px;padding:6px 9px;font-size:11px;line-height:1.1;font-weight:760;text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace)}',
       '.fracture-source-status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:0 0 auto}',
       '.fracture-source-status.ok{color:#22c55e;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35)}',
@@ -74,21 +127,32 @@
       '.fracture-source-button{appearance:none;border:1px solid var(--border,#2c3340);border-radius:8px;background:rgba(255,255,255,.06);color:var(--text-1,#f7f2e8);font:inherit;font-size:12px;font-weight:760;padding:9px 12px;cursor:pointer}',
       '.fracture-source-button:hover{border-color:var(--border-2,#596273);background:rgba(255,255,255,.09)}',
       '.fracture-source-button:disabled{opacity:.55;cursor:not-allowed}',
+      '.fracture-source-style{display:inline-flex;gap:2px;border:1px solid var(--border,#2c3340);border-radius:7px;padding:2px;background:rgba(0,0,0,.12)}',
+      '.fracture-source-style-button{appearance:none;border:0;border-radius:5px;background:transparent;color:var(--text-3,#9ca3af);cursor:pointer;font:inherit;font-size:11px;font-weight:760;letter-spacing:.08em;padding:7px 9px;text-transform:uppercase}',
+      '.fracture-source-style-button[aria-pressed="true"]{background:var(--text-1,#f7f2e8);color:var(--bg,#10151e)}',
       '.fracture-source-note{font-size:12px;line-height:1.4;color:var(--text-3,#9ca3af);margin-top:10px}',
-      '@media (max-width:720px){.fracture-source-head{grid-template-columns:auto 1fr}.fracture-source-score{grid-column:1 / -1;text-align:left}.fracture-source-row{grid-template-columns:1fr}.fracture-source-actions{justify-content:stretch}.fracture-source-button{width:100%}}',
+      '@media (max-width:720px){.fracture-source-head{grid-template-columns:auto 1fr}.fracture-source-score{grid-column:1 / -1;text-align:left}.fracture-source-grid{grid-template-columns:1fr}.fracture-source-actions{justify-content:stretch}.fracture-source-button{width:100%}}',
       '[data-theme="light"] .fracture-source-card{background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(248,250,252,.88));box-shadow:0 18px 42px rgba(15,23,42,.12)}'
     ].join('\n');
     document.head.appendChild(style);
   }
 
-  function normalizeRows(data) {
+  function citationForStyle(item, style) {
+    if (typeof item === 'string') return item.trim();
+    return text(style === 'apa' ? item.apa : item.mla, text(item.entry || item.citation || item.reference || item.title || item.url || item.source, ''));
+  }
+
+  function normalizeRows(data, style) {
     const fromRows = asArray(data && (data.rows || data.verification_rows || data.claim_source_statuses));
     if (fromRows.length) return fromRows.map(function (row) {
       return {
         claim: text(row.claim || row.text || row.statement || row.quote, 'Claim not specified.'),
         status: text(row.status || row.verdict || row.support_status, 'Needs review'),
         source: text(row.source || row.citation || row.reference || row.url || row.evidence, 'No source supplied.'),
-        note: text(row.note || row.notes || row.explanation || row.issue || row.fix, '')
+        sourceTitle: text(row.source_title || row.title, ''),
+        sourceUrl: text(row.source_url || row.url, ''),
+        note: text(row.note || row.notes || row.explanation || row.issue || row.fix, ''),
+        issues: citationIssues(row.citation_issues)
       };
     });
 
@@ -96,7 +160,7 @@
       const firstSource = asArray(claim.sources)[0] || {};
       const sourceLabel = text(
         claim.source || claim.citation || claim.reference || claim.url || claim.evidence ||
-        firstSource.mla || firstSource.title || firstSource.url,
+        citationForStyle(firstSource, style) || firstSource.title || firstSource.url,
         'No source supplied.'
       );
       const issueText = asArray(claim.citation_issues).length
@@ -106,29 +170,19 @@
         claim: text(claim.claim || claim.text || claim.statement || claim.quote, 'Claim not specified.'),
         status: text(claim.status || claim.verdict || claim.support_status || claim.rating, 'Needs review'),
         source: sourceLabel,
-        note: issueText + text(claim.note || claim.notes || claim.explanation || claim.issue || claim.fix || claim.verification_note, '')
+        sourceTitle: text(firstSource.title, ''),
+        sourceUrl: text(firstSource.url, ''),
+        note: text(claim.note || claim.notes || claim.explanation || claim.issue || claim.fix || claim.verification_note, ''),
+        issues: citationIssues(claim.citation_issues) || issueText
       };
     });
   }
 
-  function normalizeWorksCited(data, rows) {
+  function normalizeWorksCited(data, style) {
     const explicit = asArray(data && (data.works_cited || data.worksCited || data.citations || data.references));
-    const cited = explicit.map(function (item) {
-      if (typeof item === 'string') return item.trim();
-      return text(item.entry || item.citation || item.reference || item.mla || item.title || item.url || item.source, '');
+    return explicit.map(function (item) {
+      return citationForStyle(item, style);
     }).filter(Boolean);
-
-    rows.forEach(function (row) {
-      const source = text(row.source, '');
-      if (source && source !== 'No source supplied.' && cited.indexOf(source) === -1) cited.push(source);
-    });
-
-    asArray(data && data.sources).forEach(function (item) {
-      const source = typeof item === 'string' ? item.trim() : text(item.entry || item.citation || item.reference || item.mla || item.title || item.url || item.name, '');
-      if (source && cited.indexOf(source) === -1) cited.push(source);
-    });
-
-    return cited;
   }
 
   function scoreFromRows(data, rows) {
@@ -136,19 +190,21 @@
     if (explicit !== undefined && explicit !== null && explicit !== '') return text(explicit, 'Review');
     if (!rows.length) return 'Review';
     const good = rows.filter(function (row) { return statusTone(row.status) === 'ok'; }).length;
-    return Math.round((good / rows.length) * 100) + '%';
+    return good + ' of ' + rows.length;
   }
 
   function summaryText(payload) {
     if (typeof payload.summary === 'string') return payload.summary;
     if (payload.summary && typeof payload.summary === 'object') {
       const s = payload.summary;
-      return [
-        text(s.total_claims, '0') + ' claims checked',
-        text(s.supported, '0') + ' supported',
-        text(s.unsupported, '0') + ' unsupported',
-        text(s.works_cited_count, '0') + ' Works Cited entries'
-      ].join('. ') + '.';
+      const total = text(s.total_claims, '0');
+      const supported = text(s.likely_supported || s.supported, '0');
+      const review = Number(s.needs_source_review || 0) + Number(s.partial_match || 0) + Number(s.possible_conflict || 0);
+      const missing = Number(s.citation_incomplete || 0) + Number(s.source_not_found || 0) + Number(s.quote_not_supported || 0);
+      return 'Fracture checked ' + total + ' draft passages for citation support. '
+        + supported + (Number(supported) === 1 ? ' has' : ' have') + ' a tentative public-web match. '
+        + review + (review === 1 ? ' needs' : ' need') + ' a closer look. '
+        + missing + (missing === 1 ? ' needs' : ' need') + ' a better or more complete citation.';
     }
     return text(payload.overall || payload.verdict, 'Review each claim against the source it relies on before final submission.');
   }
@@ -156,28 +212,31 @@
   function renderVerification(data) {
     injectStyles();
     const payload = data && typeof data === 'object' ? data : {};
-    const rows = normalizeRows(payload);
-    const worksCited = normalizeWorksCited(payload, rows);
+    const style = citationStyle(payload.citation_style);
+    const rows = normalizeRows(payload, style);
+    const worksCited = normalizeWorksCited(payload, style);
+    const bibliographyTitle = style === 'apa' ? 'References' : 'Works Cited';
+    const edition = style === 'apa' ? 'APA 7th edition' : 'MLA 9th edition';
     const card = makeEl('section', 'fracture-source-card');
     const head = makeEl('div', 'fracture-source-head');
-    const warning = append(makeEl('div', 'fracture-warning-triangle'), makeEl('span', '', '!'));
-    warning.setAttribute('aria-hidden', 'true');
+    const mark = makeEl('div', 'fracture-source-mark', '!');
+    mark.setAttribute('aria-hidden', 'true');
 
     const titleBlock = makeEl('div', 'fracture-source-heading');
     append(
       titleBlock,
-      makeEl('div', 'fracture-source-kicker', 'Source Verification'),
-      makeEl('div', 'fracture-source-title', text(payload.title, 'Claim and citation check')),
+      makeEl('div', 'fracture-source-kicker', 'Source review · ' + edition),
+      makeEl('div', 'fracture-source-title', text(payload.title, 'Check what your sources actually support')),
       makeEl('div', 'fracture-source-summary', summaryText(payload))
     );
 
     const score = makeEl('div', 'fracture-source-score');
-    append(score, makeEl('b', '', scoreFromRows(payload, rows)), makeEl('span', '', 'Verified'));
-    append(head, warning, titleBlock, score);
+    append(score, makeEl('b', '', scoreFromRows(payload, rows)), makeEl('span', '', 'Tentative matches'));
+    append(head, mark, titleBlock, score);
 
     const body = makeEl('div', 'fracture-source-body');
     const rowSection = makeEl('div', 'fracture-source-section');
-    append(rowSection, makeEl('h3', '', 'Claim / Source Status'));
+    append(rowSection, makeEl('h3', '', 'Citation checks'));
     const rowWrap = makeEl('div', 'fracture-source-rows');
 
     if (!rows.length) {
@@ -185,26 +244,58 @@
     } else {
       rows.forEach(function (row) {
         const rowEl = makeEl('div', 'fracture-source-row');
-        const claimCell = makeEl('div');
-        append(claimCell, makeEl('div', 'fracture-source-label', 'Claim'), makeEl('div', 'fracture-source-text', row.claim));
+        const rowHead = makeEl('div', 'fracture-source-row-head');
+        append(rowHead, makeEl('div', 'fracture-source-label', 'Draft passage to cite'), makeEl('div', 'fracture-source-status ' + statusTone(row.status), statusLabel(row.status)));
 
-        const statusCell = makeEl('div');
-        append(statusCell, makeEl('div', 'fracture-source-label', 'Status'), makeEl('div', 'fracture-source-status ' + statusTone(row.status), row.status));
+        const claimText = makeEl('div', 'fracture-source-text', row.claim);
+        const sourceGrid = makeEl('div', 'fracture-source-grid');
+        const foundCell = makeEl('div');
+        append(foundCell, makeEl('div', 'fracture-source-label', 'What Fracture found'));
+        if (row.sourceUrl) {
+          const link = makeEl('a', 'fracture-source-link', row.sourceTitle || 'Open the closest matching source');
+          link.href = row.sourceUrl;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          append(foundCell, link);
+        } else {
+          append(foundCell, makeEl('div', 'fracture-source-text', row.source || 'No dependable public source was found yet.'));
+        }
+        if (row.note) append(foundCell, makeEl('div', 'fracture-source-note', row.note));
 
-        const sourceCell = makeEl('div');
-        append(sourceCell, makeEl('div', 'fracture-source-label', 'Source'), makeEl('div', 'fracture-source-text', row.source));
-        if (row.note) append(sourceCell, makeEl('div', 'fracture-source-note', row.note));
+        const actionCell = makeEl('div');
+        append(actionCell, makeEl('div', 'fracture-source-label', 'What to do next'), makeEl('div', 'fracture-source-text', nextStep(row.status)));
+        if (row.issues) append(actionCell, makeEl('div', 'fracture-source-note', row.issues));
 
-        append(rowEl, claimCell, statusCell, sourceCell);
+        append(sourceGrid, foundCell, actionCell);
+        append(rowEl, rowHead, claimText, sourceGrid);
         append(rowWrap, rowEl);
       });
     }
     append(rowSection, rowWrap);
 
     const citedSection = makeEl('div', 'fracture-source-section');
-    append(citedSection, makeEl('h3', '', 'Works Cited'));
+    const citedHead = makeEl('div', 'fracture-source-row-head');
+    const styleSwitch = makeEl('div', 'fracture-source-style');
+    styleSwitch.setAttribute('role', 'group');
+    styleSwitch.setAttribute('aria-label', 'Citation style');
+    ['mla', 'apa'].forEach(function (option) {
+      const styleButton = makeEl('button', 'fracture-source-style-button', option.toUpperCase());
+      styleButton.type = 'button';
+      styleButton.setAttribute('aria-pressed', option === style ? 'true' : 'false');
+      styleButton.addEventListener('click', function () {
+        if (option === style) return;
+        const nextPayload = Object.assign({}, payload, {
+          citation_style: option,
+          bibliography_title: option === 'apa' ? 'References' : 'Works Cited'
+        });
+        card.replaceWith(renderVerification(nextPayload));
+      });
+      append(styleSwitch, styleButton);
+    });
+    append(citedHead, makeEl('h3', '', bibliographyTitle), styleSwitch);
+    append(citedSection, citedHead);
     if (!worksCited.length) {
-      append(citedSection, makeEl('div', 'fracture-source-empty', 'Works Cited will populate when citations or source references are returned.'));
+      append(citedSection, makeEl('div', 'fracture-source-empty', 'No source is ready to add yet. Fracture only adds a bibliography entry for a tentative public-page match. Open the source and verify the exact passage before using it.'));
     } else {
       const list = makeEl('ol', 'fracture-works-cited');
       worksCited.forEach(function (citation) {
@@ -231,15 +322,16 @@
     return card;
   }
 
-  async function verifySources(getEssay, getAudit) {
+  async function verifySources(getEssay, getAudit, getCitationStyle) {
     const essay = typeof getEssay === 'function' ? text(getEssay(), '') : '';
     const audit = typeof getAudit === 'function' ? getAudit() : null;
+    const citationStyle = typeof getCitationStyle === 'function' && getCitationStyle() === 'apa' ? 'apa' : 'mla';
     if (!essay) throw new Error('No essay text is available for source verification.');
 
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ essay: essay, audit: audit })
+      body: JSON.stringify({ essay: essay, audit: audit, citation_style: citationStyle })
     });
 
     const contentType = res.headers.get('content-type') || '';
@@ -269,7 +361,7 @@
       button.disabled = true;
       root.replaceChild(renderMessage('Preparing source verification.', 'loading'), root.firstChild);
       try {
-        const data = await verifySources(config.getEssay, config.getAudit);
+        const data = await verifySources(config.getEssay, config.getAudit, config.getCitationStyle);
         root.replaceChild(renderVerification(data), root.firstChild);
         return data;
       } catch (err) {

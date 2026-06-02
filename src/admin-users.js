@@ -54,16 +54,26 @@ export async function listAdminUsers(password) {
 
   try {
     const snapshot = await getFirestore(getAdminApp()).collection("users").orderBy("lastSeen", "desc").get();
-    const users = snapshot.docs.map((entry) => {
+    const users = await Promise.all(snapshot.docs.map(async (entry) => {
       const user = entry.data();
+      const recentProjects = await entry.ref.collection("projects").orderBy("updatedAt", "desc").limit(1).get();
+      const recentProject = recentProjects.docs[0]?.data();
+      const audit = recentProject?.analysis?.audit;
       return {
         email: user.email || "",
         fullName: user.name || "",
         provider: user.provider || "email",
         lastSeen: isoTimestamp(user.lastSeen),
-        created: isoTimestamp(user.createdAt)
+        created: isoTimestamp(user.createdAt),
+        latestUpload: recentProject ? {
+          title: recentProject.title || "Untitled argument",
+          draft: recentProject.draft || "",
+          updated: isoTimestamp(recentProject.updatedAt),
+          score: typeof audit?.overall_score === "number" ? audit.overall_score : null,
+          verdict: audit?.verdict || ""
+        } : null
       };
-    });
+    }));
 
     return {
       ok: true,
