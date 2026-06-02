@@ -29,7 +29,7 @@
     count.textContent = users.length.toLocaleString() + ' accounts found.';
     usersRoot.innerHTML = ''
       + '<table class="admin-table">'
-      + '<thead><tr><th>Full Name</th><th>Email</th><th>Provider</th><th>Last Active</th><th>Account Created</th></tr></thead>'
+      + '<thead><tr><th>Full Name</th><th>Email</th><th>Provider</th><th>Last Active</th><th>Most Recent Upload</th><th>Account Created</th></tr></thead>'
       + '<tbody>'
       + users.map(function (user) {
         return '<tr>'
@@ -37,10 +37,22 @@
           + '<td>' + esc(user.email || 'No email') + '</td>'
           + '<td>' + esc(user.provider || 'email') + '</td>'
           + '<td>' + esc(dateLabel(user.lastSeen || user.created)) + '</td>'
+          + '<td>' + renderLatestUpload(user.latestUpload) + '</td>'
           + '<td>' + esc(dateLabel(user.created)) + '</td>'
           + '</tr>';
       }).join('')
       + '</tbody></table>';
+  }
+
+  function renderLatestUpload(upload) {
+    if (!upload) return '<span class="admin-muted">No uploaded work yet.</span>';
+    const score = typeof upload.score === 'number' ? ' · Score ' + esc(upload.score) + '/100' : '';
+    return '<details class="admin-upload">'
+      + '<summary>' + esc(upload.title || 'Untitled argument') + score + '</summary>'
+      + '<div class="admin-upload-meta">' + esc(dateLabel(upload.updated)) + '</div>'
+      + '<p>' + esc(upload.draft || 'No draft text stored.') + '</p>'
+      + (upload.verdict ? '<small>' + esc(upload.verdict) + '</small>' : '')
+      + '</details>';
   }
 
   async function loadUsers() {

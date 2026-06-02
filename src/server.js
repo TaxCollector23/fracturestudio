@@ -18,6 +18,9 @@ app.use(express.json({ limit: "256kb" }));
 
 // Keep both clean URLs and static filenames available in development.
 app.use(express.static(PUBLIC_DIR));
+app.get(["/studio", "/studio/case", "/analyze"], (_req, res) => {
+  res.sendFile(join(PUBLIC_DIR, "studio.html"));
+});
 app.use("/studio", express.static(PUBLIC_DIR));
 
 app.post("/api/analyze", handleAnalyze);
@@ -76,11 +79,10 @@ app.get("/api/public-config", (_req, res) => {
   res.json(getPublicAuthConfig());
 });
 
-app.get(["/studio", "/studio/case", "/analyze"], (_req, res) => {
-  res.sendFile(join(PUBLIC_DIR, "studio.html"));
-});
 app.get("/mission", (_req, res) => res.sendFile(join(PUBLIC_DIR, "mission.html")));
 app.get("/blog", (_req, res) => res.sendFile(join(PUBLIC_DIR, "blog.html")));
+app.get("/changelog", (_req, res) => res.sendFile(join(PUBLIC_DIR, "changelog.html")));
+app.get("/rebuttals", (_req, res) => res.sendFile(join(PUBLIC_DIR, "rebuttals.html")));
 app.get(["/settings", "/login"], (_req, res) => res.sendFile(join(PUBLIC_DIR, "settings.html")));
 app.get("/auth/callback", (_req, res) => res.sendFile(join(PUBLIC_DIR, "auth-callback.html")));
 app.get("/admin", (_req, res) => res.sendFile(join(PUBLIC_DIR, "admin.html")));

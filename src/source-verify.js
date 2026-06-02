@@ -1,7 +1,13 @@
-const CLAIM_LIMIT = 10;
-const RESULTS_PER_CLAIM = 4;
-const SEARCH_TIMEOUT_MS = 8000;
-const PAGE_TIMEOUT_MS = 7000;
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+
+const CLAIM_LIMIT = 6;
+const RESULTS_PER_CLAIM = 3;
+const SEARCH_TIMEOUT_MS = 4500;
+const PAGE_TIMEOUT_MS = 4000;
+const PAGE_MAX_BYTES = 350000;
+const MAX_REDIRECTS = 3;
+const VERIFY_DEADLINE_MS = 50000;
 const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const USER_AGENT = "FractureStudioSourceVerifier/1.0 (+https://fracturestudio.vercel.app)";
 const searchCache = new Map();
@@ -62,12 +68,15 @@ export async function verifySources(input = {}) {
 
   const claims = [];
   const citedSources = new Map();
+  const deadline = Date.now() + VERIFY_DEADLINE_MS;
 
   for (const claim of extractedClaims) {
-    const result = await verifyClaim(claim, citationStyle);
+    const result = Date.now() < deadline - 1500
+      ? await verifyClaim(claim, citationStyle)
+      : finalizeClaim(claim, [], "needs_review", "The source-review time limit was reached. Check this claim manually or run Verify Sources again.", citationStyle);
     claims.push(result);
     const bestSource = result.sources.find((source) => source.match_score >= 0.72 && source.url);
-    if (result.support_status === "likely_supported" && bestSource && !citedSources.has(bestSource.url)) {
+    if (result.support_status === "likely_supported" && bibliographyReady(result, bestSource) && !citedSources.has(bestSource.url)) {
       citedSources.set(bestSource.url, bestSource);
     }
   }
@@ -93,9 +102,9 @@ export async function verifySources(input = {}) {
 export function extractClaims(essay = "", audit = null) {
   const seen = new Set();
   const claims = [];
-  const addClaim = (text, origin = "essay", priority = 4) => {
+  const addClaim = (text, origin = "essay", priority = 4, options = {}) => {
     const quote = cleanText(text);
-    if (!quote || quote.length < 18) return;
+    if (!quote || quote.length < (options.quotedPassage ? 12 : 18)) return;
     const key = quote.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
@@ -104,28 +113,40 @@ export function extractClaims(essay = "", audit = null) {
       text: quote,
       origin,
       priority,
-      query: buildSearchQuery(quote),
-      citation_issues: detectCitationIssues(quote)
+      quoted_passage: options.quotedPassage || "",
+      query: buildSearchQuery(quote, options.quotedPassage),
+      citation_issues: options.quotedPassage
+        ? Array.from(new Set([...detectCitationIssues(quote), "source_needed"]))
+        : detectCitationIssues(quote)
     });
   };
 
+  for (const quote of extractQuotedPassages(essay)) {
+    addClaim(quote, "draft.quoted_passage", 1, { quotedPassage: quote });
+  }
+
   if (audit) {
-    addClaim(audit?.collapse_point?.quote, "audit.collapse_point", 1);
+    addAuditClaim(audit?.collapse_point?.quote, "audit.collapse_point", 2);
     for (const claim of ensureArray(audit?.argument_strength?.claims)) {
-      addClaim(claim?.quote, "audit.argument_strength.claims", 2);
+      addAuditClaim(claim?.quote, "audit.argument_strength.claims", 3);
     }
     for (const fix of ensureArray(audit?.priority_fixes)) {
-      addClaim(fix?.quote, "audit.priority_fixes", 3);
+      addAuditClaim(fix?.quote, "audit.priority_fixes", 4);
     }
   }
 
   for (const sentence of splitSentences(essay)) {
-    if (looksFactual(sentence)) addClaim(sentence, "essay", 4);
+    if (looksFactual(sentence)) addClaim(sentence, "essay", 5);
   }
 
   return claims
     .sort((a, b) => a.priority - b.priority || b.text.length - a.text.length)
     .map((claim, index) => ({ ...claim, id: `claim_${index + 1}` }));
+
+  function addAuditClaim(text, origin, priority) {
+    const cleaned = cleanText(text);
+    if (looksCitationRelevant(cleaned)) addClaim(cleaned, origin, priority);
+  }
 }
 
 async function verifyClaim(claim, citationStyle) {
@@ -154,16 +175,19 @@ async function verifyClaim(claim, citationStyle) {
     );
   }
 
-  const sources = [];
-  for (const result of search.results.slice(0, RESULTS_PER_CLAIM)) {
+  const sources = await Promise.all(search.results.slice(0, RESULTS_PER_CLAIM).map(async (result) => {
     const metadata = await fetchPageMetadata(result.url);
-    sources.push(normalizeSource({ ...result, ...metadata }));
-  }
+    return normalizeSource({ ...result, ...metadata });
+  }));
 
   const scoredSources = sources
-    .map((source) => ({ ...source, match_score: sourceMatchScore(claim.text, source) }))
+    .map((source) => ({
+      ...source,
+      match_score: sourceMatchScore(claim.text, source),
+      quote_match: claim.quoted_passage ? quotedPassageMatch(claim.quoted_passage, source) : null
+    }))
     .sort((a, b) => b.match_score - a.match_score);
-  const status = classifySupport(claim.text, scoredSources, citationTooVague);
+  const status = classifySupport(claim, scoredSources, citationTooVague);
   return finalizeClaim(claim, scoredSources, status.status, status.reason, citationStyle);
 }
 
@@ -173,6 +197,7 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote, citation
     claim: claim.text,
     origin: claim.origin,
     search_query: claim.query,
+    quoted_passage: claim.quoted_passage || null,
     support_status: supportStatus,
     confidence: confidenceFor(supportStatus, sources),
     verification_note: verificationNote,
@@ -188,6 +213,8 @@ function finalizeClaim(claim, sources, supportStatus, verificationNote, citation
       accessed_date: source.accessed_date,
       snippet: source.snippet,
       match_score: source.match_score,
+      quote_match: source.quote_match,
+      page_retrieved: source.page_retrieved,
       mla: buildMlaEntry(source),
       apa: buildApaEntry(source),
       citation: buildCitationEntry(source, citationStyle)
@@ -313,18 +340,20 @@ function parseReaderSearchResults(markdown) {
 
 async function fetchPageMetadata(url) {
   try {
-    const html = await fetchText(url, PAGE_TIMEOUT_MS);
+    const html = await fetchPublicPageText(url, PAGE_TIMEOUT_MS);
     return {
       title: firstMeta(html, ["og:title", "twitter:title"]) || htmlTitle(html),
       author: firstMeta(html, ["author", "article:author", "byl"]),
       site_name: firstMeta(html, ["og:site_name", "application-name"]) || hostName(url),
       published_date: firstMeta(html, ["article:published_time", "date", "dc.date", "citation_publication_date"]),
       description: firstMeta(html, ["og:description", "twitter:description", "description"]),
-      page_excerpt: pageExcerpt(html)
+      page_excerpt: pageExcerpt(html),
+      page_retrieved: true
     };
   } catch (_) {
     return {
-      site_name: hostName(url)
+      site_name: hostName(url),
+      page_retrieved: false
     };
   }
 }
@@ -347,7 +376,62 @@ async function fetchText(url, timeoutMs, userAgent = USER_AGENT) {
   }
 }
 
-function classifySupport(claimText, sources, citationTooVague) {
+async function fetchPublicPageText(url, timeoutMs, redirectCount = 0) {
+  if (redirectCount > MAX_REDIRECTS) throw new Error("Too many redirects");
+  await assertPublicHttpsUrl(url);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      },
+      redirect: "manual",
+      signal: controller.signal
+    });
+    if (res.status >= 300 && res.status < 400) {
+      const destination = new URL(res.headers.get("location") || "", url).href;
+      return fetchPublicPageText(destination, timeoutMs, redirectCount + 1);
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return readBoundedText(res, PAGE_MAX_BYTES);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function assertPublicHttpsUrl(url) {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:") throw new Error("Only HTTPS public pages are allowed");
+  const host = parsed.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost") || isPrivateAddress(host)) {
+    throw new Error("Private-network pages are not allowed");
+  }
+  const results = await lookup(host, { all: true, verbatim: true });
+  if (!results.length || results.some((entry) => isPrivateAddress(entry.address))) {
+    throw new Error("Private-network pages are not allowed");
+  }
+}
+
+async function readBoundedText(response, limit) {
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let total = 0;
+  let text = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) throw new Error("Retrieved page is too large");
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
+function classifySupport(claim, sources, citationTooVague) {
+  const claimText = claim.text;
   const claimTerms = importantTerms(claimText);
   if (!claimTerms.length) {
     return {
@@ -366,6 +450,25 @@ function classifySupport(claimText, sources, citationTooVague) {
     if (hasNegationConflict(claimText, contradictionText)) hasContradictionCue = true;
   }
 
+  if (claim.quoted_passage) {
+    if (sources.some((source) => source.quote_match)) {
+      return {
+        status: "likely_supported",
+        reason: "A retrieved public page contains this quoted passage. Treat this as a tentative source match: open the page and confirm the speaker, context, and citation details before using it."
+      };
+    }
+    if (!sources.some((source) => source.page_retrieved)) {
+      return {
+        status: "needs_source_review",
+        reason: "Search found possible public pages, but their page text could not be retrieved. Open the source and locate the quotation manually before using it."
+      };
+    }
+    return {
+      status: "quote_not_supported",
+      reason: "The retrieved public pages did not contain this quoted passage. It is not supported by the retrieved pages; locate the original text or remove the quotation."
+    };
+  }
+
   if (hasContradictionCue && bestOverlap >= 0.5) {
     return {
       status: "possible_conflict",
@@ -378,10 +481,16 @@ function classifySupport(claimText, sources, citationTooVague) {
       reason: "A potentially relevant public page was found, but the draft does not identify the source precisely enough to connect it confidently to this claim."
     };
   }
+  if (ensureArray(claim.citation_issues).includes("source_needed") && bestOverlap >= 0.72) {
+    return {
+      status: "needs_source_review",
+      reason: "Search found a closely related public page, but the draft does not identify a source. Open the page and confirm the exact passage before adding it to the bibliography."
+    };
+  }
   if (bestOverlap >= 0.72) {
     return {
       status: "likely_supported",
-      reason: "Retrieved source metadata closely matches the claim's distinctive terms. Open the source and confirm the passage before final submission."
+      reason: "Public retrieval closely matches the claim's distinctive terms. Treat this as a tentative source match: open the source and confirm the exact passage before final submission."
     };
   }
   if (bestOverlap >= 0.42) {
@@ -463,6 +572,7 @@ function buildSummary(claims, worksCited, citationStyle) {
     needs_source_review: 0,
     possible_conflict: 0,
     source_not_found: 0,
+    quote_not_supported: 0,
     citation_incomplete: 0,
     source_too_vague: 0,
     needs_review: 0
@@ -481,23 +591,37 @@ function buildSummary(claims, worksCited, citationStyle) {
     citation_style: citationStyle,
     style_edition: citationStyle === "apa" ? "APA 7th edition" : "MLA 9th edition",
     note: claims.length > 0 && claims.every((claim) => claim.support_status === "likely_supported")
-      ? "Every checked claim has a strong public-web match. Open each retrieved page and confirm the exact passage before final submission."
-      : "Automated verification searched public pages and retrieved page text for comparison. Review flagged claims and open each promoted source before final submission."
+      ? "Every checked citation has a tentative public-web match. Open each retrieved page and confirm the exact passage before final submission."
+      : "Automated verification searched public pages and retrieved page text for comparison. Treat matches as tentative, and review each not-supported or incomplete citation before final submission."
   };
 }
 
-function buildSearchQuery(text) {
-  const quoted = extractQuotedSource(text);
+function buildSearchQuery(text, quotedPassage = "") {
+  const quoted = quotedPassage || extractQuotedSource(text);
+  if (quoted) return `"${quoted.slice(0, 240)}"`;
   const terms = importantTerms(text).slice(0, 10);
-  return Array.from(new Set([quoted, ...terms].filter(Boolean))).join(" ") || text.slice(0, 160);
+  return Array.from(new Set(terms.filter(Boolean))).join(" ") || text.slice(0, 160);
 }
 
 function extractQuotedSource(text) {
-  const quoted = text.match(/["“]([^"”]{8,120})["”]/);
+  const quoted = text.match(/["“]([^"”]{8,240})["”]/);
   if (quoted) return quoted[1];
   const according = text.match(/\baccording to\s+([^,.]{4,100})/i);
   if (according) return according[1];
   return "";
+}
+
+export function extractQuotedPassages(text = "") {
+  const passages = [];
+  const pattern = /"([^"\r\n]{12,500})"|“([^”\r\n]{12,500})”/g;
+  let match;
+
+  while ((match = pattern.exec(String(text || "")))) {
+    const passage = cleanText(match[1] || match[2] || "");
+    if (passage) passages.push(passage);
+  }
+
+  return Array.from(new Set(passages));
 }
 
 function importantTerms(text) {
@@ -516,11 +640,23 @@ function sourceMatchScore(claimText, source) {
   return Number(overlap.toFixed(2));
 }
 
+function quotedPassageMatch(quotedPassage, source) {
+  const quoted = normalizeComparableText(quotedPassage);
+  if (!quoted) return false;
+  const retrievedText = normalizeComparableText(source.page_excerpt || "");
+  return retrievedText.includes(quoted);
+}
+
 function looksFactual(sentence) {
   const text = String(sentence || "").trim();
   if (text.length < 18) return false;
   if (FACTUAL_SIGNALS.some((pattern) => pattern.test(text))) return true;
   return /\b(is|are|was|were|has|have|had)\b/i.test(text) && /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/.test(text);
+}
+
+function looksCitationRelevant(text) {
+  const cleaned = String(text || "").trim();
+  return cleaned.length >= 18 && FACTUAL_SIGNALS.slice(0, 6).some((pattern) => pattern.test(cleaned));
 }
 
 function isSourceTooVague(text) {
@@ -550,13 +686,39 @@ function normalizeDuckDuckGoUrl(url) {
 function isUsableSourceUrl(url) {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return /^https?:\/\//i.test(url)
+    return /^https:\/\//i.test(url)
       && host !== "duckduckgo.com"
       && !host.endsWith(".duckduckgo.com")
-      && host !== "r.jina.ai";
+      && host !== "r.jina.ai"
+      && host !== "localhost"
+      && !host.endsWith(".localhost")
+      && !isPrivateAddress(host);
   } catch (_) {
     return false;
   }
+}
+
+function isPrivateAddress(value) {
+  const address = String(value || "").toLowerCase().replace(/^\[|\]$/g, "");
+  if (!isIP(address)) return false;
+  if (address === "::1" || address === "::" || address.startsWith("fc") || address.startsWith("fd") || address.startsWith("fe8") || address.startsWith("fe9") || address.startsWith("fea") || address.startsWith("feb")) return true;
+  if (address.startsWith("::ffff:")) return isPrivateAddress(address.slice(7));
+  const parts = address.split(".").map(Number);
+  if (parts.length !== 4) return false;
+  return parts[0] === 0
+    || parts[0] === 10
+    || parts[0] === 127
+    || (parts[0] === 169 && parts[1] === 254)
+    || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
+    || (parts[0] === 192 && parts[1] === 168)
+    || (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127)
+    || parts[0] >= 224;
+}
+
+function bibliographyReady(claim, source) {
+  if (!source || !source.url || source.page_retrieved !== true) return false;
+  if (source.quote_match === true) return true;
+  return !ensureArray(claim.citation_issues).includes("source_needed") && source.match_score >= 0.72;
 }
 
 function normalizeSource(source) {
@@ -570,7 +732,8 @@ function normalizeSource(source) {
     accessed_date: accessedDate,
     snippet: cleanText(source.snippet || source.description || ""),
     description: cleanText(source.description || ""),
-    page_excerpt: cleanText(source.page_excerpt || "")
+    page_excerpt: cleanText(source.page_excerpt || ""),
+    page_retrieved: source.page_retrieved === true
   };
 }
 
@@ -607,11 +770,21 @@ function confidenceFor(status, sources) {
     needs_source_review: 0.36,
     possible_conflict: 0.44,
     source_not_found: 0.35,
+    quote_not_supported: 0.28,
     citation_incomplete: 0.32,
     source_too_vague: 0.3,
     needs_review: 0.2
   }[status] || 0.25;
   return Number(Math.min(0.85, base + Math.min(sources.length, 3) * 0.03).toFixed(2));
+}
+
+function normalizeComparableText(text) {
+  return cleanText(text)
+    .toLowerCase()
+    .replace(/[“”]/g, "\"")
+    .replace(/[‘’]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function dedupeResults(results) {

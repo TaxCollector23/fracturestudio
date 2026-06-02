@@ -58,8 +58,8 @@ export function buildTooThinAudit(text) {
     rewrite_suggestions: [
       {
         original: quote,
-        rewrite: "Schools should start later because sleep affects attention and memory, and that matters because students cannot learn well when the schedule works against their biology.",
-        improvement: "The rewrite gives Fracture a claim, warrant, and impact to evaluate."
+        rewrite: "My claim is that [specific position] because [reason], and this matters because [impact].",
+        improvement: "The template preserves the writer's topic while adding a claim, warrant, and impact for Fracture to evaluate."
       }
     ]
   }, text);
@@ -207,10 +207,20 @@ export function normalizeAudit(audit, essay) {
       logic: clampInt(scoreBreakdown.logic, 1, 0, 25),
       rhetoric: clampInt(scoreBreakdown.rhetoric, 1, 0, 25)
     },
+    score_explanations: {
+      argument_strength: stringOr(input.score_explanations?.argument_strength, "How effectively the thesis, claims, warrants, and impacts work together as one argument."),
+      assumption_audit: stringOr(input.score_explanations?.assumption_audit, "How safely the argument handles the unstated ideas it depends on."),
+      logic: stringOr(input.score_explanations?.logic, "How reliably the reasoning moves from evidence and warrants to conclusions without gaps."),
+      rhetoric: stringOr(input.score_explanations?.rhetoric, "How clearly and persuasively the argument guides its intended reader or audience.")
+    },
     verdict: stringOr(input.verdict, "Fracture found an argument, but the current version does not yet provide enough clear support for its central claim."),
     coaching_note: stringOr(input.coaching_note, "Start by defining the main claim and attaching direct evidence to the sentence that carries the most weight."),
     priority_fixes: ensureArray(input.priority_fixes).map((fix) => ({
       quote: sourceQuoteOr(fix?.quote, text, fallbackQuote),
+      fatality: normalizeFatality(fix?.fatality),
+      fatality_score: clampInt(fix?.fatality_score, 50, 0, 100),
+      necessity: stringOr(fix?.necessity, "This repair protects a point the argument currently needs."),
+      affected_claims: stringArray(fix?.affected_claims),
       problem: stringOr(fix?.problem, "This point needs more precise support."),
       why_it_matters: stringOr(fix?.why_it_matters, "A reader can challenge this before accepting the argument."),
       exact_fix: stringOr(fix?.exact_fix, "Add specific evidence, then write one warrant sentence explaining why that evidence proves the claim."),
@@ -219,8 +229,23 @@ export function normalizeAudit(audit, essay) {
     collapse_point: {
       quote: sourceQuoteOr(input.collapse_point?.quote, text, claims[0]?.quote || fallbackQuote),
       why_it_collapses: stringOr(input.collapse_point?.why_it_collapses, "If this point is disproven or unsupported, the argument loses its main source of force."),
+      dependency_count: clampInt(input.collapse_point?.dependency_count, 0, 0, 100),
+      affected_claims: stringArray(input.collapse_point?.affected_claims),
+      survival_probability: clampInt(input.collapse_point?.survival_probability, 50, 0, 100),
+      strongest_attack: stringOr(input.collapse_point?.strongest_attack, input.collapse_point?.opponent_attack, "What proves this point, and why should the reader accept the scope of the conclusion?"),
+      strongest_defense: stringOr(input.collapse_point?.strongest_defense, input.collapse_point?.reinforcement, "State the warrant directly, narrow the scope if needed, and support the claim with the strongest directly relevant evidence."),
       opponent_attack: stringOr(input.collapse_point?.opponent_attack, "What evidence proves this exact point rather than merely asserting it?"),
       reinforcement: stringOr(input.collapse_point?.reinforcement, "Support it with a verifiable source, a clear warrant, and a narrower qualification.")
+    },
+    argument_dependency_graph: {
+      explanation: stringOr(input.argument_dependency_graph?.explanation, "The thesis depends on the claims and reasoning bridges below. The weakest connection is the first place to repair."),
+      links: ensureArray(input.argument_dependency_graph?.links).map((link) => ({
+        from: stringOr(link?.from, "Supporting point"),
+        to: stringOr(link?.to, "Dependent point"),
+        relationship: normalizeRelationship(link?.relationship),
+        strength: normalizeRating(link?.strength),
+        risk: stringOr(link?.risk, "If this link breaks, the dependent point loses force.")
+      }))
     },
     argument_strength: {
       thesis: {
@@ -232,7 +257,11 @@ export function normalizeAudit(audit, essay) {
     assumption_audit: ensureArray(input.assumption_audit).map((item) => ({
       assumption: stringOr(item?.assumption, "The reader accepts a premise that has not been defended yet."),
       load_bearing: normalizeLoad(item?.load_bearing),
+      criticality_score: clampInt(item?.criticality_score, 50, 0, 100),
       quote: sourceQuoteOr(item?.quote, text, fallbackQuote),
+      hinges_on: stringArray(item?.hinges_on),
+      if_changed: stringOr(item?.if_changed, item?.vulnerability, "If the reader rejects this assumption, the connected claim becomes much weaker."),
+      justification: stringOr(item?.justification, item?.defense, "State the assumption directly, qualify it where necessary, and explain why it is reasonable."),
       vulnerability: stringOr(item?.vulnerability, "If this premise is false, the connected claim becomes much less persuasive."),
       defense: stringOr(item?.defense, "State the premise directly and support it with a source, example, or limiting qualifier.")
     })),
@@ -244,13 +273,47 @@ export function normalizeAudit(audit, essay) {
     })),
     counter_arguments: ensureArray(input.counter_arguments).map((item) => ({
       steelman: stringOr(item?.steelman, "A skeptical reader would argue that the evidence does not yet prove the conclusion."),
+      rank: clampInt(item?.rank, 1, 1, 99),
+      attack_type: stringOr(item?.attack_type, "logic"),
+      fatality_score: clampInt(item?.fatality_score, 50, 0, 100),
       targets: stringOr(item?.targets, fallbackQuote),
       damage: stringOr(item?.damage, "If unanswered, this weakens the central claim."),
-      suggested_rebuttal: stringOr(item?.suggested_rebuttal, "Answer by narrowing the claim and adding direct support.")
+      suggested_rebuttal: stringOr(item?.suggested_rebuttal, "Answer by narrowing the claim and adding direct support."),
+      preparation: stringOr(item?.preparation, "Prepare one direct answer and the strongest support for the claim under attack.")
+    })),
+    attack_tree: ensureArray(input.attack_tree).map((item) => ({
+      rank: clampInt(item?.rank, 1, 1, 99),
+      attack: stringOr(item?.attack, "Challenge the argument's weakest reasoning bridge."),
+      targets: stringOr(item?.targets, fallbackQuote),
+      why_dangerous: stringOr(item?.why_dangerous, "If unanswered, this attack weakens the conclusion."),
+      fatality_score: clampInt(item?.fatality_score, 50, 0, 100),
+      response: stringOr(item?.response, "Narrow the claim and state the missing warrant directly."),
+      crossfire_question: stringOr(item?.crossfire_question, "Which part of the reasoning do you dispute, and why?")
+    })),
+    truth_audit: ensureArray(input.truth_audit).map((item) => ({
+      claim: sourceQuoteOr(item?.claim, text, fallbackQuote),
+      truth_status: normalizeTruthStatus(item?.truth_status),
+      why_check: stringOr(item?.why_check, "The argument relies on this factual statement."),
+      verification_step: stringOr(item?.verification_step, "Use Verify Sources to compare this claim against a public source.")
+    })),
+    alternative_solutions_test: ensureArray(input.alternative_solutions_test).map((item) => ({
+      alternative: stringOr(item?.alternative, "A credible competing approach"),
+      why_it_competes: stringOr(item?.why_it_competes, "A reader may prefer this option if it addresses the same problem with less risk."),
+      what_writer_must_prove: stringOr(item?.what_writer_must_prove, "Explain why the proposed approach performs better against the argument's stated goal."),
+      response: stringOr(item?.response, "Compare the alternatives fairly and narrow the claim to what the draft can prove.")
     })),
     rhetorical_analysis: {
       opening_hook: stringOr(input.rhetorical_analysis?.opening_hook, "The opening states a position but needs a more precise frame for the reader."),
       logical_flow: stringOr(input.rhetorical_analysis?.logical_flow, "The sequence needs clearer claim-to-evidence movement."),
+      persuasion_assessment: stringOr(input.rhetorical_analysis?.persuasion_assessment, "The argument becomes more persuasive when each major claim is followed by a visible reasoning bridge and a clear impact."),
+      clarity_assessment: stringOr(input.rhetorical_analysis?.clarity_assessment, "Make each paragraph perform one clear job and define any term that carries the conclusion."),
+      flow_repairs: stringArray(input.rhetorical_analysis?.flow_repairs),
+      world_changing_views: {
+        present: normalizeYesNo(input.rhetorical_analysis?.world_changing_views?.present),
+        idea: stringOr(input.rhetorical_analysis?.world_changing_views?.idea, ""),
+        reader_risk: stringOr(input.rhetorical_analysis?.world_changing_views?.reader_risk, ""),
+        make_reasonable: stringOr(input.rhetorical_analysis?.world_changing_views?.make_reasonable, "")
+      },
       strongest_sentence: {
         quote: sourceQuoteOr(input.rhetorical_analysis?.strongest_sentence?.quote, text, fallbackQuote),
         why: stringOr(input.rhetorical_analysis?.strongest_sentence?.why, "This sentence gives the clearest available statement of the argument.")
@@ -294,6 +357,22 @@ export function normalizeAudit(audit, essay) {
 
   if (!normalized.priority_fixes.length) {
     normalized.priority_fixes = buildHeuristicFixes(text).slice(0, 3);
+  }
+
+  if (!normalized.argument_dependency_graph.links.length) {
+    normalized.argument_dependency_graph.links = buildHeuristicDependencyLinks(normalized);
+  }
+
+  if (!normalized.attack_tree.length) {
+    normalized.attack_tree = normalized.counter_arguments.slice(0, 4).map((item, index) => ({
+      rank: index + 1,
+      attack: item.steelman,
+      targets: item.targets,
+      why_dangerous: item.damage,
+      fatality_score: item.fatality_score,
+      response: item.suggested_rebuttal,
+      crossfire_question: "What part of the original reasoning does your objection disprove?"
+    }));
   }
 
   if (!normalized.rewrite_suggestions.length) {
@@ -588,13 +667,18 @@ function scrubUnsupportedGeneratedNumbers(audit, essay) {
 
   scrubFields(audit, ["verdict", "coaching_note"]);
   ensureArray(audit.priority_fixes).forEach((item) => scrubFields(item, ["problem", "why_it_matters", "exact_fix", "rewrite"]));
-  scrubFields(audit.collapse_point, ["why_it_collapses", "opponent_attack", "reinforcement"]);
+  scrubFields(audit.collapse_point, ["why_it_collapses", "strongest_attack", "strongest_defense", "opponent_attack", "reinforcement"]);
+  ensureArray(audit.argument_dependency_graph?.links).forEach((item) => scrubFields(item, ["from", "to", "risk"]));
   scrubFields(audit.argument_strength?.thesis, ["assessment"]);
   ensureArray(audit.argument_strength?.claims).forEach((item) => scrubFields(item, ["diagnosis", "opponent_exploit", "fix"]));
-  ensureArray(audit.assumption_audit).forEach((item) => scrubFields(item, ["assumption", "vulnerability", "defense"]));
+  ensureArray(audit.assumption_audit).forEach((item) => scrubFields(item, ["assumption", "if_changed", "justification", "vulnerability", "defense"]));
   ensureArray(audit.logical_fallacies).forEach((item) => scrubFields(item, ["name", "explanation", "fix"]));
-  ensureArray(audit.counter_arguments).forEach((item) => scrubFields(item, ["steelman", "targets", "damage", "suggested_rebuttal"]));
-  scrubFields(audit.rhetorical_analysis, ["opening_hook", "logical_flow"]);
+  ensureArray(audit.counter_arguments).forEach((item) => scrubFields(item, ["steelman", "targets", "damage", "suggested_rebuttal", "preparation"]));
+  ensureArray(audit.attack_tree).forEach((item) => scrubFields(item, ["attack", "targets", "why_dangerous", "response", "crossfire_question"]));
+  ensureArray(audit.truth_audit).forEach((item) => scrubFields(item, ["why_check", "verification_step"]));
+  ensureArray(audit.alternative_solutions_test).forEach((item) => scrubFields(item, ["alternative", "why_it_competes", "what_writer_must_prove", "response"]));
+  scrubFields(audit.rhetorical_analysis, ["opening_hook", "logical_flow", "persuasion_assessment", "clarity_assessment"]);
+  scrubFields(audit.rhetorical_analysis?.world_changing_views, ["idea", "reader_risk", "make_reasonable"]);
   scrubFields(audit.rhetorical_analysis?.strongest_sentence, ["why"]);
   scrubFields(audit.rhetorical_analysis?.weakest_sentence, ["why", "fix"]);
   ensureArray(audit.rewrite_suggestions).forEach((item) => scrubFields(item, ["rewrite", "improvement"]));
@@ -614,4 +698,40 @@ function normalizeRating(value) {
 function normalizeLoad(value) {
   const load = String(value || "").toUpperCase();
   return ["HIGH", "MEDIUM", "LOW"].includes(load) ? load : "MEDIUM";
+}
+
+function normalizeFatality(value) {
+  const fatality = String(value || "").toUpperCase();
+  return ["FATAL", "HIGH", "MEDIUM", "LOW"].includes(fatality) ? fatality : "MEDIUM";
+}
+
+function normalizeRelationship(value) {
+  const relationship = String(value || "").toLowerCase();
+  return ["supports", "assumes", "leads to", "rebuts"].includes(relationship) ? relationship : "supports";
+}
+
+function normalizeTruthStatus(value) {
+  const status = String(value || "").toUpperCase();
+  return ["VERIFY", "LIKELY", "UNCLEAR"].includes(status) ? status : "VERIFY";
+}
+
+function normalizeYesNo(value) {
+  return String(value || "").toUpperCase() === "YES" ? "YES" : "NO";
+}
+
+function stringArray(value) {
+  return ensureArray(value).map((item) => stringOr(item)).filter(Boolean).slice(0, 12);
+}
+
+function buildHeuristicDependencyLinks(audit) {
+  const thesis = audit.argument_strength?.thesis?.quote || "Thesis";
+  return ensureArray(audit.argument_strength?.claims).slice(0, 6).map((claim) => ({
+    from: claim.quote,
+    to: thesis,
+    relationship: "supports",
+    strength: claim.rating,
+    risk: claim.rating === "STRONG"
+      ? "This connection appears useful, but it should still survive close questioning."
+      : "If this connection is not repaired, the thesis loses part of its support."
+  }));
 }

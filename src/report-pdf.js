@@ -88,20 +88,28 @@ export function createReportPdf(input = {}) {
     addLabel("First revision move", audit.coaching_note);
 
     const scores = audit.score_breakdown || {};
+    const scoreExplanations = audit.score_explanations || {};
     addHeading("Score Breakdown");
     [
-      ["Argument strength", scores.argument_strength],
-      ["Assumption audit", scores.assumption_audit],
-      ["Logic", scores.logic],
-      ["Rhetoric", scores.rhetoric]
-    ].forEach(([label, value]) => addLabel(label, value === undefined ? "Not scored" : `${value}/25`));
+      ["Argument strength", scores.argument_strength, scoreExplanations.argument_strength],
+      ["Assumption safety", scores.assumption_audit, scoreExplanations.assumption_audit],
+      ["Logic", scores.logic, scoreExplanations.logic],
+      ["Rhetoric", scores.rhetoric, scoreExplanations.rhetoric]
+    ].forEach(([label, value, explanation]) => {
+      addLabel(label, value === undefined ? "Not scored" : `${value}/25`);
+      addParagraph(explanation, { color: COLORS.muted, size: 9.6 });
+    });
 
     const fixes = array(audit.priority_fixes);
     addHeading("Priority Fixes");
     if (!fixes.length) addParagraph("No priority fixes were returned.");
     fixes.forEach((fix, index) => {
       addHeading(`${index + 1}. ${clean(fix.problem) || "Revision priority"}`, 2);
+      addLabel("Impact if skipped", fix.fatality);
+      addLabel("Risk score", fix.fatality_score === undefined ? "" : `${fix.fatality_score}/100`);
       addLabel("Quoted passage", fix.quote);
+      addLabel("Why this repair is necessary", fix.necessity);
+      addLabel("Claims affected", list(fix.affected_claims));
       addLabel("Why it matters", fix.why_it_matters);
       addLabel("Exact repair", fix.exact_fix);
       addLabel("Suggested wording", fix.rewrite);
@@ -112,8 +120,11 @@ export function createReportPdf(input = {}) {
     addHeading("Collapse Point");
     addLabel("Load-bearing passage", collapse.quote);
     addLabel("Why the argument depends on it", collapse.why_it_collapses);
-    addLabel("Likely opponent attack", collapse.opponent_attack);
-    addLabel("Reinforcement", collapse.reinforcement);
+    addLabel("Dependent claims", collapse.dependency_count);
+    addLabel("Affected claims", list(collapse.affected_claims));
+    addLabel("Survival probability", collapse.survival_probability === undefined ? "" : `${collapse.survival_probability}%`);
+    addLabel("Strongest opponent attack", collapse.strongest_attack || collapse.opponent_attack);
+    addLabel("Strongest defense", collapse.strongest_defense || collapse.reinforcement);
 
     const thesis = audit.argument_strength?.thesis || {};
     addHeading("Argument Structure");
@@ -131,7 +142,11 @@ export function createReportPdf(input = {}) {
     addCollection("Hidden Assumptions", array(audit.assumption_audit), (item) => [
       ["Assumption", item.assumption],
       ["Load bearing", item.load_bearing],
+      ["Criticality score", item.criticality_score === undefined ? "" : `${item.criticality_score}/100`],
       ["Affected passage", item.quote],
+      ["What hinges on it", list(item.hinges_on)],
+      ["If this changes", item.if_changed],
+      ["How to justify it", item.justification],
       ["Vulnerability", item.vulnerability],
       ["Defense", item.defense]
     ]);
@@ -142,11 +157,73 @@ export function createReportPdf(input = {}) {
       ["Repair", item.fix]
     ]);
     addCollection("Counterarguments", array(audit.counter_arguments), (item) => [
+      ["Rank", item.rank],
+      ["Attack type", item.attack_type],
+      ["Risk score", item.fatality_score === undefined ? "" : `${item.fatality_score}/100`],
       ["Steelman", item.steelman],
       ["Target", item.targets],
       ["Damage", item.damage],
-      ["Suggested rebuttal", item.suggested_rebuttal]
+      ["Suggested rebuttal", item.suggested_rebuttal],
+      ["How to prepare", item.preparation]
     ]);
+
+    const dependencyGraph = audit.argument_dependency_graph || {};
+    addHeading("How the Argument Hangs Together");
+    addParagraph(dependencyGraph.explanation || "This view shows how one part of the argument supports another.");
+    array(dependencyGraph.links).forEach((link, index) => {
+      addHeading(`Connection ${index + 1}`, 2);
+      addParagraph(`${clean(link.from) || "Supporting point"} ${clean(link.relationship) || "supports"} ${clean(link.to) || "dependent point"}.`);
+      addLabel("Connection strength", link.strength);
+      addLabel("If this link breaks", link.risk);
+    });
+
+    addCollection("Attack Tree", array(audit.attack_tree), (item) => [
+      ["Rank", item.rank],
+      ["Risk score", item.fatality_score === undefined ? "" : `${item.fatality_score}/100`],
+      ["Attack", item.attack],
+      ["Target", item.targets],
+      ["Why it is dangerous", item.why_dangerous],
+      ["Best response", item.response],
+      ["Crossfire question", item.crossfire_question]
+    ]);
+
+    addCollection("Truth Audit", array(audit.truth_audit), (item) => [
+      ["Claim to check", item.claim],
+      ["Public-web check", item.truth_status],
+      ["Why check it", item.why_check],
+      ["Verification step", item.verification_step]
+    ]);
+
+    addCollection("Alternative Solutions Test", array(audit.alternative_solutions_test), (item) => [
+      ["Competing option", item.alternative],
+      ["Why a reader may prefer it", item.why_it_competes],
+      ["What the draft must prove", item.what_writer_must_prove],
+      ["How to answer fairly", item.response]
+    ]);
+
+    const rhetoric = audit.rhetorical_analysis || {};
+    addHeading("Rhetorical Analysis");
+    addLabel("Opening", rhetoric.opening_hook);
+    addLabel("Logical flow", rhetoric.logical_flow);
+    addLabel("Persuasion", rhetoric.persuasion_assessment);
+    addLabel("Clarity", rhetoric.clarity_assessment);
+    addLabel("Flow repairs", list(rhetoric.flow_repairs));
+    if (rhetoric.world_changing_views?.present === "YES") {
+      addLabel("World-changing view", rhetoric.world_changing_views.idea);
+      addLabel("Reader resistance", rhetoric.world_changing_views.reader_risk);
+      addLabel("Make it easier to consider", rhetoric.world_changing_views.make_reasonable);
+    }
+
+    addCollection("Make It Stronger: Rewrite Suggestions", array(audit.rewrite_suggestions), (item) => [
+      ["Original", item.original],
+      ["Rewrite", item.rewrite],
+      ["Why this is stronger", item.improvement]
+    ]);
+
+    if (draft) {
+      addHeading("Submitted Draft");
+      addParagraph(draft);
+    }
 
     if (sources) {
       const summary = sources.summary || {};
@@ -170,11 +247,6 @@ export function createReportPdf(input = {}) {
       } else {
         bibliography.forEach((entry, index) => addParagraph(`${index + 1}. ${entry.entry || entry.citation || entry.mla || entry.apa || entry.url}`));
       }
-    }
-
-    if (draft) {
-      addHeading("Submitted Draft");
-      addParagraph(draft);
     }
 
     const range = doc.bufferedPageRange();
@@ -208,4 +280,8 @@ function array(value) {
 function clean(value) {
   if (value === undefined || value === null) return "";
   return String(value).replace(/\s+/g, " ").trim();
+}
+
+function list(value) {
+  return array(value).map(clean).filter(Boolean).join("; ");
 }

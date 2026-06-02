@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="See recent user-facing improvements to Fracture Studio reports, saved work, and writing workflows." />
+  <title>Changelog - Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .changelog-shell {
+      margin: 0 auto;
+      max-width: 1040px;
+      padding: 138px 28px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .changelog-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 28px;
+    }
+
+    .changelog-title {
+      color: var(--text);
+      font-family: var(--serif);
+      font-size: clamp(42px, 7vw, 76px);
+      font-weight: 700;
+      letter-spacing: -.04em;
+      line-height: 1;
+      margin: 18px 0;
+    }
+
+    .changelog-intro {
+      color: var(--text-2);
+      font-size: 17px;
+      line-height: 1.7;
+      margin: 0;
+      max-width: 680px;
+    }
+
+    .release-list {
+      display: grid;
+      gap: 0;
+    }
+
+    .release {
+      display: grid;
+      gap: 28px;
+      grid-template-columns: minmax(150px, .28fr) minmax(0, 1fr);
+      padding: 34px 0;
+      position: relative;
+    }
+
+    .release + .release {
+      border-top: 1px solid var(--border);
+    }
+
+    .release-date {
+      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .release-version {
+      color: var(--accent-2);
+      display: block;
+      font-family: var(--mono);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .release h2 {
+      color: var(--text);
+      font-size: 24px;
+      letter-spacing: -.02em;
+      line-height: 1.2;
+      margin: 0 0 12px;
+    }
+
+    .release-summary {
+      color: var(--text-2);
+      font-size: 15px;
+      line-height: 1.65;
+      margin: 0 0 18px;
+    }
+
+    .release-points {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .release-points li {
+      border-left: 2px solid var(--border-2);
+      color: var(--text-2);
+      font-size: 14px;
+      line-height: 1.6;
+      padding-left: 13px;
+    }
+
+    .release-points strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .changelog-actions {
+      align-items: center;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding-top: 28px;
+    }
+
+    @media (max-width: 680px) {
+      .changelog-shell {
+        padding: 108px 18px 54px;
+      }
+
+      .release {
+        gap: 14px;
+        grid-template-columns: 1fr;
+        padding: 27px 0;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">ARGUMENT ANALYSIS ENGINE</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="studio.html" class="nav-link">Studio</a>
+    <a href="mission.html" class="nav-link">Fracture Method</a>
+    <a href="blog.html" class="nav-link">Blog</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="studio.html" class="nav-cta">Open Studio</a>
+    <a href="settings.html" class="nav-gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<main class="changelog-shell">
+  <header class="changelog-header">
+    <div class="label">Product Changelog</div>
+    <h1 class="changelog-title">What is new in<br>Fracture Studio.</h1>
+    <p class="changelog-intro">A running record of the improvements you can see and use: clearer reports, more practical writing tools, and better ways to return to your work.</p>
+  </header>
+
+  <section class="release-list" aria-label="Product releases">
+    <article class="release">
+      <div>
+        <div class="release-date">June 1, 2026</div>
+        <span class="release-version">Release 2.3</span>
+      </div>
+      <div>
+        <h2>Reports that show how an argument holds together</h2>
+        <p class="release-summary">Fracture reports now connect individual weak points to the larger argument, so the next revision is easier to choose and easier to complete.</p>
+        <ul class="release-points">
+          <li><strong>Dependency view.</strong> See how a supporting point connects to the conclusion and what loses force if that connection breaks.</li>
+          <li><strong>Dedicated rebuttals workspace.</strong> Open current or saved Studio work directly in Rebuttals for strategic opponent attacks, practical answers, crossfire questions, and weighing lines.</li>
+          <li><strong>Clearer source review.</strong> Quoted passages receive a public-web check, and tentative matches stay clearly labeled until you confirm the source.</li>
+          <li><strong>More readable exports.</strong> PDF reports include the argument network, higher-impact fixes, and a cleaner revision path.</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="release">
+      <div>
+        <div class="release-date">June 1, 2026</div>
+        <span class="release-version">Saved work</span>
+      </div>
+      <div>
+        <h2>Work history you can actually revisit</h2>
+        <p class="release-summary">Settings now makes saved work easier to scan and more useful when you are returning to an argument after a break.</p>
+        <ul class="release-points">
+          <li><strong>Expandable saved arguments.</strong> Open a history item to review the original argument without leaving Settings.</li>
+          <li><strong>Report summaries in context.</strong> Saved analyses show the overall score, verdict, recommended first move, and top revision priority when available.</li>
+          <li><strong>Clear guest expectations.</strong> Guest drafts are temporary, while signed-in work can be revisited from cloud history.</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="release">
+      <div>
+        <div class="release-date">June 1, 2026</div>
+        <span class="release-version">Studio workflow</span>
+      </div>
+      <div>
+        <h2>A more focused Studio workspace</h2>
+        <p class="release-summary">The Studio now keeps analysis work, follow-up questions, and evidence checks in a cleaner review flow.</p>
+        <ul class="release-points">
+          <li><strong>Clear audit progress.</strong> A paced status line and visible percentage show how the full audit is moving without distracting from the finished report.</li>
+          <li><strong>Argument map.</strong> See the thesis, supporting claims, and the most vulnerable pressure point in a compact visual structure.</li>
+          <li><strong>Focused follow-up coaching.</strong> Ask Fracture Chat about a mapped pressure point in a wider conversation area directly above the source review.</li>
+          <li><strong>Cleaner report flow.</strong> Works Cited now stays at the bottom of Studio so it never interrupts the main reasoning analysis.</li>
+          <li><strong>Completion notice.</strong> Keep reviewing another page while an audit finishes, then return to Studio from the report-ready notification.</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="release">
+      <div>
+        <div class="release-date">June 1, 2026</div>
+        <span class="release-version">Reports</span>
+      </div>
+      <div>
+        <h2>Reports built for revision</h2>
+        <p class="release-summary">Fracture reports now guide the next edit more directly, with clearer structure and stronger attention to evidence.</p>
+        <ul class="release-points">
+          <li><strong>Prioritized revision moves.</strong> Reports surface the highest-impact fixes first and connect them to exact wording.</li>
+          <li><strong>Source verification.</strong> Evidence-heavy drafts receive a citation-focused review alongside the argument analysis.</li>
+          <li><strong>Export-ready reports.</strong> Download a polished PDF or keep the report for a later pass.</li>
+        </ul>
+      </div>
+    </article>
+  </section>
+
+  <div class="changelog-actions">
+    <a class="btn-primary" href="studio.html">Open Studio</a>
+    <a class="btn-sm" href="settings.html">Back to Settings</a>
+  </div>
+</main>
+
+<script src="auth.js"></script>
+<script src="shared.js"></script>
+</body>
+</html>

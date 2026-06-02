@@ -99,6 +99,38 @@
       font-size: 12px;
     }
 
+    .admin-upload {
+      min-width: 260px;
+      max-width: 520px;
+    }
+
+    .admin-upload summary {
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .admin-upload-meta {
+      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 8px;
+    }
+
+    .admin-upload p,
+    .admin-upload small {
+      color: var(--text-2);
+      display: block;
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 8px 0 0;
+      max-height: 190px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
     @media (max-width: 880px) {
       .admin-grid {
         grid-template-columns: 1fr;
@@ -138,7 +170,7 @@
   <div class="container" style="position:relative;z-index:1;">
     <div class="label">Restricted Console</div>
     <h1 class="admin-title">Account<br>directory.</h1>
-    <p class="admin-sub">Authenticate to review registered profiles, sign-in providers, and recent account activity.</p>
+    <p class="admin-sub">Authenticate to review registered profiles, sign-in providers, recent activity, and each account's latest saved argument.</p>
   </div>
 </section>
 
@@ -160,7 +192,7 @@
   <section class="panel">
     <div class="panel-header">
       <div>
-        <div class="panel-title">Signed-In User Profiles</div>
+        <div class="panel-title">Signed-In User Profiles and Recent Work</div>
         <div class="panel-sub" id="adminCount">No accounts loaded yet.</div>
       </div>
     </div>

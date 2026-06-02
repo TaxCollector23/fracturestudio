@@ -72,6 +72,7 @@
         </div>
       </div>
 
+      <label class="sr-only" for="essayInput">Argument draft</label>
       <textarea
         id="essayInput"
         placeholder="Paste your argumentative writing here. Fracture will:
@@ -93,10 +94,11 @@
         <button class="btn-sm" id="clearBtn" type="button">Clear</button>
         <button class="btn-sm" id="loadBtn" type="button">Load Saved</button>
         <button class="btn-sm" id="saveBtn" type="button">Save</button>
+        <a class="btn-sm" id="rebuttalsBtn" href="rebuttals.html">Prepare Rebuttals</a>
         <button class="btn-primary" id="analyzeBtn" type="button">Fracture it</button>
       </div>
 
-      <div class="status-row" id="statusRow">
+      <div class="status-row" id="statusRow" role="status" aria-live="polite">
         <span class="status-dot" id="statusDot"></span>
         <span class="status-label" id="statusLabel">Idle</span>
         <span id="statusDetail" style="color:var(--text-3);font-size:11px;">Waiting for an argument.</span>
@@ -104,67 +106,46 @@
       </div>
 
       <div class="progress-note" id="progressNote">Ready when you are</div>
-      <div class="progress-wrap">
+      <div class="progress-wrap" id="progressTrack" role="progressbar" aria-label="Argument analysis progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <div class="progress-bar" id="progressBar"></div>
+        <span class="progress-bar-label" id="auditProgressLabel">0%</span>
       </div>
 
-      <details class="live-audit-stream hidden" id="liveAuditStream" open>
-        <summary>
-          <span>Live Report Preview</span>
-          <span class="live-audit-status" id="liveAuditStatus">Fracture is thinking</span>
-        </summary>
-        <div class="live-report-preview" id="liveAuditText" aria-live="polite"></div>
-      </details>
-
-      <div class="argument-map" id="argumentGraph" hidden></div>
-
-      <div class="studio-tools" id="studioTools">
-        <div class="argument-map-head">
+      <section class="studio-history">
+        <div class="studio-history-head">
           <div>
-            <div class="panel-title">Live Argument Tools</div>
-            <div class="panel-sub">Prepare an immediate rebuttal or ask Fracture Chat about a precise pressure point.</div>
+            <div class="node-kicker">Signed-In Workspace</div>
+            <div class="tool-title">Past Work</div>
           </div>
-          <span class="graph-status">Streaming AI</span>
+          <button class="btn-sm" id="refreshStudioHistory" type="button">Refresh</button>
         </div>
-        <div class="tool-grid">
-          <section class="tool-card">
-            <div class="node-kicker">Live Debate</div>
-            <div class="tool-title">Speed Rebuttals</div>
-            <p class="tool-copy">Paste an opponent's argument. Get a 10-second answer, a 30-second answer, a two-minute block, a crossfire question, and one weighing line.</p>
-            <textarea class="tool-textarea" id="rebuttalInput" placeholder="Paste the opponent's argument here."></textarea>
-            <div class="tool-actions">
-              <button class="btn-sm tool-run" id="rebuttalBtn" type="button" disabled>Generate rapid rebuttal</button>
-              <span class="tool-status" id="rebuttalStatus">Ready</span>
-            </div>
-            <div class="tool-progress"><span id="rebuttalProgress"></span></div>
-            <pre class="tool-output" id="rebuttalOutput"></pre>
-          </section>
+        <div class="studio-history-list" id="studioHistoryList">
+          <div class="studio-history-empty">Sign in to open saved drafts and prepare rebuttals without pasting your speech again.</div>
+        </div>
+      </section>
 
-          <section class="tool-card" id="fractureChatCard">
-            <div class="node-kicker">Focused Coaching</div>
-            <div class="tool-title">Fracture Chat</div>
-            <p class="tool-copy">Ask for a clearer warrant, a stronger rewrite, a fair counterargument, or the best next revision.</p>
-            <div class="chat-point hidden" id="chatSelectedPoint"></div>
-            <textarea class="tool-textarea" id="chatInput" placeholder="Ask Fracture Chat about your draft or select a mapped claim above."></textarea>
-            <div class="tool-actions">
-              <button class="btn-sm tool-run" id="chatBtn" type="button" disabled>Ask Fracture Chat</button>
-              <div class="tool-actions-secondary">
-                <button class="tool-clear" id="chatClearBtn" type="button">Clear conversation</button>
-                <span class="tool-status" id="chatStatus">Ready</span>
-              </div>
-            </div>
-            <div class="tool-progress"><span id="chatProgress"></span></div>
-            <div class="tool-output chat-transcript" id="chatOutput" aria-live="polite"></div>
-          </section>
-        </div>
-      </div>
     </section>
+  </div>
+
+  <section class="studio-review-stage" aria-label="Fracture review workspace">
+    <div class="analysis-stage-card analysis-stage-map">
+      <div class="analysis-stage-head">
+        <div>
+          <div class="node-kicker">Visual Structure</div>
+          <div class="tool-title">Argument Map</div>
+        </div>
+        <span class="graph-status">Loads After Audit</span>
+      </div>
+      <div class="analysis-stage-empty" id="argumentMapPlaceholder" aria-hidden="true"></div>
+      <div class="argument-map" id="argumentGraph" hidden></div>
+    </div>
 
     <!-- Output Panel -->
-    <section class="panel panel--output" id="outputPanel" hidden>
+    <section class="panel panel--output analysis-stage-card analysis-stage-report" id="outputPanel">
       <div class="output-header">
         <div>
-          <div class="panel-title">Fracture Report</div>
+          <div class="node-kicker">Fracture Engine</div>
+          <div class="panel-title">Final Review</div>
           <div class="panel-sub">A structured account of the draft's strongest and weakest reasoning.</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -173,27 +154,56 @@
         </div>
       </div>
 
+      <div class="analysis-stage-empty" id="finalReviewPlaceholder" aria-hidden="true"></div>
+
       <div class="skeleton hidden" id="skeleton"></div>
 
       <div id="reportContainer" class="report"></div>
       <div class="json-error hidden" id="jsonError"></div>
-
-      <details id="rawJsonBlock" style="position:relative;z-index:1;">
-        <summary class="json-raw-summary">Advanced: View Structured Report Data</summary>
-        <div class="json-raw-wrap" style="border-top:none;border-radius:0 0 12px 12px;">
-          <pre class="json-container" id="jsonOutput">Awaiting analysis...</pre>
-        </div>
-      </details>
 
       <div class="json-toolbar">
         <div class="toolbar-left">
           <button class="btn-sm" id="exportBtn" type="button" disabled>Export PDF Report</button>
           <button class="btn-sm" id="shareBtn" type="button" disabled>Share Link</button>
         </div>
-        <button class="btn-sm" id="copyBtn" type="button" disabled>Copy Report Data</button>
       </div>
     </section>
-  </div>
+  </section>
+
+  <section class="studio-followup tool-card" id="fractureChatCard">
+    <div class="argument-map-head">
+      <div>
+        <div class="node-kicker">Focused Coaching</div>
+        <div class="tool-title">Fracture Chat</div>
+        <p class="tool-copy">Ask for a clearer warrant, a stronger rewrite, a fair counterargument, or the best next revision.</p>
+      </div>
+      <span class="graph-status">Streaming AI</span>
+    </div>
+    <div class="chat-point hidden" id="chatSelectedPoint"></div>
+    <label class="sr-only" for="chatInput">Question for Fracture Chat</label>
+    <textarea class="tool-textarea" id="chatInput" placeholder="Ask Fracture Chat about your draft or select a mapped claim above."></textarea>
+    <div class="tool-actions">
+      <button class="btn-sm tool-run" id="chatBtn" type="button" disabled>Ask Fracture Chat</button>
+      <div class="tool-actions-secondary">
+        <button class="tool-clear" id="chatClearBtn" type="button">Clear conversation</button>
+        <span class="tool-status" id="chatStatus">Ready</span>
+      </div>
+    </div>
+    <div class="tool-progress"><span id="chatProgress"></span></div>
+    <div class="tool-output chat-transcript" id="chatOutput" aria-live="polite"></div>
+  </section>
+
+  <section class="studio-sources-stage analysis-stage-card" aria-label="Works cited area">
+    <div class="analysis-stage-head">
+      <div>
+        <div class="node-kicker">Source Review</div>
+        <div class="tool-title">Works Cited</div>
+      </div>
+      <span class="graph-status">Loads After Audit</span>
+    </div>
+    <div class="analysis-stage-empty analysis-stage-empty--sources" id="worksCitedPlaceholder" aria-hidden="true"></div>
+    <div class="studio-sources" id="sourceVerificationArea" aria-label="Works cited and source review"></div>
+  </section>
 
   <!-- Studio Footer -->
   <div class="studio-footer">

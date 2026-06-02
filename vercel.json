@@ -7,6 +7,8 @@
     { "source": "/analyze", "destination": "/studio.html" },
     { "source": "/mission", "destination": "/mission.html" },
     { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/changelog", "destination": "/changelog.html" },
+    { "source": "/rebuttals", "destination": "/rebuttals.html" },
     { "source": "/settings", "destination": "/settings.html" },
     { "source": "/login", "destination": "/settings.html" },
     { "source": "/auth/callback", "destination": "/auth-callback.html" },
