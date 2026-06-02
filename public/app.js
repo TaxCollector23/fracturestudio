@@ -805,6 +805,13 @@
     });
   }
 
+  async function maybeLoadSavedProject() {
+    const projectId = new URLSearchParams(window.location.search).get('project');
+    if (!projectId || !window.FractureAuth || typeof window.FractureAuth.getProject !== 'function') return;
+    const workspace = await window.FractureAuth.getProject(projectId);
+    if (workspace) await applyWorkspace(workspace);
+  }
+
   function updateToolButton(input, button) {
     if (!input || !button) return;
     button.disabled = !input.value.trim();
@@ -1272,7 +1279,7 @@
   }
 
   function loadEssay() {
-    if (statusDetail) statusDetail.textContent = 'Open Settings to review signed-in work history. Guest drafts are not stored.';
+    window.location.href = 'past-work.html';
   }
 
   // ── Shared-link loader ─────────────────────────────────────────────────────
@@ -1346,6 +1353,5 @@
   setProgress(0, 'Ready when you are');
   if (skeleton) skeleton.classList.add('hidden');
   maybeLoadSharedAnalysis();
-  window.setTimeout(loadStudioHistory, 350);
-
+  window.setTimeout(maybeLoadSavedProject, 350);
 })();
