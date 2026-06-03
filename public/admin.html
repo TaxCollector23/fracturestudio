@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Fracture Studio admin dashboard for account activity, saved work, scores, and usage metrics." />
+  <title>Admin | Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">ARGUMENT ANALYSIS ENGINE</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="studio.html" class="nav-link">Analyze</a>
+    <a href="mission.html" class="nav-link">Methods</a>
+    <button class="nav-theme" id="themeToggle" type="button"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="settings.html" class="nav-gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<section class="admin-hero admin-hero--dashboard">
+  <div class="container">
+    <div class="label">Restricted Console</div>
+    <h1 class="admin-title">User activity<br>dashboard.</h1>
+    <p class="admin-sub">Review signed-in accounts, saved arguments, recent usage, score trends, and the full latest speech, essay, or argument each user saved. Firebase remains connected through the existing admin endpoint.</p>
+  </div>
+</section>
+
+<main class="container admin-dashboard">
+  <section class="panel admin-access-card">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Admin Access</div>
+        <div class="panel-sub">Enter the configured admin password. Data loads from Firebase Admin on the server.</div>
+      </div>
+    </div>
+    <div class="admin-access-row">
+      <input class="admin-field" id="adminPassword" type="password" placeholder="Admin password" autocomplete="current-password" />
+      <button class="btn-primary" id="adminLoadBtn" type="button">Load Dashboard</button>
+    </div>
+    <div class="admin-message" id="adminMessage" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="admin-metrics-grid" aria-label="Admin summary metrics">
+    <article class="admin-metric-card">
+      <span>Total users</span>
+      <strong id="metricUsers">—</strong>
+      <small>Registered Firebase profiles</small>
+    </article>
+    <article class="admin-metric-card">
+      <span>Saved work</span>
+      <strong id="metricProjects">—</strong>
+      <small>Cloud arguments counted</small>
+    </article>
+    <article class="admin-metric-card">
+      <span>Average score</span>
+      <strong id="metricAverage">—</strong>
+      <small>Across scored reports</small>
+    </article>
+    <article class="admin-metric-card">
+      <span>Recent use</span>
+      <strong id="metricRecent">—</strong>
+      <small>Active in the last 7 days</small>
+    </article>
+  </section>
+
+  <section class="panel admin-table-panel">
+    <div class="panel-header admin-table-head">
+      <div>
+        <div class="panel-title">Users, Scores, and Latest Writing</div>
+        <div class="panel-sub" id="adminCount">No accounts loaded yet.</div>
+      </div>
+      <label class="admin-search-wrap">
+        <span class="sr-only">Search users</span>
+        <input class="admin-field" id="adminSearch" type="search" placeholder="Search name, email, provider, or title" />
+      </label>
+    </div>
+    <div id="adminUsers" class="admin-users-shell">
+      <div class="admin-empty-state">Load the dashboard to see account activity, saved work, scores, and each user’s latest saved writing.</div>
+    </div>
+  </section>
+</main>
+
+<script src="auth.js"></script>
+<script src="shared.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
