@@ -21,7 +21,7 @@ export function createReportPdf(input = {}) {
       margins: { top: 52, bottom: 56, left: 54, right: 54 },
       bufferPages: true,
       info: {
-        Title: "Fracture Studio Argument Report",
+        Title: "Fracture Studio Speech and Debate Report",
         Author: "Fracture Studio",
         Subject: "Argument analysis and source verification report"
       }
@@ -71,7 +71,7 @@ export function createReportPdf(input = {}) {
 
     doc.rect(0, 0, doc.page.width, 112).fill(COLORS.ink);
     doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(23).text("FRACTURE STUDIO", 54, 43);
-    doc.fillColor("#B8C3FF").font("Helvetica").fontSize(10).text("ARGUMENT PRESSURE-TEST REPORT", 54, 74);
+    doc.fillColor("#B8C3FF").font("Helvetica").fontSize(10).text("SPEECH AND DEBATE ARGUMENT REPORT", 54, 74);
     doc.y = 137;
     addParagraph(`Generated ${new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })}`, { color: COLORS.muted, size: 9 });
 
@@ -83,9 +83,20 @@ export function createReportPdf(input = {}) {
       doc.y += 70;
     }
 
-    addHeading("Verdict");
+    addHeading("Verdict and Score");
+    addParagraph(score !== null ? `Overall score: ${score}/100. ${scoreLabel(score)}.` : "Overall score was not available.");
     addParagraph(audit.verdict || "No verdict was available.");
-    addLabel("First revision move", audit.coaching_note);
+    addLabel("Main strength", mainStrength(audit));
+    addLabel("Main weakness", mainWeakness(audit));
+    addHeading("Report Contents");
+    [
+      "1. Score Breakdown",
+      "2. Priority Fixes",
+      "3. Collapse Point",
+      "4. Argument Structure",
+      "5. Counterarguments and Crossfire",
+      "6. Source Verification and Works Cited"
+    ].forEach((item) => addParagraph(item, { color: COLORS.muted, size: 10 }));
 
     const scores = audit.score_breakdown || {};
     const scoreExplanations = audit.score_explanations || {};
@@ -156,7 +167,7 @@ export function createReportPdf(input = {}) {
       ["Why it matters", item.explanation],
       ["Repair", item.fix]
     ]);
-    addCollection("Counterarguments", array(audit.counter_arguments), (item) => [
+    addCollection("Counterarguments and Rebuttal Preparation", array(audit.counter_arguments), (item) => [
       ["Rank", item.rank],
       ["Attack type", item.attack_type],
       ["Risk score", item.fatality_score === undefined ? "" : `${item.fatality_score}/100`],
@@ -284,4 +295,26 @@ function clean(value) {
 
 function list(value) {
   return array(value).map(clean).filter(Boolean).join("; ");
+}
+
+function scoreLabel(score) {
+  if (score >= 90) return "Strong and resilient";
+  if (score >= 75) return "Strong with fixable pressure points";
+  if (score >= 60) return "Usable but vulnerable";
+  if (score >= 40) return "Major revision needed";
+  if (score >= 11) return "Argument collapses under pressure";
+  return "Not enough argument to evaluate";
+}
+
+function mainStrength(audit) {
+  return clean(audit?.rhetorical_analysis?.strongest_sentence?.why)
+    || clean(audit?.argument_strength?.thesis?.assessment)
+    || "The draft has enough material for a focused revision pass.";
+}
+
+function mainWeakness(audit) {
+  return clean(array(audit?.priority_fixes)[0]?.problem)
+    || clean(audit?.collapse_point?.why_it_collapses)
+    || clean(audit?.rhetorical_analysis?.weakest_sentence?.why)
+    || "The argument needs a clearer connection between its claim and its proof.";
 }

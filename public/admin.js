@@ -47,12 +47,20 @@
   function renderLatestUpload(upload) {
     if (!upload) return '<span class="admin-muted">No uploaded work yet.</span>';
     const score = typeof upload.score === 'number' ? ' · Score ' + esc(upload.score) + '/100' : '';
+    const preview = compact(upload.draft || 'No draft text stored.', 170);
     return '<details class="admin-upload">'
       + '<summary>' + esc(upload.title || 'Untitled argument') + score + '</summary>'
       + '<div class="admin-upload-meta">' + esc(dateLabel(upload.updated)) + '</div>'
+      + '<div class="admin-upload-preview">' + esc(preview) + '</div>'
       + '<p>' + esc(upload.draft || 'No draft text stored.') + '</p>'
       + (upload.verdict ? '<small>' + esc(upload.verdict) + '</small>' : '')
       + '</details>';
+  }
+
+  function compact(value, max) {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!text) return '';
+    return text.length > max ? text.slice(0, max - 1).trimEnd() + '...' : text;
   }
 
   async function loadUsers() {

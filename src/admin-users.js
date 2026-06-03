@@ -35,6 +35,15 @@ function isoTimestamp(value) {
   return String(value);
 }
 
+function getAudit(project) {
+  const analysis = project?.analysis;
+  if (!analysis || typeof analysis !== "object") return null;
+  if (analysis.audit && typeof analysis.audit === "object") return analysis.audit;
+  if (analysis.report && typeof analysis.report === "object") return analysis.report;
+  if (typeof analysis.overall_score === "number") return analysis;
+  return null;
+}
+
 export async function listAdminUsers(password) {
   if (!ADMIN_PASSWORD) {
     return {
@@ -58,7 +67,7 @@ export async function listAdminUsers(password) {
       const user = entry.data();
       const recentProjects = await entry.ref.collection("projects").orderBy("updatedAt", "desc").limit(1).get();
       const recentProject = recentProjects.docs[0]?.data();
-      const audit = recentProject?.analysis?.audit;
+      const audit = getAudit(recentProject);
       return {
         email: user.email || "",
         fullName: user.name || "",

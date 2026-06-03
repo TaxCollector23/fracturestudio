@@ -80,8 +80,13 @@ app.get("/api/public-config", (_req, res) => {
 });
 
 app.get("/mission", (_req, res) => res.sendFile(join(PUBLIC_DIR, "mission.html")));
+app.get("/methods", (_req, res) => res.sendFile(join(PUBLIC_DIR, "mission.html")));
+app.get("/about", (_req, res) => res.sendFile(join(PUBLIC_DIR, "about.html")));
 app.get("/blog", (_req, res) => res.sendFile(join(PUBLIC_DIR, "blog.html")));
 app.get("/changelog", (_req, res) => res.sendFile(join(PUBLIC_DIR, "changelog.html")));
+app.get("/credits", (_req, res) => res.sendFile(join(PUBLIC_DIR, "credits.html")));
+app.get("/contact", (_req, res) => res.sendFile(join(PUBLIC_DIR, "contact.html")));
+app.get("/onboarding", (_req, res) => res.sendFile(join(PUBLIC_DIR, "onboarding.html")));
 app.get("/past-work", (_req, res) => res.sendFile(join(PUBLIC_DIR, "past-work.html")));
 app.get("/rebuttals", (_req, res) => res.sendFile(join(PUBLIC_DIR, "rebuttals.html")));
 app.get(["/settings", "/login"], (_req, res) => res.sendFile(join(PUBLIC_DIR, "settings.html")));

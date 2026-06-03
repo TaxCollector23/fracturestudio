@@ -10,6 +10,7 @@
   const saveBtn         = document.getElementById('saveBtn');
   const loadBtn         = document.getElementById('loadBtn');
   const rebuttalsBtn    = document.getElementById('rebuttalsBtn');
+  const analysisFormat  = document.getElementById('analysisFormat');
   const refreshStudioHistory = document.getElementById('refreshStudioHistory');
   const studioHistoryList = document.getElementById('studioHistoryList');
   const statusDot       = document.getElementById('statusDot');
@@ -23,8 +24,13 @@
   const finalReviewPlaceholder = document.getElementById('finalReviewPlaceholder');
   const jsonError       = document.getElementById('jsonError');
   const scorePill       = document.getElementById('scorePill');
+  const scoreSummary    = document.getElementById('scoreSummary');
   const exportBtn       = document.getElementById('exportBtn');
   const shareBtn        = document.getElementById('shareBtn');
+  const copyReportBtn   = document.getElementById('copyReportBtn');
+  const downloadTextBtn = document.getElementById('downloadTextBtn');
+  const printReportBtn  = document.getElementById('printReportBtn');
+  const reportNav       = document.getElementById('reportNav');
   const reportContainer = document.getElementById('reportContainer');
   const argumentGraph   = document.getElementById('argumentGraph');
   const argumentMapPlaceholder = document.getElementById('argumentMapPlaceholder');
@@ -58,6 +64,8 @@
   let selectedChatPoint = '';
   let preferredCitationStyle = 'mla';
   let chatHistory = [];
+  let readableReportText = '';
+  let postAnalysisSurveyShown = false;
 
   const PACING_PHRASES = [
     'Preparing the audit',
@@ -165,8 +173,9 @@
     if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = false;
     if (jsonError)  { jsonError.classList.add('hidden'); jsonError.textContent = ''; }
     if (scorePill)  scorePill.textContent = '—';
-    if (exportBtn)  exportBtn.disabled = true;
-    if (shareBtn)   shareBtn.disabled  = true;
+    if (scoreSummary) scoreSummary.hidden = true;
+    updateReportActions(false);
+    if (reportNav) reportNav.hidden = true;
     if (reportContainer) { reportContainer.innerHTML = ''; reportContainer.classList.remove('visible', 'streaming'); }
     resetArgumentGraph();
     if (skeleton)   skeleton.classList.add('hidden');
@@ -174,7 +183,7 @@
   }
 
   function setBtns(disabled) {
-    [analyzeBtn, clearBtn, saveBtn, loadBtn].forEach(function (b) {
+    [analyzeBtn, clearBtn, saveBtn, loadBtn, rebuttalsBtn].forEach(function (b) {
       if (b) b.disabled = disabled;
     });
   }
@@ -299,7 +308,6 @@
     if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
 
     const verdict = streamedStringValue(rawJsonText, 'verdict');
-    const firstMove = streamedStringValue(rawJsonText, 'coaching_note');
     const prioritySlice = jsonSlice(rawJsonText, 'priority_fixes', 'collapse_point');
     const problems = streamedStringValues(prioritySlice, 'problem').slice(0, 3);
     const whyItMatters = streamedStringValues(prioritySlice, 'why_it_matters').slice(0, 3);
@@ -315,8 +323,7 @@
       + '<span>Fracture is writing your review' + (score ? ' · Score ' + esc(score) + '/100' : '') + '</span>'
       + '</div>';
 
-    html += streamingReportSection('What Fracture is seeing', verdict);
-    html += streamingReportSection('Best first move', firstMove);
+    html += streamingReportSection('Verdict in progress', verdict);
 
     problems.forEach(function (problem, index) {
       const details = [
@@ -329,7 +336,7 @@
     html += streamingReportSection('Collapse point', collapse);
     html += streamingReportSection('Likely challenge', opponentAttack);
 
-    if (!verdict && !firstMove && !problems.length && !collapse) {
+    if (!verdict && !problems.length && !collapse) {
       html += '<p class="streaming-report-writing">' + esc(PACING_PHRASES[pacingIndex] || 'Reading the argument') + '<span class="streaming-report-caret"></span></p>';
     } else {
       html += '<span class="streaming-report-caret" aria-hidden="true"></span>';
@@ -365,6 +372,149 @@
         rewrite: rewrite.rewrite
       };
     });
+  }
+
+  function uniqueItems(items, keyFn) {
+    const seen = new Set();
+    return asArray(items).filter(function (item) {
+      const key = String(typeof keyFn === 'function' ? keyFn(item) : item).replace(/\s+/g, ' ').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function normalizeRenderedAudit(audit) {
+    if (!audit || typeof audit !== 'object') return audit;
+    const next = Object.assign({}, audit);
+    next.priority_fixes = uniqueItems(next.priority_fixes, function (item) {
+      return firstText(item.quote, item.problem, item.exact_fix);
+    });
+    next.logical_fallacies = uniqueItems(next.logical_fallacies, function (item) {
+      return firstText(item.name, item.quote, item.explanation);
+    });
+    next.counter_arguments = uniqueItems(next.counter_arguments, function (item) {
+      return firstText(item.steelman, item.targets, item.damage);
+    });
+    next.attack_tree = uniqueItems(next.attack_tree, function (item) {
+      return firstText(item.attack, item.targets, item.response);
+    });
+    next.truth_audit = uniqueItems(next.truth_audit, function (item) {
+      return firstText(item.claim, item.verification_step);
+    });
+    next.rewrite_suggestions = uniqueItems(next.rewrite_suggestions, function (item) {
+      return firstText(item.original, item.rewrite);
+    });
+    return next;
+  }
+
+  function scoreLabel(value) {
+    const score = Number(value);
+    if (!Number.isFinite(score)) return 'Not scored yet';
+    if (score >= 90) return 'Strong and resilient';
+    if (score >= 75) return 'Strong with fixable pressure points';
+    if (score >= 60) return 'Usable but vulnerable';
+    if (score >= 40) return 'Major revision needed';
+    if (score >= 11) return 'Argument collapses under pressure';
+    return 'Not enough argument to evaluate';
+  }
+
+  function scoreChip(label, value, description) {
+    return '<div class="score-chip"><strong>' + esc(label) + '</strong><span>' + esc(String(value ?? '—')) + '/25</span><small>' + esc(description || '') + '</small></div>';
+  }
+
+  function mainStrength(parsed) {
+    const rhet = parsed.rhetorical_analysis || {};
+    return firstText(
+      (rhet.strongest_sentence || {}).why,
+      ((parsed.argument_strength || {}).thesis || {}).assessment,
+      'The draft has enough material for a focused revision pass.'
+    );
+  }
+
+  function mainWeakness(parsed) {
+    const fix = (asArray(parsed.priority_fixes)[0] || {});
+    const collapse = parsed.collapse_point || {};
+    return firstText(
+      fix.problem,
+      collapse.why_it_collapses,
+      (rhetWeakest(parsed) || {}).why,
+      'The argument needs a clearer connection between its claim and its proof.'
+    );
+  }
+
+  function rhetWeakest(parsed) {
+    return ((parsed.rhetorical_analysis || {}).weakest_sentence || {});
+  }
+
+  function revisionPath(parsed) {
+    const fixes = asArray(parsed.priority_fixes).slice(0, 4);
+    if (!fixes.length) return '<p>Start by clarifying the thesis, then add one direct warrant for the main claim.</p>';
+    return '<ol class="report-mission-list">' + fixes.map(function (fix, index) {
+      return '<li><b>Mission ' + (index + 1) + ':</b> ' + esc(firstText(fix.exact_fix, fix.problem, 'Repair this pressure point.'))
+        + '<span>' + esc(firstText(fix.why_it_matters, fix.necessity, 'This is one of the fastest ways to improve the argument.')) + '</span></li>';
+    }).join('') + '</ol>';
+  }
+
+  function buildReadableReportText(parsed) {
+    const scores = parsed.score_breakdown || {};
+    const thesis = (parsed.argument_strength || {}).thesis || {};
+    const lines = [];
+    lines.push('Fracture Studio Report');
+    lines.push('');
+    lines.push('Verdict and Score');
+    lines.push('Overall score: ' + (typeof parsed.overall_score === 'number' ? parsed.overall_score + '/100' : 'Not scored'));
+    lines.push(scoreLabel(parsed.overall_score));
+    if (parsed.verdict) lines.push(parsed.verdict);
+    lines.push('');
+    lines.push('Score Breakdown');
+    lines.push('Argument Strength: ' + (scores.argument_strength ?? '—') + '/25');
+    lines.push('Assumption Safety: ' + (scores.assumption_audit ?? '—') + '/25');
+    lines.push('Logic: ' + (scores.logic ?? '—') + '/25');
+    lines.push('Rhetoric: ' + (scores.rhetoric ?? '—') + '/25');
+    lines.push('');
+    lines.push('Main Strength');
+    lines.push(mainStrength(parsed));
+    lines.push('');
+    lines.push('Main Weakness');
+    lines.push(mainWeakness(parsed));
+    lines.push('');
+    lines.push('Thesis');
+    lines.push(firstText(thesis.quote, 'No clear thesis detected.'));
+    if (thesis.assessment) lines.push(thesis.assessment);
+    lines.push('');
+    lines.push('Priority Fixes');
+    (asArray(parsed.priority_fixes).length ? asArray(parsed.priority_fixes) : fallbackPriorityFixes(parsed)).forEach(function (fix, index) {
+      lines.push((index + 1) + '. ' + firstText(fix.problem, 'Repair this pressure point.'));
+      if (fix.quote) lines.push('Text: ' + fix.quote);
+      if (fix.why_it_matters) lines.push('Why it matters: ' + fix.why_it_matters);
+      if (fix.exact_fix) lines.push('Exact fix: ' + fix.exact_fix);
+      if (fix.rewrite) lines.push('Suggested wording: ' + fix.rewrite);
+      lines.push('');
+    });
+    lines.push('Collapse Point');
+    const collapse = parsed.collapse_point || {};
+    lines.push(firstText(collapse.quote, 'No single collapse point detected.'));
+    if (collapse.why_it_collapses) lines.push(collapse.why_it_collapses);
+    if (collapse.strongest_attack || collapse.opponent_attack) lines.push('Likely attack: ' + firstText(collapse.strongest_attack, collapse.opponent_attack));
+    if (collapse.strongest_defense || collapse.reinforcement) lines.push('Repair: ' + firstText(collapse.strongest_defense, collapse.reinforcement));
+    lines.push('');
+    lines.push('Claims');
+    asArray((parsed.argument_strength || {}).claims).forEach(function (claim, index) {
+      lines.push((index + 1) + '. ' + firstText(claim.quote, 'Claim'));
+      if (claim.rating) lines.push('Rating: ' + claim.rating);
+      if (claim.diagnosis) lines.push('Diagnosis: ' + claim.diagnosis);
+      if (claim.fix) lines.push('Repair: ' + claim.fix);
+      lines.push('');
+    });
+    lines.push('Counterarguments and Questions');
+    asArray(parsed.attack_tree).forEach(function (attack, index) {
+      lines.push((index + 1) + '. ' + firstText(attack.attack, attack.why_dangerous, 'Opponent attack'));
+      if (attack.response) lines.push('Response: ' + attack.response);
+      if (attack.crossfire_question) lines.push('Crossfire question: ' + attack.crossfire_question);
+      lines.push('');
+    });
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
   function renderPriorityFixes(parsed) {
@@ -610,11 +760,14 @@
   }
 
   async function loadFeedbackPreferences() {
-    if (!window.FractureAuth || typeof window.FractureAuth.getPreferences !== 'function') return null;
+    const format = analysisFormat ? analysisFormat.value : '';
+    if (!window.FractureAuth || typeof window.FractureAuth.getPreferences !== 'function') {
+      return format ? { analysisFormat: format } : null;
+    }
     try {
-      return await window.FractureAuth.getPreferences();
+      return Object.assign({}, await window.FractureAuth.getPreferences(), { analysisFormat: format });
     } catch (_) {
-      return null;
+      return format ? { analysisFormat: format } : null;
     }
   }
 
@@ -639,7 +792,7 @@
       if (manual && statusDetail) {
         statusDetail.textContent = saved && saved.mode === 'cloud'
           ? 'Draft saved to your work history.'
-          : 'Guest drafts are not stored. Sign in to keep this work.';
+          : 'Draft saved in this browser. Sign in to keep cloud history.';
       }
       return saved;
     } catch (_) {
@@ -696,15 +849,17 @@
 
   function renderParsedAudit(audit) {
     if (!audit || typeof audit !== 'object') return;
-    parsedAudit = audit;
+    parsedAudit = normalizeRenderedAudit(audit);
     if (!rawJsonText.trim()) rawJsonText = JSON.stringify(audit, null, 2);
     if (typeof audit.overall_score === 'number' && scorePill) {
       scorePill.textContent = String(audit.overall_score);
+      if (scoreSummary) scoreSummary.hidden = false;
     }
     if (!auditRendered) {
-      renderReport(audit);
+      renderReport(parsedAudit);
       auditRendered = true;
     }
+    maybeShowPostAnalysisSurvey();
     persistActiveWorkspace();
   }
 
@@ -746,22 +901,17 @@
       }
       if (exportBtn) exportBtn.disabled = false;
       if (shareBtn) shareBtn.disabled = false;
+      updateReportActions(true);
       setProgress(100, 'Saved report loaded');
       setStatus('done', 'Saved report loaded from your work history.');
     } else {
-      setStatus('idle', 'Saved draft loaded. Run Fracture it when you are ready.');
+      setStatus('idle', 'Saved draft loaded. Run Fracture It when you are ready.');
     }
   }
 
   async function loadStudioHistory() {
     if (!studioHistoryList || !window.FractureAuth || typeof window.FractureAuth.listProjects !== 'function') return;
     historyEmpty('Loading your saved work...');
-    const user = typeof window.FractureAuth.getUser === 'function' ? await window.FractureAuth.getUser() : null;
-    if (!user) {
-      historyEmpty('Sign in to open saved drafts and prepare rebuttals without pasting your speech again.');
-      return;
-    }
-
     const projects = await window.FractureAuth.listProjects();
     if (!projects.length) {
       historyEmpty('No saved work yet. Analyze a draft and Fracture will keep it here for your next round of revisions.');
@@ -967,36 +1117,38 @@
     const c = reportContainer;
     if (outputPanel) outputPanel.hidden = false;
     if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
+    if (reportNav) reportNav.hidden = false;
     c.classList.remove('streaming');
     c.innerHTML = '';
 
-    function section(title, innerHTML, open) {
+    function section(title, innerHTML, open, id) {
       const shouldOpen = open !== false;
-      return '<details class="report-section"' + (shouldOpen ? ' open' : '') + '>'
+      return '<details class="report-section"' + (id ? ' id="' + esc(id) + '"' : '') + (shouldOpen ? ' open' : '') + '>'
            + '<summary>' + title + '</summary>'
            + '<div class="content">' + innerHTML + '</div>'
            + '</details>';
     }
 
     const scores = parsed.score_breakdown || {};
-    const readFirstSection =
-      '<p>' + esc(parsed.verdict || '') + '</p>'
-    + '<p><span class="report-label">First Move:</span> ' + esc(parsed.coaching_note || '') + '</p>';
-
     const scoreDescriptions = parsed.score_explanations || {};
+    const verdictSection =
+      '<div class="verdict-card">'
+    + '<div><span class="report-label">Overall Score</span><strong>' + esc(typeof parsed.overall_score === 'number' ? parsed.overall_score + '/100' : 'Not scored') + '</strong><small>' + esc(scoreLabel(parsed.overall_score)) + '</small></div>'
+    + '<p>' + esc(parsed.verdict || 'Fracture did not receive enough report text to write a verdict.') + '</p>'
+    + '</div>'
+    + '<div class="report-dual-grid">'
+    + '<div class="report-item"><p><b>Main strength:</b> ' + esc(mainStrength(parsed)) + '</p></div>'
+    + '<div class="report-item"><p><b>Main weakness:</b> ' + esc(mainWeakness(parsed)) + '</p></div>'
+    + '</div>'
+    + '<div class="report-item"><p><b>Revision path:</b></p>' + revisionPath(parsed) + '</div>';
+
     const scoreSection =
-      '<p>' + esc(parsed.verdict || '') + '</p>'
-    + '<p><span class="report-label">Coaching Note:</span> ' + esc(parsed.coaching_note || '') + '</p>'
-    + '<div class="score-grid">'
+      '<div class="score-grid">'
     + scoreChip('Argument Strength', scores.argument_strength, scoreDescriptions.argument_strength)
     + scoreChip('Assumption Safety', scores.assumption_audit, scoreDescriptions.assumption_audit)
     + scoreChip('Logic', scores.logic, scoreDescriptions.logic)
     + scoreChip('Rhetoric', scores.rhetoric, scoreDescriptions.rhetoric)
     + '</div>';
-
-    function scoreChip(label, value, description) {
-      return '<div class="score-chip"><strong>' + esc(label) + '</strong><span>' + esc(String(value ?? '—')) + '/25</span><small>' + esc(description || '') + '</small></div>';
-    }
 
     const thesis = (parsed.argument_strength || {}).thesis || {};
     const thesisSection =
@@ -1079,26 +1231,78 @@
            + '</div>';
     }).join('') || '<p>No rewrite suggestions generated.</p>';
 
+    readableReportText = buildReadableReportText(parsed);
     c.innerHTML =
-      section('Read This First', readFirstSection, true) +
-      section('Priority Fixes', renderPriorityFixes(parsed), true) +
+      section('Verdict and Score', verdictSection, true, 'report-verdict') +
+      section('Score Breakdown', scoreSection, true) +
+      section('Priority Fixes', renderPriorityFixes(parsed), true, 'report-priorities') +
       section('Collapse Point', renderCollapsePoint(parsed), true) +
-      section('Verdict & Score Breakdown', scoreSection, true) +
       section('How the Argument Hangs Together', renderDependencyGraph(parsed), true) +
       section('Thesis Analysis', thesisSection, true) +
-      section('Claim-by-Claim Analysis', claimsSection, true) +
+      section('Claim-by-Claim Analysis', claimsSection, true, 'report-claims') +
       section('Assumption Audit', assumptionsSection, true) +
       section('Logical Fallacies', fallaciesSection, true) +
-      section('Counter-Arguments', countersSection, true) +
-      section('Attack Tree', renderAttackTree(parsed), true) +
-      section('Truth Audit', renderTruthAudit(parsed), true) +
+      section('Counterarguments', countersSection, true, 'report-attacks') +
+      section('Attack Tree and Crossfire Questions', renderAttackTree(parsed), true) +
+      section('Source Claims to Check', renderTruthAudit(parsed), true) +
       section('Alternative Solutions Test', renderAlternatives(parsed), true) +
       section('Rhetorical Analysis', rhetoricSection, true) +
-      section('Make It Stronger: Rewrite Suggestions', rewritesSection, true);
+      section('Make It Stronger: Rewrite Suggestions', rewritesSection, true, 'report-rewrites');
 
     renderArgumentGraph(parsed);
     mountSourceVerification();
+    updateReportActions(true);
     requestAnimationFrame(function () { c.classList.add('visible'); });
+  }
+
+  function maybeShowPostAnalysisSurvey() {
+    if (postAnalysisSurveyShown) return;
+    try {
+      if (localStorage.getItem('fracture_post_analysis_survey')) return;
+    } catch (_) {}
+    const showPanel = function () {
+      postAnalysisSurveyShown = true;
+      window.removeEventListener('scroll', onScroll);
+      const panel = document.createElement('aside');
+      panel.className = 'post-analysis-survey';
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-label', 'Fracture report feedback');
+      panel.innerHTML = ''
+        + '<button class="survey-close" type="button" aria-label="Dismiss feedback">x</button>'
+        + '<div class="panel-title">Quick feedback</div>'
+        + '<p>Was this report useful enough to revise from?</p>'
+        + '<div class="survey-score" aria-label="Rating">'
+        + '<button type="button" data-score="1">1</button><button type="button" data-score="2">2</button><button type="button" data-score="3">3</button><button type="button" data-score="4">4</button><button type="button" data-score="5">5</button>'
+        + '</div>'
+        + '<textarea placeholder="Optional: what should Fracture explain better?"></textarea>'
+        + '<button class="btn-primary survey-submit" type="button">Save Feedback</button>';
+      document.body.appendChild(panel);
+      let selectedScore = '';
+      panel.querySelector('.survey-close').addEventListener('click', function () { panel.remove(); });
+      panel.querySelectorAll('[data-score]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          selectedScore = button.getAttribute('data-score');
+          panel.querySelectorAll('[data-score]').forEach(function (candidate) { candidate.classList.toggle('active', candidate === button); });
+        });
+      });
+      panel.querySelector('.survey-submit').addEventListener('click', function () {
+        try {
+          localStorage.setItem('fracture_post_analysis_survey', JSON.stringify({
+            score: selectedScore,
+            note: panel.querySelector('textarea').value.trim(),
+            createdAt: new Date().toISOString()
+          }));
+        } catch (_) {}
+        panel.remove();
+        if (statusDetail) statusDetail.textContent = 'Thanks. Feedback saved in this browser.';
+      });
+    };
+    const onScroll = function () {
+      const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 520;
+      if (nearBottom) showPanel();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.setTimeout(onScroll, 1200);
   }
 
   // ── Core analysis ──────────────────────────────────────────────────────────
@@ -1176,8 +1380,6 @@
 
       isStreaming = false;
       setBtns(false);
-      if (exportBtn) exportBtn.disabled = false;
-      if (shareBtn)  shareBtn.disabled  = false;
       stopProgress(true, 'Report ready');
       if (skeleton) skeleton.classList.add('hidden');
 
@@ -1215,6 +1417,62 @@
   }
 
   // ── Toolbar ────────────────────────────────────────────────────────────────
+  function updateReportActions(enabled) {
+    [exportBtn, shareBtn, copyReportBtn, downloadTextBtn, printReportBtn].forEach(function (button) {
+      if (button) button.disabled = !enabled;
+    });
+  }
+
+  function copyTextWithFallback(text) {
+    if (!text) return Promise.reject(new Error('No report text is ready yet.'));
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      try {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.left = '-9999px';
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        document.body.removeChild(area);
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  function copyReadableReport() {
+    const text = readableReportText || (parsedAudit ? buildReadableReportText(parsedAudit) : '');
+    copyTextWithFallback(text).then(function () {
+      if (statusDetail) statusDetail.textContent = 'Readable report copied.';
+    }).catch(function () {
+      if (statusDetail) statusDetail.textContent = 'Copy failed. Try downloading the text report instead.';
+    });
+  }
+
+  function downloadReadableReport() {
+    const text = readableReportText || (parsedAudit ? buildReadableReportText(parsedAudit) : '');
+    if (!text) return;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fracture-studio-report.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (statusDetail) statusDetail.textContent = 'Readable text report downloaded.';
+  }
+
+  function printReadableReport() {
+    if (!parsedAudit) return;
+    window.print();
+  }
+
   async function exportPdf() {
     if (!parsedAudit) return;
     if (statusDetail) statusDetail.textContent = 'Formatting your PDF report.';
@@ -1249,21 +1507,11 @@
   }
 
   function shareLink() {
-    if (!rawJsonText) return;
-    const encoded = encodeURIComponent(rawJsonText);
-    if (encoded.length > 6000) {
-      if (statusDetail) statusDetail.textContent = 'This report is too detailed for a private share link. Export the PDF or sign in to save it.';
-      return;
-    }
-    const url = location.origin + location.pathname + '#analysis=' + encoded;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url)
-        .then(function () { if (statusDetail) statusDetail.textContent = 'Share link copied to clipboard.'; })
-        .catch(function () { history.replaceState(null, '', url); if (statusDetail) statusDetail.textContent = 'Share link placed in the address bar.'; });
-    } else {
-      history.replaceState(null, '', url);
-      if (statusDetail) statusDetail.textContent = 'Share link placed in the address bar.';
-    }
+    if (!parsedAudit) return;
+    persistActiveWorkspace();
+    copyTextWithFallback(location.origin + location.pathname)
+      .then(function () { if (statusDetail) statusDetail.textContent = 'Studio link copied. Saved reports reopen from Past Work.'; })
+      .catch(function () { if (statusDetail) statusDetail.textContent = 'Share link could not be copied. Use Past Work or export the PDF.'; });
   }
 
   function clearAll() {
@@ -1294,9 +1542,9 @@
       parsedAudit = parsed;
       auditRendered = true;
       if (typeof parsed.overall_score === 'number' && scorePill) scorePill.textContent = String(parsed.overall_score);
+      if (typeof parsed.overall_score === 'number' && scoreSummary) scoreSummary.hidden = false;
       renderReport(parsed);
-      if (exportBtn) exportBtn.disabled = false;
-      if (shareBtn)  shareBtn.disabled  = false;
+      updateReportActions(true);
       if (statusLabel)  statusLabel.textContent  = 'Loaded';
       if (statusDetail) statusDetail.textContent = 'Analysis loaded from shared link.';
     } catch (_) { /* ignore invalid shared payload */ }
@@ -1325,6 +1573,9 @@
   if (clearBtn)  clearBtn.addEventListener('click',  clearAll);
   if (exportBtn) exportBtn.addEventListener('click', exportPdf);
   if (shareBtn)  shareBtn.addEventListener('click',  shareLink);
+  if (copyReportBtn) copyReportBtn.addEventListener('click', copyReadableReport);
+  if (downloadTextBtn) downloadTextBtn.addEventListener('click', downloadReadableReport);
+  if (printReportBtn) printReportBtn.addEventListener('click', printReadableReport);
   if (saveBtn)   saveBtn.addEventListener('click',   saveEssay);
   if (loadBtn)   loadBtn.addEventListener('click',   loadEssay);
   if (rebuttalsBtn) rebuttalsBtn.addEventListener('click', function () { persistActiveWorkspace(); });
@@ -1346,6 +1597,13 @@
       selectChatPoint(decodeURIComponent(target.getAttribute('data-chat-point') || ''));
     });
   }
+  document.addEventListener('keydown', function (event) {
+    if (!parsedAudit) return;
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'c') {
+      event.preventDefault();
+      copyReadableReport();
+    }
+  });
 
   // ── Init ───────────────────────────────────────────────────────────────────
   updateCharCount();
