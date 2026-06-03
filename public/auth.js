@@ -132,6 +132,29 @@
     return next;
   }
 
+  function saveLocalProject(draft, analysis) {
+    const now = new Date().toISOString();
+    const list = readJson(KEYS.projects, []);
+    const project = {
+      id: 'browser-' + Date.now(),
+      title: titleFromDraft(draft),
+      draft: draft || '',
+      analysis: analysis || null,
+      created: now,
+      updated: now,
+      mode: 'browser'
+    };
+    const next = [project].concat(Array.isArray(list) ? list : [])
+      .filter(function (item, index, items) {
+        return index === items.findIndex(function (candidate) {
+          return candidate.id === item.id || (candidate.draft === item.draft && candidate.updated === item.updated);
+        });
+      })
+      .slice(0, 30);
+    writeJson(KEYS.projects, next);
+    return setActiveWorkspace(project);
+  }
+
   function friendlyAuthError(error) {
     const code = error && error.code;
     const messages = {
@@ -344,14 +367,7 @@
         });
       } catch (_) {}
     }
-    return setActiveWorkspace({
-      id: '',
-      title: titleFromDraft(draft),
-      draft: draft || '',
-      analysis: analysis || null,
-      updated: new Date().toISOString(),
-      mode: 'guest'
-    });
+    return saveLocalProject(draft, analysis);
   }
 
   async function listProjects() {
@@ -378,14 +394,31 @@
         });
       } catch (_) {}
     }
-    return [];
+    const localProjects = readJson(KEYS.projects, []);
+    const active = getActiveWorkspace();
+    const combined = [];
+    if (active && active.draft) combined.push(Object.assign({ mode: 'browser' }, active));
+    if (Array.isArray(localProjects)) {
+      localProjects.forEach(function (project) {
+        if (project && project.draft && !combined.some(function (item) { return item.id === project.id; })) {
+          combined.push(Object.assign({ mode: 'browser' }, project));
+        }
+      });
+    }
+    return combined;
   }
 
   async function getProject(projectId) {
     const cleanId = String(projectId || '').trim();
     if (!cleanId) return getActiveWorkspace();
     const user = await getUser();
-    if (!user) return null;
+    if (!user) {
+      const localProjects = readJson(KEYS.projects, []);
+      const found = Array.isArray(localProjects)
+        ? localProjects.find(function (project) { return project.id === cleanId; })
+        : null;
+      return found ? setActiveWorkspace(Object.assign({ mode: 'browser' }, found)) : null;
+    }
     try {
       const services = await getServices();
       const projectRef = services.firestoreModule.doc(services.db, 'users', user.id, 'projects', cleanId);

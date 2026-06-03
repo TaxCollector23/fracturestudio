@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Contact Fracture Studio for support, school use, bug reports, and feature requests." />
+  <title>Contact - Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">ARGUMENT ANALYSIS ENGINE</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="studio.html" class="nav-link">Analyze</a>
+    <a href="mission.html" class="nav-link">Methods</a>
+    <a href="about.html" class="nav-link">About</a>
+    <a href="changelog.html" class="nav-link">Changelog</a>
+    <a href="credits.html" class="nav-link">Credits</a>
+    <a href="contact.html" class="nav-link active">Contact</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="studio.html" class="nav-cta">Open Studio</a>
+  </div>
+</nav>
+
+<main class="marketing-shell">
+  <section class="marketing-hero">
+    <div class="label">Contact</div>
+    <h1>Reach the Fracture Studio team.</h1>
+    <p>Use this page for bug reports, feature requests, school use, debate coaching questions, or general feedback. Live routing is intentionally placeholder-based until the team chooses the final support channels.</p>
+  </section>
+
+  <section class="contact-layout">
+    <form class="contact-card" id="contactForm">
+      <div class="panel-title">Message</div>
+      <label class="field">
+        <span>Your name</span>
+        <input type="text" id="contactName" placeholder="Name" autocomplete="name" />
+      </label>
+      <label class="field">
+        <span>Email</span>
+        <input type="email" id="contactEmail" placeholder="you@example.com" autocomplete="email" />
+      </label>
+      <label class="field">
+        <span>Topic</span>
+        <select id="contactTopic">
+          <option>Bug report</option>
+          <option>Feature request</option>
+          <option>School use</option>
+          <option>Debate coaching</option>
+          <option>General feedback</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>What should we know?</span>
+        <textarea id="contactBody" placeholder="Describe the issue, request, or idea."></textarea>
+      </label>
+      <button class="btn-primary" type="submit">Prepare Message</button>
+      <p class="contact-status" id="contactStatus">This form prepares a local message only. A real contact endpoint can be connected later.</p>
+    </form>
+
+    <aside class="contact-card">
+      <div class="panel-title">Support Channels</div>
+      <div class="contact-channel"><strong>Bug reports</strong><span id="bugReportTarget">Placeholder channel not connected yet.</span></div>
+      <div class="contact-channel"><strong>Feature requests</strong><span id="featureRequestTarget">Placeholder channel not connected yet.</span></div>
+      <div class="contact-channel"><strong>School use</strong><span id="schoolUseTarget">Placeholder channel not connected yet.</span></div>
+      <div class="contact-channel"><strong>General contact</strong><span id="contactEmailTarget">Placeholder email not connected yet.</span></div>
+    </aside>
+  </section>
+</main>
+
+<script src="contact-config.js"></script>
+<script src="auth.js"></script>
+<script src="shared.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var config = window.FractureContactConfig || {};
+    function fill(id, value) {
+      var element = document.getElementById(id);
+      if (element && value) element.textContent = value;
+    }
+    fill('bugReportTarget', config.bugReportUrl);
+    fill('featureRequestTarget', config.featureRequestUrl);
+    fill('schoolUseTarget', config.schoolUseEmail);
+    fill('contactEmailTarget', config.email);
+
+    var form = document.getElementById('contactForm');
+    var status = document.getElementById('contactStatus');
+    if (form) {
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var name = document.getElementById('contactName').value.trim();
+        var email = document.getElementById('contactEmail').value.trim();
+        var topic = document.getElementById('contactTopic').value;
+        var body = document.getElementById('contactBody').value.trim();
+        var message = ['Fracture Studio contact request', 'Name: ' + name, 'Email: ' + email, 'Topic: ' + topic, '', body].join('\n');
+        if (navigator.clipboard && body) {
+          navigator.clipboard.writeText(message).then(function () {
+            status.textContent = 'Message copied. Connect a real contact endpoint when the team is ready.';
+          }).catch(function () {
+            status.textContent = 'Message prepared. Connect a real contact endpoint when the team is ready.';
+          });
+        } else {
+          status.textContent = body ? 'Message prepared. Connect a real contact endpoint when the team is ready.' : 'Write a short message first.';
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>

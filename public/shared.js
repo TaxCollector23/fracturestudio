@@ -4,6 +4,7 @@
 
   const THEME_KEY = 'fracture_theme';
   const NOTICE_KEY = 'fracture_notice';
+  const ONBOARDING_KEY = 'fracture_onboarding_complete';
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -58,8 +59,23 @@
     document.body.appendChild(panel);
   }
 
+  function maybeRedirectToOnboarding() {
+    const path = window.location.pathname.toLowerCase();
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('skipOnboarding') === '1') return;
+    if (/admin|auth-callback|auth\/callback|onboarding/.test(path)) return;
+    try {
+      if (localStorage.getItem(ONBOARDING_KEY) === 'true') return;
+    } catch (_) {
+      return;
+    }
+    const target = window.location.pathname + window.location.search + window.location.hash;
+    window.location.replace('onboarding.html?return=' + encodeURIComponent(target || '/studio.html'));
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initTheme();
+    maybeRedirectToOnboarding();
     const btn = document.getElementById('themeToggle');
     if (btn) btn.addEventListener('click', toggleTheme);
     if (window.FractureAuth && typeof window.FractureAuth.initAuthGate === 'function') {

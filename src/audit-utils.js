@@ -343,6 +343,8 @@ export function normalizeAudit(audit, essay) {
     );
   }
 
+  normalized.overall_score = calibrateShortCoherentArgumentScore(normalized.overall_score, text, essaySentences);
+
   rebalanceScoreBreakdown(normalized);
 
   if (!normalized.argument_strength.claims.length && essaySentences.length > 1) {
@@ -419,6 +421,21 @@ function rebalanceScoreBreakdown(audit) {
   keys.forEach((key, index) => {
     audit.score_breakdown[key] = next[index];
   });
+}
+
+function calibrateShortCoherentArgumentScore(score, text, sentences) {
+  const clean = String(text || "").trim();
+  const current = clampInt(score, 0, 0, 100);
+  const words = clean.split(/\s+/).filter(Boolean).length;
+  const hasPosition = /\b(should|must|ought|because|therefore|may|can|will|would|improves?|reduces?|causes?|leads? to)\b/i.test(clean);
+  const hasReasoningBridge = /\b(because|therefore|since|so|so that|which means|as a result|but|however|although)\b/i.test(clean);
+  const hasLoadedInsult = /\b(bum|idiot|stupid|lazy|evil|bad person|loser)\b/i.test(clean);
+  const isNonsense = words < 12 || !hasPosition;
+  if (isNonsense || hasLoadedInsult) return current;
+  if (current < 60 && words >= 24 && sentences.length >= 2 && hasReasoningBridge) {
+    return 62;
+  }
+  return current;
 }
 
 export function buildRecoveryAudit(essay, note = "Fracture recovered from a malformed model response and generated a validated report.") {

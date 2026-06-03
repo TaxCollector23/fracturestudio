@@ -104,8 +104,7 @@
     const summaryText = document.createElement('p');
     summaryText.textContent = compact(firstText(
       audit && audit.verdict,
-      audit && audit.coaching_note,
-      'This draft has been saved. Run Fracture it to add an AI-generated argument summary.'
+      'This draft has been saved. Run Fracture It to add an AI-generated argument summary.'
     ), 460);
     summary.appendChild(summaryLabel);
     summary.appendChild(summaryText);
@@ -153,7 +152,6 @@
         project.title,
         project.draft,
         audit && audit.verdict,
-        audit && audit.coaching_note,
         artifactType(project)
       ].join(' ').toLowerCase().includes(term);
     });
@@ -175,12 +173,6 @@
       return;
     }
     count.textContent = 'Loading saved work';
-    const user = typeof window.FractureAuth.getUser === 'function' ? await window.FractureAuth.getUser() : null;
-    if (!user) {
-      count.textContent = 'Sign in to open cloud history';
-      empty('Sign in to review cloud-saved arguments, readable Fracture summaries, and earlier reports.', 'Sign In');
-      return;
-    }
     projects = await window.FractureAuth.listProjects();
     render();
   }

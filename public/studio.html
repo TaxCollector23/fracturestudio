@@ -23,10 +23,12 @@
   </a>
   <div class="nav-links">
     <a href="index.html" class="nav-link">Home</a>
-    <a href="studio.html" class="nav-link active">Studio</a>
-    <a href="mission.html" class="nav-link">Fracture Method</a>
-    <a href="blog.html" class="nav-link">Blog</a>
+    <a href="studio.html" class="nav-link active">Analyze</a>
+    <a href="mission.html" class="nav-link">Methods</a>
+    <a href="about.html" class="nav-link">About</a>
     <a href="changelog.html" class="nav-link">Changelog</a>
+    <a href="credits.html" class="nav-link">Credits</a>
+    <a href="contact.html" class="nav-link">Contact</a>
     <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
     <a href="index.html" class="nav-cta nav-cta--secondary">Home</a>
     <a href="settings.html" class="nav-gear" aria-label="Settings">
@@ -73,6 +75,18 @@
         </div>
       </div>
 
+      <div class="studio-format-row">
+        <label for="analysisFormat">What are you analyzing?</label>
+        <select id="analysisFormat">
+          <option value="not-chosen">Not chosen yet</option>
+          <option value="essay">Essay or paragraph</option>
+          <option value="debate-case">Debate case</option>
+          <option value="speech">Speech or presentation</option>
+          <option value="policy">Policy argument</option>
+          <option value="source-review">Source-heavy draft</option>
+        </select>
+      </div>
+
       <label class="sr-only" for="essayInput">Argument draft</label>
       <textarea
         id="essayInput"
@@ -96,7 +110,7 @@
         <button class="btn-sm" id="loadBtn" type="button">Load Saved</button>
         <button class="btn-sm" id="saveBtn" type="button">Save</button>
         <a class="btn-sm" id="rebuttalsBtn" href="rebuttals.html">Prepare Rebuttals</a>
-        <button class="btn-primary" id="analyzeBtn" type="button">Fracture it</button>
+        <button class="btn-primary" id="analyzeBtn" type="button">Fracture It</button>
       </div>
 
       <div class="status-row" id="statusRow" role="status" aria-live="polite">
@@ -113,8 +127,8 @@
       </div>
 
     </section>
-  </div>
 
+    <div class="studio-output-column">
   <section class="studio-review-stage" aria-label="Fracture review workspace">
     <div class="analysis-stage-card analysis-stage-map">
       <div class="analysis-stage-head">
@@ -136,7 +150,7 @@
           <div class="panel-title">Final Review</div>
           <div class="panel-sub">A structured account of the draft's strongest and weakest reasoning.</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div id="scoreSummary" hidden style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span style="font-size:12px;color:var(--text-3);">Overall Score:</span>
           <span class="score-pill" id="scorePill">—</span>
         </div>
@@ -146,17 +160,30 @@
 
       <div class="skeleton hidden" id="skeleton"></div>
 
+      <nav class="report-nav" id="reportNav" aria-label="Report sections" hidden>
+        <a href="#report-verdict">Verdict</a>
+        <a href="#report-priorities">Priorities</a>
+        <a href="#report-claims">Claims</a>
+        <a href="#report-attacks">Attacks</a>
+        <a href="#report-rewrites">Rewrites</a>
+      </nav>
+
       <div id="reportContainer" class="report" aria-live="polite"></div>
       <div class="json-error hidden" id="jsonError"></div>
 
       <div class="json-toolbar">
         <div class="toolbar-left">
+          <button class="btn-sm" id="copyReportBtn" type="button" disabled>Copy Report</button>
+          <button class="btn-sm" id="downloadTextBtn" type="button" disabled>Download Text</button>
+          <button class="btn-sm" id="printReportBtn" type="button" disabled>Print</button>
           <button class="btn-sm" id="exportBtn" type="button" disabled>Export PDF Report</button>
           <button class="btn-sm" id="shareBtn" type="button" disabled>Share Link</button>
         </div>
       </div>
     </section>
   </section>
+    </div>
+  </div>
 
   <section class="studio-followup tool-card" id="fractureChatCard">
     <div class="argument-map-head">

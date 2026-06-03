@@ -33,7 +33,7 @@
     if (!workspace) {
       draftTitle.textContent = 'No Studio draft loaded yet';
       draftPreview.textContent = 'Open Studio, add your argument, and choose Prepare Rebuttals. Your draft will appear here automatically.';
-      reportSummary.textContent = 'Run Fracture it first for report-aware preparation, or generate a first pass from the draft alone.';
+      reportSummary.textContent = 'Run Fracture It first for report-aware preparation, or generate a first pass from the draft alone.';
       generateBtn.disabled = true;
       status.textContent = 'Choose saved work';
       return;
@@ -46,7 +46,7 @@
     draftTitle.textContent = workspace.title || compact(workspace.draft, 72) || 'Current Studio draft';
     draftPreview.textContent = compact(workspace.draft, 620);
     reportSummary.textContent = report
-      ? compact(report.verdict || report.coaching_note || 'The saved Fracture report will guide this preparation pass.', 440)
+      ? compact(report.verdict || 'The saved Fracture report will guide this preparation pass.', 440)
       : 'No audit report is attached yet. Fracture will prepare a draft-first rebuttal plan and focus on the reasoning it can identify.';
     generateBtn.disabled = false;
     status.textContent = report ? 'Report context ready' : 'Draft ready';

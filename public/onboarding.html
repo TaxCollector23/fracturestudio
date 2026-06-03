@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Set up Fracture Studio and choose how you want argument feedback to work." />
+  <title>Welcome - Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body>
+<div class="noise"></div>
+
+<main class="onboarding-shell">
+  <section class="onboarding-panel">
+    <div class="nav-logo onboarding-logo"><img src="favicon.svg" alt="" /></div>
+    <div class="label">Welcome to Fracture Studio</div>
+    <h1>Start with the feedback style that fits your work.</h1>
+    <p>Fracture Studio helps you pressure-test essays, speeches, and debate cases. You can sign in to save work across sessions, or continue as a guest and keep your setup in this browser.</p>
+
+    <div class="onboarding-actions">
+      <button class="btn-primary" id="onboardingGoogle" type="button">Continue with Google</button>
+      <button class="btn-sm" id="onboardingGuest" type="button">Continue without email</button>
+    </div>
+
+    <div class="onboarding-email">
+      <div class="field-grid">
+        <label class="field">
+          <span>Full name</span>
+          <input id="onboardingName" type="text" placeholder="Optional for new accounts" autocomplete="name" />
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input id="onboardingEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="onboardingPassword" type="password" placeholder="At least 8 characters" autocomplete="current-password" />
+        </label>
+      </div>
+      <div class="controls">
+        <button class="btn-sm" id="onboardingEmailSignIn" type="button">Sign In</button>
+        <button class="btn-sm" id="onboardingEmailCreate" type="button">Create Account</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="onboarding-panel">
+    <div class="panel-title">Quick Setup</div>
+    <label class="field">
+      <span>How did you hear about Fracture Studio?</span>
+      <select id="hearAbout">
+        <option value="">Choose one</option>
+        <option>Friend or teammate</option>
+        <option>Teacher or coach</option>
+        <option>Speech and Debate tournament</option>
+        <option>School assignment</option>
+        <option>Social media</option>
+        <option>Search engine</option>
+        <option>Other</option>
+      </select>
+    </label>
+    <label class="field hidden" id="hearOtherWrap">
+      <span>Tell us where</span>
+      <input id="hearOther" type="text" placeholder="Optional" />
+    </label>
+    <label class="field">
+      <span>What are you mainly working on?</span>
+      <select id="workType">
+        <option>Not sure yet</option>
+        <option>School essay</option>
+        <option>Speech</option>
+        <option>Public Forum debate</option>
+        <option>Lincoln-Douglas debate</option>
+        <option>Policy or World Schools debate</option>
+        <option>College or scholarship writing</option>
+      </select>
+    </label>
+    <label class="toggle-row" for="productUpdates">
+      <span>Send me occasional product updates</span>
+      <input id="productUpdates" type="checkbox" />
+    </label>
+    <button class="btn-primary" id="finishOnboarding" type="button">Finish Setup</button>
+    <p class="contact-status" id="onboardingStatus" role="status" aria-live="polite"></p>
+  </section>
+</main>
+
+<script src="auth.js"></script>
+<script src="onboarding.js"></script>
+</body>
+</html>
