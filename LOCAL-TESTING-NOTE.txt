@@ -1,0 +1,6 @@
+This local package restores the .env values that existed in the uploaded ZIP and includes node_modules from that ZIP when available.
+It keeps Firebase web auth wired. The uploaded ZIP did not contain a Firebase Admin service-account JSON; its saved Vercel value was blank.
+That means normal login/saved-work can work, but server-side /admin user listing still needs a real Firebase service account if it was not already configured on your machine.
+
+
+v5.7: Google sign-in uses the stable popup flow again. Remember-me persistence remains enabled by default so the device should stay signed in after the first login.
