@@ -1,0 +1,10 @@
+.env
+.env.local
+.env.*.local
+node_modules/
+.vercel/
+.vercelignore
+pb_data/
+*.log
+.DS_Store
+Thumbs.db
