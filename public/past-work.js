@@ -172,19 +172,6 @@
       empty('Your saved-work connection is unavailable. Return to Studio and try again.');
       return;
     }
-    // Check if user is authenticated
-    const user = typeof window.FractureAuth.getUser === 'function' ? await window.FractureAuth.getUser() : null;
-    const isGuest = typeof window.FractureAuth.hasGuestAccess === 'function' ? window.FractureAuth.hasGuestAccess() : false;
-    if (!user && !isGuest) {
-      empty('Sign in to view your saved work. Past work is only visible when you are logged in.');
-      if (count) count.textContent = 'Not signed in';
-      return;
-    }
-    if (isGuest && !user) {
-      empty('Guest sessions do not save work history. Sign in to keep your reports across sessions.');
-      if (count) count.textContent = 'Guest session';
-      return;
-    }
     count.textContent = 'Loading saved work';
     projects = await window.FractureAuth.listProjects();
     render();

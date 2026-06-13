@@ -93,6 +93,47 @@
     }
   }
 
+  // Simple markdown-to-HTML renderer for rebuttal output
+  function renderMarkdown(text) {
+    if (!text) return '';
+    var html = text
+      // Escape HTML entities first
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      // Bold: **text** or __text__
+      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/__([^_\n]+)__/g, '<strong>$1</strong>')
+      // Italic: *text* or _text_
+      .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+      // H1-H4 headings
+      .replace(/^#### (.+)$/gm, '<h4 class="reb-h4">$1</h4>')
+      .replace(/^### (.+)$/gm, '<h3 class="reb-h3">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 class="reb-h2">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 class="reb-h1">$1</h1>')
+      // Horizontal rules
+      .replace(/^---+$/gm, '<hr class="reb-hr">')
+      // Numbered lists: lines starting with "1. " etc
+      .replace(/^(\d+)\.\s+(.+)$/gm, '<li class="reb-li-num"><span class="reb-li-num-badge">$1</span><span>$2</span></li>')
+      // Bullet lists
+      .replace(/^[\-\*]\s+(.+)$/gm, '<li class="reb-li-bullet"><span class="reb-bullet-dot"></span><span>$1</span></li>')
+      // Wrap consecutive list items
+      .replace(/(<li class="reb-li-num">.*?<\/li>\n?)+/g, function(m) { return '<ol class="reb-ol">' + m + '</ol>'; })
+      .replace(/(<li class="reb-li-bullet">.*?<\/li>\n?)+/g, function(m) { return '<ul class="reb-ul">' + m + '</ul>'; })
+      // Paragraphs: blank-line-separated blocks that aren't already HTML
+      .split(/\n{2,}/)
+      .map(function(block) {
+        block = block.trim();
+        if (!block) return '';
+        if (/^<(h[1-4]|ul|ol|hr|li|blockquote)/.test(block)) return block;
+        // Convert single newlines within a paragraph to <br>
+        return '<p class="reb-p">' + block.replace(/\n/g, '<br>') + '</p>';
+      })
+      .filter(Boolean)
+      .join('\n');
+    return html;
+  }
+
+  var rawRebuttalText = '';
+
   function readSseChunk(chunk, state) {
     state.buffer += chunk;
     const parts = state.buffer.split(/\r?\n\r?\n/);
@@ -105,9 +146,10 @@
       try {
         const payload = JSON.parse(data);
         if (payload.fracture_text_delta) {
-          if (!state.hasText) output.textContent = '';
+          if (!state.hasText) { output.innerHTML = ''; rawRebuttalText = ''; }
           state.hasText = true;
-          output.textContent += payload.fracture_text_delta;
+          rawRebuttalText += payload.fracture_text_delta;
+          output.innerHTML = renderMarkdown(rawRebuttalText);
           output.scrollTop = output.scrollHeight;
         }
         if (payload.fracture_text_progress) {
@@ -125,7 +167,7 @@
     }
 
     generateBtn.disabled = true;
-    output.textContent = 'Fracture is reading the saved argument and preparing the strongest useful reply paths.';
+    output.innerHTML = '<p class="reb-streaming"><span class="reb-pulse"></span> Fracture is reading your argument and preparing the strongest reply paths&hellip;</p>';
     status.textContent = 'Reading saved argument';
     setProgress(4);
 
@@ -156,11 +198,11 @@
       readSseChunk(decoder.decode(), state);
       setProgress(100);
       status.textContent = 'Preparation ready';
-      if (!state.hasText) output.textContent = 'The preparation pass returned no text. Try again.';
+      if (!state.hasText) output.innerHTML = '<p class="reb-p">The preparation pass returned no text. Try again.</p>';
     } catch (error) {
       setProgress(0);
       status.textContent = 'Unable to prepare';
-      output.textContent = error.message || 'Rebuttal preparation could not finish.';
+      output.innerHTML = '<p class="reb-error">' + (error.message || 'Rebuttal preparation could not finish.') + '</p>';
     } finally {
       generateBtn.disabled = !workspace;
     }

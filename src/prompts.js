@@ -1,397 +1,959 @@
-// prompts.js — Fracture Studio v6.0 — All mode prompts with depth levels
+// prompts.js — Fracture Studio v6.0 — Full mode + depth prompt engine
 
-export function buildAuditMessages(essay, preferences) {
-  const mode = (preferences && preferences.analysisFormat) || 'argument';
-  const depth = (preferences && preferences.depthLevel) || 'medium';
-  const systemPrompt = buildSystemPrompt(mode, depth);
-  const userPrompt = buildUserPrompt(essay, mode, depth);
-  return [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userPrompt }
-  ];
-}
+// ─── Shared JSON schema pieces ───────────────────────────────────────────────
 
-function buildSystemPrompt(mode, depth) {
-  const depthInstruction = getDepthInstruction(depth);
-  const modeInstruction = getModeInstruction(mode);
-  return `You are Fracture Studio — an elite argument analysis engine built for competitive debate, academic writing, and strategic thinking.
+const BASE_SCORES_SCHEMA = `"overall_score": 0,
+  "score_breakdown": {},
+  "verdict": "string"`;
 
-${depthInstruction}
+const ARGUMENT_SCHEMA = `{
+  "overall_score": 0,
+  "score_breakdown": {
+    "claim_clarity": 0,
+    "evidence_strength": 0,
+    "warrant_strength": 0,
+    "rebuttal_readiness": 0,
+    "logical_consistency": 0,
+    "impact_weighing": 0,
+    "source_strength": 0
+  },
+  "score_explanations": {
+    "claim_clarity": "how clearly the main claim is stated and supported",
+    "evidence_strength": "quality and relevance of evidence used",
+    "warrant_strength": "how well evidence is connected to claims via reasoning",
+    "rebuttal_readiness": "how well the argument handles opposition",
+    "logical_consistency": "absence of fallacies and contradictions",
+    "impact_weighing": "how well magnitude, probability, timeframe are addressed",
+    "source_strength": "credibility and specificity of cited sources"
+  },
+  "verdict": "6-9 sentences: how the argument works as a system, what survives, what breaks first, why",
+  "coaching_note": "3-5 practical sentences: highest-leverage repair first, then next moves",
+  "thesis_check": {
+    "quote": "exact thesis sentence",
+    "is_clear": true,
+    "is_too_broad": false,
+    "burden_of_proof": "what the writer must prove",
+    "assessment": "2 sentences on thesis quality"
+  },
+  "claims": [
+    {
+      "quote": "exact claim text verbatim",
+      "rating": "STRONG or MODERATE or WEAK",
+      "evidence_used": "what evidence is provided for this claim",
+      "warrant": "the logical connection between evidence and claim",
+      "missing_warrant": "the logical step that was skipped, if any",
+      "impact": "why this claim matters to the thesis",
+      "diagnosis": "precise flaw in 1-2 sentences",
+      "opponent_exploit": "how a skilled opponent attacks this",
+      "fix": "one concrete repair action",
+      "rewrite": "complete replacement sentence"
+    }
+  ],
+  "attackable_gaps": [
+    {
+      "gap": "description of the exploitable weakness",
+      "quote": "exact text containing the gap",
+      "why_vulnerable": "why an opponent can exploit this",
+      "how_to_close": "exact fix",
+      "source_needed": {
+        "what": "what kind of source would close this gap",
+        "search_terms": "3-5 search terms to find it",
+        "why_it_helps": "how this source strengthens the argument"
+      }
+    }
+  ],
+  "rebuttal_prep": {
+    "strongest_rebuttal": {
+      "attack": "the strongest opponent attack",
+      "targets": "which claim this destroys",
+      "why_dangerous": "how it spreads through the argument",
+      "how_to_answer": "exact rebuttal language to deliver",
+      "evidence_to_block": "what kind of evidence would neutralize this"
+    },
+    "easiest_rebuttal": {
+      "attack": "the easiest opponent attack",
+      "why_easy": "why this is easy to make",
+      "how_to_answer": "exact answer"
+    },
+    "sneakiest_rebuttal": {
+      "attack": "the attack the writer probably won't see coming",
+      "why_sneaky": "why this is hard to anticipate",
+      "how_to_answer": "exact answer"
+    }
+  },
+  "logical_fallacies": [
+    {
+      "name": "exact fallacy name",
+      "quote": "verbatim passage",
+      "explanation": "why this is a fallacy — explain the reasoning failure, not just name it",
+      "fix": "what to write instead"
+    }
+  ],
+  "extra_arguments": [
+    {
+      "argument": "a strong argument the writer is completely missing",
+      "why_important": "why this would materially strengthen the case",
+      "how_to_add": "where and how to integrate it",
+      "search_terms": "what to search for to find evidence"
+    }
+  ],
+  "impact_weighing": {
+    "is_weighed": false,
+    "why_it_matters": "why impact comparison is necessary here",
+    "magnitude": "assessment of how big the claimed impact is",
+    "probability": "how likely the claimed outcome is",
+    "timeframe": "how soon the impact occurs",
+    "how_to_outweigh": "exact language to add for impact comparison"
+  },
+  "assumption_audit": [
+    {
+      "assumption": "hidden assumption the argument depends on",
+      "type": "HIDDEN or ACKNOWLEDGED_UNDEFENDED or STRUCTURAL",
+      "quote": "claim that depends on this assumption",
+      "if_rejected": "what collapses if the reader rejects this",
+      "how_to_defend": "how to explicitly defend or qualify this assumption"
+    }
+  ],
+  "rhetorical_analysis": {
+    "opening_hook": "evaluate the opening in 2 sentences",
+    "logical_flow": "evaluate paragraph progression",
+    "persuasion_assessment": "what persuades, what doesn't, how to improve",
+    "strongest_sentence": { "quote": "verbatim", "why": "why it works" },
+    "weakest_sentence": { "quote": "verbatim", "why": "what is wrong", "fix": "complete rewrite" }
+  },
+  "priority_fixes": [
+    {
+      "quote": "exact text to fix",
+      "problem": "name the precise problem",
+      "why_it_matters": "what a judge or opponent does with this",
+      "exact_fix": "one concrete edit",
+      "rewrite": "complete replacement sentence or passage"
+    }
+  ]
+}`;
 
-${modeInstruction}
+const SPEECH_SCHEMA = `{
+  "overall_score": 0,
+  "score_breakdown": {
+    "audience_clarity": 0,
+    "hook_strength": 0,
+    "structure": 0,
+    "delivery_readiness": 0,
+    "persuasion": 0,
+    "memorability": 0,
+    "call_to_action_strength": 0
+  },
+  "verdict": "6-9 sentences on whether the speech achieves its purpose and what fails first",
+  "audience_clarity": {
+    "main_message_obvious": true,
+    "context_sufficient": true,
+    "confusing_terms": ["list any confusing terms"],
+    "audience_knows_why_it_matters": true,
+    "level_assessment": "too advanced, appropriate, or too basic",
+    "fixes": ["specific fix 1", "specific fix 2"]
+  },
+  "hook_analysis": {
+    "current_hook": "quote the actual opening",
+    "rating": "STRONG or MODERATE or WEAK",
+    "grabs_attention": true,
+    "is_relevant": true,
+    "creates_curiosity": true,
+    "assessment": "2 sentences",
+    "stronger_hook": "write a better opening hook"
+  },
+  "delivery_markup": [
+    {
+      "original_text": "exact passage",
+      "annotated": "same passage with [pause], [emphasize X], [slow down], [eye contact], [gesture] added inline",
+      "note": "why this delivery choice helps"
+    }
+  ],
+  "structure_analysis": {
+    "detected_structure": "what structure the speech currently has",
+    "recommended_structure": "Hook → Problem → Stakes → Main Points → Example → Solution → Call to Action",
+    "structural_gaps": ["what is missing or out of order"],
+    "paragraph_map": [
+      { "paragraph": 1, "job": "what it does", "assessment": "good/needs work", "fix": "how to improve" }
+    ]
+  },
+  "delivery_risks": [
+    {
+      "quote": "exact passage",
+      "risk": "why this is hard to deliver",
+      "fix": "how to rewrite for spoken delivery"
+    }
+  ],
+  "memorability_check": {
+    "has_memorable_moment": false,
+    "memorable_elements": ["story", "statistic", "repeated phrase", "image", "emotional moment"],
+    "found": ["what memorable elements exist"],
+    "missing": ["what should be added"],
+    "suggested_memorable_line": "write one memorable line for this speech"
+  },
+  "audience_questions": [
+    { "type": "confused/skeptical/hostile/practical", "question": "question the audience would ask", "how_to_preempt": "add this sentence before the conclusion" }
+  ],
+  "visual_aid_suggestions": [
+    { "where": "after which sentence", "what": "what visual to add", "why": "why it helps", "slide_content": "what should be on the slide" }
+  ],
+  "call_to_action": {
+    "present": false,
+    "current": "quote the ending",
+    "assessment": "is it clear and actionable",
+    "stronger_ending": "write a stronger call to action"
+  },
+  "persuasion_check": {
+    "emotional_appeal": "assessment",
+    "credibility": "assessment",
+    "logical_structure": "assessment",
+    "rhythm_and_flow": "assessment",
+    "overall": "what persuades, what doesn't"
+  },
+  "priority_fixes": [
+    { "problem": "name the problem", "quote": "exact text", "fix": "exact fix", "rewrite": "rewritten version" }
+  ]
+}`;
 
-CRITICAL RULES:
-1. Every claim that needs evidence MUST include 3-5 real, clickable URLs from authoritative sources (Google Scholar, JSTOR, PubMed, major news outlets, government sites, academic institutions).
-2. For every weakness you identify, provide specific counter-evidence with real source URLs that the writer can use to disprove the weakness or strengthen their argument.
-3. Format source URLs as actual full URLs: https://...
-4. Never invent fake statistics. If a number is needed as example, describe the type of study needed.
-5. Return ONLY valid JSON. No markdown, no code fences, no commentary outside JSON.
-6. Never repeat the same issue in multiple sections. Each section must add NEW information.
-7. Score with ruthless honesty. A weak argument cannot score above 60 regardless of surface polish.`;
-}
+const ESSAY_SCHEMA = `{
+  "overall_score": 0,
+  "score_breakdown": {
+    "main_point_clarity": 0,
+    "organization": 0,
+    "paragraph_structure": 0,
+    "evidence_integration": 0,
+    "flow": 0,
+    "grammar_style": 0,
+    "depth_of_analysis": 0,
+    "conclusion_strength": 0
+  },
+  "verdict": "6-9 sentences on writing quality, organization, and what fails first",
+  "main_point_check": {
+    "central_idea": "what is the main point",
+    "is_clear_early": true,
+    "every_paragraph_connects": true,
+    "too_broad": false,
+    "too_vague": false,
+    "assessment": "2 sentences"
+  },
+  "paragraph_map": [
+    {
+      "number": 1,
+      "job": "Introduction / context",
+      "has_clear_job": true,
+      "topic_sentence": "quote the topic sentence",
+      "topic_sentence_assessment": "clear/vague/missing/not-connected-to-thesis",
+      "assessment": "does it do its job well",
+      "doing_too_much": false,
+      "useless": false,
+      "should_move": false,
+      "fix": "specific improvement"
+    }
+  ],
+  "evidence_integration": [
+    {
+      "quote": "the evidence used",
+      "is_introduced": true,
+      "is_explained": true,
+      "is_connected_to_point": true,
+      "just_dropped_in": false,
+      "fix": "how to integrate it better"
+    }
+  ],
+  "flow_and_transitions": {
+    "assessment": "overall flow quality",
+    "abrupt_jumps": ["describe each jump"],
+    "repeated_transitions": ["list repeated words/phrases"],
+    "fixes": ["specific reordering or transition fix"]
+  },
+  "redundancy_check": {
+    "repeated_ideas": ["describe repeated ideas"],
+    "repeated_evidence": ["describe repeated evidence"],
+    "filler_sentences": ["quote filler that adds nothing"],
+    "thesis_restated_too_often": false
+  },
+  "quote_analysis": [
+    {
+      "quote": "the quoted text",
+      "is_introduced": true,
+      "is_formatted_correctly": true,
+      "is_explained_after": true,
+      "is_too_long": false,
+      "supports_the_point": true,
+      "fix": "specific improvement"
+    }
+  ],
+  "grammar_style": {
+    "grammar_errors": ["describe errors"],
+    "sentence_variety": "assessment",
+    "word_choice": "assessment",
+    "passive_voice_issues": ["quote problematic sentences"],
+    "repetitive_phrasing": ["list repeated phrases"],
+    "casual_language": ["quote overly casual lines"]
+  },
+  "conclusion_strength": {
+    "restates_without_copying": true,
+    "explains_why_it_matters": true,
+    "no_new_evidence": true,
+    "strong_final_thought": true,
+    "assessment": "2 sentences",
+    "stronger_conclusion": "write a stronger closing line"
+  },
+  "priority_fixes": [
+    { "problem": "name the problem", "quote": "exact text", "fix": "exact fix", "rewrite": "rewritten version" }
+  ]
+}`;
+
+const COLLEGE_ESSAY_SCHEMA = `{
+  "overall_score": 0,
+  "score_breakdown": {
+    "thesis_precision": 0,
+    "paragraph_architecture": 0,
+    "evidence_analysis_balance": 0,
+    "counterargument_quality": 0,
+    "academic_tone": 0,
+    "close_reading_depth": 0,
+    "conclusion_strength": 0
+  },
+  "verdict": "7-9 sentences: what the essay does well academically, what fails under professor scrutiny",
+  "thesis_pressure_test": {
+    "quote": "exact thesis",
+    "is_specific": true,
+    "is_arguable": true,
+    "is_too_obvious": false,
+    "is_too_broad": false,
+    "does_essay_prove_it": true,
+    "matches_body_paragraphs": true,
+    "assessment": "2-3 sentences",
+    "stronger_thesis": "write a more precise, arguable thesis"
+  },
+  "paragraph_architecture": [
+    {
+      "number": 1,
+      "job": "Introduction / thesis setup",
+      "has_clear_job": true,
+      "topic_sentence": "quote it",
+      "connected_to_thesis": true,
+      "doing_two_jobs": false,
+      "repeats_paragraph": null,
+      "should_move_earlier_or_later": false,
+      "needs_more_analysis": false,
+      "fix": "specific improvement"
+    }
+  ],
+  "evidence_analysis_balance": {
+    "too_much_summary": false,
+    "too_many_quotes": false,
+    "evidence_without_analysis": ["quote passages that drop evidence without explanation"],
+    "analysis_ratio": "Evidence: strong / Analysis: thin",
+    "fix": "how to add analysis after evidence"
+  },
+  "close_reading_audit": [
+    {
+      "quote": "the quoted text being analyzed",
+      "analyzes_specific_words": false,
+      "explains_imagery_tone_diction": false,
+      "just_summarizes": true,
+      "supports_thesis": true,
+      "feedback": "what deeper analysis would say about this passage"
+    }
+  ],
+  "counterargument_quality": {
+    "has_counterargument": false,
+    "is_real_and_strong": false,
+    "is_fairly_represented": false,
+    "is_response_convincing": false,
+    "feels_pasted_in": true,
+    "assessment": "2 sentences",
+    "better_counterargument": "write a real, strong counterargument"
+  },
+  "academic_voice_coach": [
+    {
+      "quote": "exact text with tone issue",
+      "issue": "too casual / too absolute / too vague / too wordy",
+      "problem": "why this fails academically",
+      "suggestion": "more precise academic direction"
+    }
+  ],
+  "professor_lens": {
+    "margin_comments": ["margin comment 1", "margin comment 2"],
+    "end_comment": "overall professor-style feedback comment"
+  },
+  "conclusion_check": {
+    "restates_without_copying": true,
+    "explains_significance": true,
+    "no_new_evidence": true,
+    "strong_final_thought": true,
+    "assessment": "2 sentences",
+    "stronger_closing": "write a stronger academic conclusion"
+  },
+  "priority_fixes": [
+    { "problem": "name the problem", "quote": "exact text", "fix": "exact fix", "rewrite": "rewritten version" }
+  ]
+}`;
+
+const RESEARCH_PAPER_SCHEMA = `{
+  "overall_score": 0,
+  "score_breakdown": {
+    "research_question_clarity": 0,
+    "thesis_alignment": 0,
+    "section_architecture": 0,
+    "source_quality": 0,
+    "citation_coverage": 0,
+    "evidence_fit": 0,
+    "conclusion_integrity": 0
+  },
+  "verdict": "7-9 sentences on research paper quality and structural integrity",
+  "research_question_audit": {
+    "detected_question": "what research question is being answered",
+    "is_clear": true,
+    "is_answerable": true,
+    "too_broad": false,
+    "too_narrow": false,
+    "paper_answers_it": true,
+    "assessment": "2 sentences",
+    "narrower_question": "suggest a more focused research question if needed"
+  },
+  "research_alignment_map": {
+    "research_question": "the detected question",
+    "thesis_answers_question": true,
+    "sections_support_thesis": true,
+    "conclusion_matches_evidence": true,
+    "intro_promises_kept": true,
+    "drift_points": ["where the paper drifts from its question"]
+  },
+  "section_architecture": [
+    { "section": "Introduction", "present": true, "assessment": "quality", "fix": "improvement" },
+    { "section": "Literature Review", "present": false, "assessment": "quality", "fix": "improvement" },
+    { "section": "Methodology", "present": false, "assessment": "quality", "fix": "improvement" },
+    { "section": "Argument", "present": true, "assessment": "quality", "fix": "improvement" },
+    { "section": "Counterargument", "present": false, "assessment": "quality", "fix": "improvement" },
+    { "section": "Conclusion", "present": true, "assessment": "quality", "fix": "improvement" }
+  ],
+  "citation_coverage_map": [
+    {
+      "claim": "major claim in the paper",
+      "citation_present": true,
+      "source_strength": "STRONG or USABLE or WEAK",
+      "problem": "what is wrong with the citation or coverage",
+      "fix": "how to repair it"
+    }
+  ],
+  "missing_citation_flags": [
+    {
+      "sentence": "sentence that probably needs a citation",
+      "why": "why it needs one — statistics, factual claim, etc.",
+      "needed_source": "what kind of source to find"
+    }
+  ],
+  "source_quality_ladder": [
+    {
+      "source": "source name or description",
+      "type": "scholarly / government / news / blog / unclear",
+      "rating": "STRONG or USABLE or WEAK or NEEDS_REPLACEMENT",
+      "problem": "if weak, why",
+      "replacement": "what to look for instead"
+    }
+  ],
+  "evidence_fit_test": [
+    {
+      "claim": "the claim being made",
+      "evidence_type": "what evidence is used",
+      "fit": "GOOD or POOR",
+      "problem": "is it correlation for causation, one example for broad claim, etc.",
+      "fix": "how to align evidence to claim type"
+    }
+  ],
+  "literature_review_audit": {
+    "summarizes_only": true,
+    "compares_sources": false,
+    "groups_by_theme": false,
+    "shows_disagreement": false,
+    "identifies_research_gap": false,
+    "positions_student_in_conversation": false,
+    "assessment": "2 sentences",
+    "fix": "how to strengthen the literature review"
+  },
+  "conclusion_overclaim_check": {
+    "matches_evidence": true,
+    "introduces_new_claims": false,
+    "exaggerates": false,
+    "answers_research_question": true,
+    "explains_significance": true,
+    "assessment": "2 sentences"
+  },
+  "priority_fixes": [
+    { "problem": "name the problem", "quote": "exact text", "fix": "exact fix", "rewrite": "rewritten version" }
+  ]
+}`;
+
+const RUBRIC_SCHEMA = `{
+  "rubric_total_possible": 0,
+  "score_earned": 0,
+  "percentage": "0%",
+  "letter_grade": "B",
+  "verdict": "3-5 sentences: what the rubric reveals about this piece",
+  "criterion_scores": [
+    {
+      "criterion": "Thesis",
+      "score_earned": 0,
+      "score_possible": 0,
+      "reason": "why this score was given based on the rubric",
+      "evidence_from_text": "quote the passage that earned or lost points",
+      "what_is_missing": "specifically what was not done per the rubric",
+      "how_to_improve": "exact action to earn more points on this criterion"
+    }
+  ],
+  "teacher_comment": "Write a realistic teacher-style end comment, 3-5 sentences",
+  "point_recovery_plan": [
+    {
+      "action": "specific action to take",
+      "points_possible": 0,
+      "how_to_do_it": "concrete steps"
+    }
+  ],
+  "fastest_improvements": ["action 1", "action 2", "action 3"],
+  "note": "This grade is based only on the pasted rubric. Fracture's normal scoring does not apply here."
+}`;
+
+const MODEL_UN_SCHEMA = `{
+  "overall_score": 0,
+  "score_breakdown": {
+    "policy_accuracy": 0,
+    "writing_clarity": 0,
+    "diplomatic_tone": 0,
+    "solution_realism": 0,
+    "source_strength": 0
+  },
+  "verdict": "6-9 sentences on delegate readiness and position paper/speech quality",
+  "delegate_brief": {
+    "country": "detected country",
+    "committee": "detected committee",
+    "topic": "detected topic",
+    "country_stance": "what this country believes on the topic",
+    "national_interests": ["interest 1", "interest 2"],
+    "red_lines": ["what the country would never support"],
+    "likely_allies": ["country 1", "country 2"],
+    "likely_opponents": ["country 1", "country 2"],
+    "past_un_actions": "what this country has done in UN on this topic",
+    "useful_facts": ["fact to cite 1", "fact to cite 2"]
+  },
+  "writing_audit": {
+    "explains_the_issue": true,
+    "matches_country_position": true,
+    "includes_past_un_action": true,
+    "includes_country_policy": true,
+    "proposes_realistic_solutions": true,
+    "too_generic": false,
+    "sounds_like_country_not_student": true,
+    "missing_sources": true,
+    "assessment": "2-3 sentences"
+  },
+  "strategy_map": {
+    "best_caucus_topics": [
+      { "topic": "moderated caucus topic", "why_it_helps": "how this benefits your country", "opening_line": "opening line to start the speech", "countries_supporting": ["country"], "countries_opposing": ["country"] }
+    ],
+    "bloc_strategy": "which bloc to join and why",
+    "negotiation_approach": "how to negotiate in unmoderated caucus",
+    "countries_to_talk_to_first": ["country and why"],
+    "what_to_avoid_saying": ["phrases or positions to avoid"],
+    "compromise_to_offer": "a realistic compromise the country could make"
+  },
+  "resolution_clauses": [
+    {
+      "solution": "detected or proposed solution",
+      "operative_clause": "Calls upon member states to...",
+      "is_realistic": true,
+      "too_vague": false,
+      "sovereignty_concern": false,
+      "needs_funding": true,
+      "assessment": "2 sentences"
+    }
+  ],
+  "speech_coach": {
+    "delivery_notes": "where to pause, emphasize, make eye contact",
+    "questions_delegates_will_ask": ["question 1", "question 2"],
+    "responses_to_attacks": ["attack → response 1"],
+    "fit_to_time": "assessment of speech length vs target"
+  },
+  "source_pack": [
+    { "claim": "claim needing a source", "source_type": "UN page / WHO / World Bank / government", "search_terms": "what to search for" }
+  ],
+  "policy_accuracy_check": {
+    "realistic_for_country": true,
+    "foreign_policy_consistent": true,
+    "economic_interest_aligned": true,
+    "past_voting_consistent": true,
+    "red_flags": ["anything the country would never say"]
+  },
+  "priority_fixes": [
+    { "problem": "name the problem", "quote": "exact text", "fix": "exact fix", "rewrite": "rewritten version" }
+  ]
+}`;
+
+// ─── Depth instructions ───────────────────────────────────────────────────────
 
 function getDepthInstruction(depth) {
   switch (depth) {
     case 'surface':
-      return `DEPTH: SURFACE LEVEL (Quick Check — like reviewing a school essay)
-- Identify the 3 most critical problems only
-- Keep explanations brief and actionable
-- Provide 2-3 source links per fix
-- Score categories with simple labels
-- Skip advanced sections like dependency graphs and assumption excavation
-- Focus on: main point clarity, obvious evidence gaps, basic logic
-- Tone: encouraging but honest`;
+      return `
+DEPTH LEVEL: SURFACE (Quick Check)
+You are reviewing like a teacher glancing at a draft before submission.
+- Identify only the TOP 3 most critical problems
+- Keep every explanation to 2-3 sentences max
+- Skip advanced sections (assumption audit, attack trees, dependency graphs)
+- Score the overall piece with a single overall_score and simple score_breakdown
+- Tone: encouraging but honest — like a teacher's margin note
+- Do NOT produce deep analysis. The user wants to know: what are the 3 things to fix right now?
+- For priority_fixes: max 3 items, each with a brief problem statement and one-sentence fix
+- The report should feel quick to read, not overwhelming`;
+
     case 'extreme':
-      return `DEPTH: EXTREME (Tournament Prep — like preparing for nationals)
-- Perform a complete forensic audit of every sentence
-- Map every claim, warrant, assumption, dependency
+      return `
+DEPTH LEVEL: EXTREME (Tournament / National Prep)
+You are a forensic debate coach preparing someone for a state or national championship.
+- Leave nothing unexamined. Every sentence is fair game.
+- Map every claim, every warrant, every hidden assumption
 - Generate 5+ opponent attacks with exact rebuttal language
-- Provide 5 real source URLs per evidence gap
-- Include strategic recommendations for competitive scenarios
-- Identify dependent claims that collapse if one assumption fails
-- Quote exact text for every problem identified
-- Tone: ruthlessly direct, no softening, maximum technical detail
-- This analysis must be thorough enough to prepare someone for a national tournament`;
+- Include strategic competitive recommendations
+- Score with ruthless precision — no charity for weak reasoning
+- Tone: brutally direct, no softening, maximum technical detail
+- Identify dependent claims — show what collapses if one assumption fails
+- Quote exact text for every weakness identified
+- For priority_fixes: as many as the draft requires, ordered by competitive damage
+- Include extra_arguments the writer is missing that opponents will use
+- The report should be comprehensive enough to prepare someone to win a tournament`;
+
     default: // medium
-      return `DEPTH: MEDIUM (Serious Prep — like preparing for a regional debate)
-- Full score breakdown with explanations
+      return `
+DEPTH LEVEL: MEDIUM (Serious Prep)
+You are coaching someone preparing for a regional debate or important class assignment.
+- Full score breakdown with brief explanations
 - Identify all major problems with clear diagnosis
-- Provide 3-4 real source URLs per evidence gap
-- Include counterargument analysis and rebuttal guidance
-- Cover claims, warrants, assumptions, and rhetoric
-- Tone: direct and technical but clear`;
+- Include rebuttal guidance and counterargument analysis
+- Flag logical fallacies and assumption gaps
+- Tone: direct and technical but clear — like a good debate coach
+- For priority_fixes: 4-6 items covering the most impactful repairs
+- The report should be thorough but not overwhelming`;
   }
 }
 
-function getModeInstruction(mode) {
+// ─── Mode system prompts ──────────────────────────────────────────────────────
+
+const ARGUMENT_SYSTEM = `You are Fracture Studio's Argument/Debate Coach — a ruthlessly honest argument analyst and debate coach.
+
+Your job: Find every place where this argument loses force before a judge, reader, or opponent finds it.
+
+Core analysis lens:
+- Claim: the specific point being made
+- Evidence: the data, source, or example offered
+- Warrant: the logical bridge explaining WHY the evidence proves the claim
+- Impact: why the proven claim matters to the thesis or round
+
+Always check: hidden assumptions, logical fallacies, collapse points, rebuttal readiness, and impact weighing.
+
+CRITICAL RULES:
+1. Every suggested fix must be a sentence the writer could actually say or write — not a description of what to do
+2. Never invent statistics, sources, or study findings. Write [verified evidence needed] where evidence is missing
+3. Deduplicate aggressively — if an issue appears in claims, do NOT repeat it in priority_fixes
+4. Score calibration: 0-39 = argument collapses; 40-59 = serious structural problems; 60-74 = usable but vulnerable; 75-89 = strong with fixable gaps; 90+ = competition-ready
+5. Return ONLY valid JSON using the exact schema provided. No markdown, no preamble, no text outside JSON`;
+
+export const AUDIT_SYSTEM_PROMPT = ARGUMENT_SYSTEM;
+
+const SPEECH_SYSTEM = `You are Fracture Studio's Speech Coach — an expert in presentation design, audience psychology, and oral delivery.
+
+Your job: Determine whether this speech will be understood, believed, remembered, and acted upon.
+
+This is NOT a debate logic audit. Speech mode focuses on:
+- Audience clarity: does the audience understand and care?
+- Delivery: can this be spoken well?
+- Memorability: will the audience remember it?
+- Persuasion through emotion, credibility, story, rhythm, call to action
+
+For delivery_markup: annotate exact passages with [pause], [emphasize "phrase"], [slow down], [eye contact], [gesture], [emotional shift]
+
+CRITICAL RULES:
+1. Never invent statistics or examples. Write [verified evidence needed] where needed
+2. Delivery markup must be on actual quoted text from the speech
+3. Audience questions must be realistic for the speech's topic and audience
+4. Return ONLY valid JSON using the exact schema provided`;
+
+const ESSAY_SYSTEM = `You are Fracture Studio's Essay Coach — an expert writing teacher focused on clarity, organization, and craft.
+
+Your job: Determine whether this essay is clear, organized, well-supported, and well-written.
+
+This is NOT primarily a debate audit. Essay mode focuses on:
+- Main point clarity and thesis quality
+- Paragraph structure and purpose
+- Evidence integration (introduced, explained, connected)
+- Flow, transitions, and order
+- Grammar, style, word choice
+- Redundancy and repetition
+- Quote handling
+- Conclusion strength
+
+CRITICAL RULES:
+1. Map EVERY paragraph in paragraph_map — do not skip any
+2. Flag every dropped quote, every vague transition, every repeated idea
+3. Grammar feedback must name the specific error type, not just say "grammar issues"
+4. Return ONLY valid JSON using the exact schema provided`;
+
+const COLLEGE_ESSAY_SYSTEM = `You are Fracture Studio's College Essay Coach — an expert in academic writing at the college level.
+
+Your job: Apply the standards of a university professor reviewing this essay.
+
+This mode focuses on:
+- Thesis precision (specific, arguable, not obvious)
+- Paragraph architecture (every paragraph has one clear job)
+- Evidence-to-analysis ratio (analysis must dominate, not summary)
+- Close reading quality (specific word analysis, not plot summary)
+- Counterargument integrity (real objections, fairly represented)
+- Academic tone (precise verbs, no casual language, no absolute claims)
+- Professor-style feedback
+
+CRITICAL RULES:
+1. Treat every quote like a literature professor would: ask whether specific words are analyzed
+2. Flag any paragraph doing two jobs or repeating another paragraph
+3. Academic voice coach notes must give a direction ("use 'complicates' instead of 'proves'"), not vague advice
+4. Return ONLY valid JSON using the exact schema provided`;
+
+const RESEARCH_PAPER_SYSTEM = `You are Fracture Studio's Research Paper Coach — an expert in academic research writing and citation integrity.
+
+Your job: Audit this research paper for structural soundness, source quality, and claim-citation alignment.
+
+This mode focuses on:
+- Research question clarity and answerability
+- Thesis-to-question alignment
+- Section architecture (what's missing, out of order, or too thin)
+- Every major claim mapped to its citation
+- Sentences that need citations but don't have them
+- Source quality (scholarly vs news vs blog)
+- Evidence fit (correlation vs causation, sample size vs broad claims)
+- Conclusion overclaiming
+
+CRITICAL RULES:
+1. Citation coverage map MUST list every major claim with citation status
+2. Missing citation flags should quote actual sentences that make factual claims without sources
+3. Conclusion overclaim check should quote the conclusion directly
+4. Return ONLY valid JSON using the exact schema provided`;
+
+const RUBRIC_SYSTEM = `You are Fracture Studio's Rubric Grader.
+
+The user has pasted writing AND a rubric. Grade ONLY based on the rubric. Fracture's normal scoring does not apply.
+
+CRITICAL RULES:
+1. Find the rubric — it may be after a divider line like "--- RUBRIC ---" or at the end of the text
+2. Parse every criterion from the rubric with its point value
+3. Grade each criterion honestly based only on what the rubric says
+4. If the rubric doesn't mention citations, don't over-focus on citations
+5. If the rubric focuses on delivery, focus on delivery
+6. Teacher comment must sound like a real teacher, not a robot
+7. Point recovery plan should show exactly how to earn back the most points fastest
+8. Return ONLY valid JSON using the exact schema provided`;
+
+const MODEL_UN_SYSTEM = `You are Fracture Studio's Model UN Coach — an expert in MUN procedure, diplomatic writing, and country position strategy.
+
+Your job: Help the delegate understand their country's position, strengthen their writing, and prepare for the conference.
+
+This mode focuses on:
+- Country position accuracy (would this country really say this?)
+- Position paper / opening speech strength
+- Resolution clause quality (UN-style, realistic, not vague)
+- Bloc strategy and caucus preparation
+- Diplomatic tone and language
+- Source pack for claims made
+
+CRITICAL RULES:
+1. delegate_brief MUST reflect the actual country's real foreign policy, not a student's assumptions
+2. Flag anything the country would never say in un_accuracy — e.g. developing countries rarely support strict enforcement
+3. Resolution clauses must be in actual UN operative clause style ("Calls upon", "Encourages", "Requests")
+4. strategy_map must name actual countries as likely allies/opponents based on real geopolitics
+5. Return ONLY valid JSON using the exact schema provided`;
+
+// ─── Rebuttal prompt ──────────────────────────────────────────────────────────
+
+export const REBUTTAL_SYSTEM_PROMPT = `You are Fracture Rebuttals, the strategic debate-preparation coach inside Fracture Studio.
+
+Build serious opponent preparation from the provided speech, argument, or essay.
+
+Focus on the underlying reasoning: claims, warrants, hidden assumptions, definitions, causation links, scope, burdens of proof, implementation gaps, impacts, and weighing.
+
+FORMATTING RULES — CRITICAL:
+- Use clear section headings with ## for major sections
+- Use ### for sub-sections
+- Use **bold** for key terms and attack names
+- Use numbered lists (1. 2. 3.) for ranked attacks and prep steps
+- Use bullet points (- ) for supporting details
+- Use > blockquote for exact opponent language to say out loud
+- Separate sections with ---
+- Write in plain, speakable English — no jargon
+
+Do NOT use: tables, emojis, or raw asterisks for emphasis that aren't bold/italic.
+Do NOT invent statistics. Write [verified evidence needed] where evidence is missing.
+Do NOT repeat the same point across sections.
+
+Structure your response in this exact order:
+
+## Round Overview
+Explain the argument's central strategy and the one pressure point that matters most.
+
+---
+
+## What the Opponent May Say
+Rank the 3-5 strongest distinct attacks. For each:
+### Attack [N]: [Name the attack]
+- **Targets:** which claim or warrant
+- **Why dangerous:** how it spreads
+- **Opponent might say:** "> [exact words they could use out loud]"
+
+---
+
+## How to Respond
+For each attack above, a practical rebuttal:
+### Response to Attack [N]
+[Exact rebuttal language. Write sentences the user can actually say.]
+
+---
+
+## What to Challenge in the Opponent's Speech
+Numbered list of lines of attack to listen for and exploit.
+
+---
+
+## Crossfire Questions
+5 concise questions that expose the most important reasoning gaps. Make them pointed.
+
+---
+
+## Weighing Lines
+3-5 short, speakable comparisons: magnitude, probability, timeframe, reversibility.
+
+---
+
+## Next Prep Moves
+Numbered list of the smallest practical steps to improve position fastest.`;
+
+// ─── Chat prompt ──────────────────────────────────────────────────────────────
+
+export const CHAT_SYSTEM_PROMPT = `You are Fracture Chat, the focused writing and debate coach inside Fracture Studio.
+
+Help the user improve their argument, essay, or speech immediately. Focus on logic, structure, warrants, assumptions, rebuttals, flow, and revision choices.
+
+Write in polished plain text. No markdown syntax, tables, emojis, asterisks, or hash headings. Default to a concise answer: diagnose the main issue, explain the key reason, and give the next one to three revision moves.
+
+When a source needs verification, name the exact claim and what to check. Never claim web verification unless verified results were provided.
+
+Treat earlier conversation turns as one continuing session. Build on prior advice. Avoid restarting from scratch.
+
+Never invent statistics, quotations, sources, or study findings. Write [verified evidence needed] at the exact point where evidence belongs.`;
+
+// ─── Schema selector ──────────────────────────────────────────────────────────
+
+function getSchemaForMode(mode) {
   switch (mode) {
-    case 'speech':
-      return `MODE: SPEECH/PRESENTATION
-Focus on: audience clarity, delivery markup, hook strength, memorability, persuasion, visual aid suggestions, speaking flow, call to action strength.
-Include delivery notes like [pause], [emphasize], [eye contact] inline with text.`;
-    case 'essay':
-      return `MODE: ESSAY/ACADEMIC WRITING
-Focus on: thesis precision, paragraph architecture, evidence-to-analysis ratio, transitions, grammar/style, redundancy, conclusion strength, counterargument integrity.`;
-    case 'rubric':
-      return `MODE: RUBRIC GRADING
-Grade ONLY based on the rubric provided. Map each rubric criterion to scoring. Include teacher-style comments and a point recovery plan.`;
-    case 'college-essay':
-      return `MODE: COLLEGE ACADEMIC ESSAY
-Focus on: thesis arguability, paragraph job map, close reading quality, historical/philosophical reasoning, academic tone, professor-style feedback.`;
-    case 'research-paper':
-      return `MODE: RESEARCH PAPER
-Focus on: research question clarity, thesis-evidence alignment, literature review quality, source quality ranking, citation coverage, claim-to-citation mapping, missing citations.`;
-    case 'model-un':
-      return `MODE: MODEL UNITED NATIONS
-Focus on: country position accuracy, policy consistency, resolution clause quality, diplomatic language, bloc strategy, caucus topic strength, realistic solutions.`;
-    default: // argument/debate
-      return `MODE: ARGUMENT/DEBATE
-Focus on: thesis burden, claim-evidence-warrant chain, rebuttal readiness, logical fallacies, impact weighing, attackable gaps, source strength, extra arguments the writer is missing.`;
+    case 'speech': return SPEECH_SCHEMA;
+    case 'essay': return ESSAY_SCHEMA;
+    case 'college-essay': return COLLEGE_ESSAY_SCHEMA;
+    case 'research-paper': return RESEARCH_PAPER_SCHEMA;
+    case 'rubric': return RUBRIC_SCHEMA;
+    case 'model-un': return MODEL_UN_SCHEMA;
+    default: return ARGUMENT_SCHEMA; // argument, debate-case, policy, not-chosen
   }
 }
 
-function buildUserPrompt(essay, mode, depth) {
-  const schema = getSchema(mode, depth);
-  return `Analyze this writing and return ONLY the JSON object below. No text before or after.
+function getSystemForMode(mode) {
+  switch (mode) {
+    case 'speech': return SPEECH_SYSTEM;
+    case 'essay': return ESSAY_SYSTEM;
+    case 'college-essay': return COLLEGE_ESSAY_SYSTEM;
+    case 'research-paper': return RESEARCH_PAPER_SYSTEM;
+    case 'rubric': return RUBRIC_SYSTEM;
+    case 'model-un': return MODEL_UN_SYSTEM;
+    default: return ARGUMENT_SYSTEM;
+  }
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+export function buildAuditMessages(essay, preferences) {
+  const mode = String((preferences && preferences.analysisFormat) || 'argument').toLowerCase();
+  const depth = String((preferences && preferences.depthLevel) || 'medium').toLowerCase();
+
+  const systemPrompt = getSystemForMode(mode);
+  const depthInstruction = getDepthInstruction(depth);
+  const schema = getSchemaForMode(mode);
+
+  const userPrompt = `${depthInstruction}
+
+Analyze the following writing and return ONLY a valid JSON object matching this exact schema. No markdown, no preamble, no text outside the JSON.
+
+SCHEMA:
+${schema}
 
 WRITING TO ANALYZE:
 """
 ${essay}
 """
 
-Return this exact JSON structure:
-${schema}`;
-}
+Return only the JSON object. No other text.`;
 
-function getSchema(mode, depth) {
-  const isSurface = depth === 'surface';
-  const isExtreme = depth === 'extreme';
-
-  if (mode === 'rubric') {
-    return JSON.stringify({
-      overall_score: 0,
-      percentage: "0%",
-      letter_grade: "B",
-      verdict: "string",
-      rubric_breakdown: [{
-        criterion: "string",
-        score_earned: 0,
-        score_possible: 0,
-        reason: "string",
-        evidence_from_text: "string",
-        what_is_missing: "string",
-        how_to_improve: "string"
-      }],
-      teacher_comment: "string",
-      point_recovery_plan: [{
-        action: "string",
-        points_possible: 0,
-        how_to_do_it: "string"
-      }],
-      fastest_improvements: ["string"],
-      score_breakdown: { thesis: 0, evidence: 0, analysis: 0, grammar: 0, structure: 0 }
-    }, null, 2);
-  }
-
-  const baseSchema = {
-    overall_score: 85,
-    verdict: "One paragraph verdict on the argument's overall strength and primary failure point.",
-    score_breakdown: {
-      argument_strength: 20,
-      assumption_audit: 18,
-      logic: 19,
-      rhetoric: 18,
-      source_quality: 10,
-      score_descriptions: {
-        argument_strength: "Why this score",
-        assumption_audit: "Why this score",
-        logic: "Why this score",
-        rhetoric: "Why this score",
-        source_quality: "Why this score"
-      }
-    },
-    thesis_check: {
-      quote: "Exact thesis sentence from the text",
-      is_arguable: true,
-      is_too_broad: false,
-      burden_of_proof: "What the writer must prove to win",
-      assessment: "Detailed assessment of thesis strength",
-      improvement: "Exact improved thesis sentence"
-    },
-    claims: [
-      {
-        quote: "Exact claim text",
-        rating: "STRONG|MODERATE|WEAK",
-        diagnosis: "What is wrong or right with this claim",
-        missing_warrant: "The logical step that was skipped",
-        evidence_needed: "What type of evidence would prove this",
-        opponent_exploit: "How an opponent would attack this specific claim",
-        fix: "Exact repair sentence",
-        sources_to_find: [
-          { description: "What to look for", search_terms: "search query", url: "https://scholar.google.com/scholar?q=your+search+here" },
-          { description: "What to look for", search_terms: "search query", url: "https://www.jstor.org/stable/search?query=your+search" }
-        ]
-      }
-    ],
-    attackable_gaps: [
-      {
-        gap: "Description of the gap",
-        why_vulnerable: "Why an opponent can exploit this",
-        quote: "The exact text that has the gap",
-        how_to_close: "Exact fix",
-        evidence_to_add: [
-          { type: "What kind of source", search_terms: "search terms", url: "https://pubmed.ncbi.nlm.nih.gov/?term=your+search" }
-        ]
-      }
-    ],
-    rebuttal_prep: {
-      strongest_rebuttal: {
-        attack: "The strongest attack an opponent could make",
-        targets: "Which part of the argument this destroys",
-        how_to_answer: "Exact language to answer this attack",
-        evidence_to_block_it: [
-          { description: "What evidence would block this attack", url: "https://www.google.com/search?q=your+search+here" }
-        ]
-      },
-      easiest_rebuttal: {
-        attack: "The easiest attack",
-        why_easy: "Why this is easy to attack",
-        how_to_answer: "Exact answer"
-      },
-      sneakiest_rebuttal: {
-        attack: "The sneakiest attack",
-        why_sneaky: "What makes this hard to see coming",
-        how_to_answer: "Exact answer"
-      }
-    },
-    logical_fallacies: [
-      {
-        name: "Fallacy name",
-        quote: "Exact text containing the fallacy",
-        explanation: "Why this is a fallacy (not just the name)",
-        fix: "How to rewrite this without the fallacy"
-      }
-    ],
-    extra_arguments: [
-      {
-        argument: "A strong argument the writer is completely missing",
-        why_important: "Why this argument would strengthen the case",
-        how_to_add: "Where and how to integrate this into the existing argument",
-        sources: [
-          { description: "Source to find this evidence", url: "https://scholar.google.com/scholar?q=your+search" },
-          { description: "Another source", url: "https://www.jstor.org/stable/search?query=your+search" }
-        ]
-      }
-    ],
-    impact_weighing: {
-      does_argument_weigh: false,
-      why_weighing_matters: "Why impact comparison matters in this context",
-      magnitude: "Assessment of claim magnitude",
-      probability: "Assessment of probability",
-      timeframe: "Assessment of timeframe",
-      how_to_outweigh: "Exact language to add for impact comparison"
-    },
-    rhetorical_analysis: {
-      opening_hook: "Assessment of the opening",
-      hook_strength: "STRONG|MODERATE|WEAK",
-      logical_flow: "Assessment of logical flow",
-      persuasion_assessment: "How persuasive is this for the target audience",
-      strongest_sentence: { quote: "exact text", why: "why it is strong" },
-      weakest_sentence: { quote: "exact text", why: "why it is weak", fix: "exact rewrite" }
-    }
-  };
-
-  if (!isSurface) {
-    Object.assign(baseSchema, {
-      assumption_audit: [
-        {
-          assumption: "What is being assumed without proof",
-          type: "HIDDEN|ACKNOWLEDGED_BUT_UNDEFENDED|STRUCTURAL",
-          quote: "Text that depends on this assumption",
-          if_assumption_fails: "What collapses if this assumption is wrong",
-          how_to_defend: "Exact sentence that would defend this assumption",
-          sources: [
-            { description: "What to find", url: "https://scholar.google.com/scholar?q=your+search" }
-          ]
-        }
-      ],
-      collapse_point: {
-        quote: "The single most load-bearing sentence",
-        why_it_collapses: "Why this is the fatal weak point",
-        dependent_claims: ["claim that depends on this"],
-        survival_probability: 45,
-        strongest_attack: "The attack that targets this point",
-        strongest_defense: "Exact sentence to add to protect this point"
-      },
-      argument_dependency_graph: {
-        explanation: "How the argument's parts connect",
-        links: [
-          { from: "Supporting point", relationship: "proves", to: "Main claim", strength: "WEAK|MODERATE|STRONG", risk: "What breaks if this link fails" }
-        ]
-      }
-    });
-  }
-
-  if (isExtreme) {
-    Object.assign(baseSchema, {
-      definitional_audit: [
-        {
-          term: "Key term used in argument",
-          defined_in_text: false,
-          definition_stable: true,
-          how_opponent_contests: "How an opponent could redefine this term to sidestep the argument",
-          recommended_definition: "Exact definition to add"
-        }
-      ],
-      citation_integrity: [
-        {
-          claim: "The specific claim citing evidence",
-          source_named: false,
-          rating: "STRONG|USABLE|WEAK|FABRICATION_RISK",
-          population_match: true,
-          is_current: true,
-          intent_outcome_conflation: false,
-          problem: "What is wrong with this citation",
-          fix: "How to repair the citation"
-        }
-      ],
-      internal_consistency: [
-        {
-          contradiction: "Description of the contradiction",
-          text_a: "First contradicting passage",
-          text_b: "Second contradicting passage",
-          how_to_resolve: "Exact fix"
-        }
-      ],
-      opponent_stress_test: [
-        {
-          objection: "Exact language opponent would use out loud",
-          targets_section: "Which part of the speech this targets",
-          current_handling: "HANDLES|PARTIALLY_HANDLES|DOES_NOT_HANDLE",
-          language_to_add: "Exact sentence to add to handle this"
-        }
-      ],
-      strategic_recommendations: [
-        {
-          recommendation: "Strategic advice for competitive use",
-          why: "Why this would improve competitive performance"
-        }
-      ]
-    });
-  }
-
-  const priorityFixes = {
-    priority_fixes: [
-      {
-        problem: "Problem name in one line",
-        quote: "Exact text to fix",
-        why_it_matters: "Why this damages the argument",
-        exact_fix: "Exact replacement sentence",
-        rewrite: "Full rewritten version",
-        score_impact: "+5 points"
-      }
-    ]
-  };
-
-  return JSON.stringify({ ...baseSchema, ...priorityFixes }, null, 2);
-}
-
-export function buildRebuttalMessages(draft, report, focus) {
   return [
-    {
-      role: 'system',
-      content: `You are Fracture Studio's Rebuttal Engine. Generate a strategic, citation-rich rebuttal preparation plan.
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt }
+  ];
+}
 
-For every weakness you expose, provide:
-1. The exact attack an opponent would make
-2. Evidence the writer can use to counter-attack (with real URLs)
-3. Exact rebuttal language to deliver out loud
-
-Include real source URLs from Google Scholar, JSTOR, PubMed, government sites.
-Format as readable text with clear sections. No JSON.`
-    },
+export function buildRebuttalMessages(input = {}) {
+  const draft = compactContext(input.draft, 14000);
+  const report = compactContext(input.report, 8000);
+  const request = compactContext(input.message, 1600);
+  return [
+    { role: 'system', content: REBUTTAL_SYSTEM_PROMPT },
     {
       role: 'user',
-      content: `Generate a complete rebuttal preparation plan for this argument.
-
-ARGUMENT:
-${draft}
-
-${report ? `FRACTURE REPORT CONTEXT:\nVerdict: ${report.verdict || 'Not available'}\nCollapse point: ${(report.collapse_point || {}).quote || 'Not identified'}\n` : ''}
-
-${focus ? `SPECIFIC FOCUS: ${focus}` : ''}
-
-Structure your response as:
-1. STEELMAN (the strongest version of the opposing argument)
-2. TOP 3 ATTACKS (most dangerous opponent moves with exact language)
-3. REBUTTAL ARSENAL (counter-evidence with source URLs for each attack)
-4. CROSSFIRE PREPARATION (5 questions your opponent will ask + your answers)
-5. IMPACT COMPARISON (why your argument outweighs)
-6. CLOSING LANGUAGE (exact 30-second closing that addresses the main attacks)
-
-For each section, include 2-3 real source URLs that support your rebuttal evidence.`
+      content: [
+        draft ? `Current speech or argument:\n${draft}` : '',
+        report ? `Existing Fracture report context:\n${report}` : '',
+        request ? `User preparation request:\n${request}` : 'Prepare the strongest useful rebuttal plan for this argument.'
+      ].filter(Boolean).join('\n\n')
     }
   ];
 }
 
-export function buildChatMessages(message, draft, report, selectedPoint, history) {
+export function buildChatMessages(input = {}) {
+  const question = String(input.message || '').trim();
+  const draft = compactContext(input.draft, 10000);
+  const report = compactContext(input.report, 8000);
+  const selectedPoint = compactContext(input.selectedPoint, 2500);
+  const history = normalizeChatHistory(input.history);
   return [
-    {
-      role: 'system',
-      content: `You are Fracture Chat — a focused argument coach. You help writers strengthen specific parts of their argument.
-
-When asked about evidence gaps, always provide real source URLs.
-When suggesting rewrites, write the exact sentence.
-Keep responses focused and practical.
-If the writer asks about a specific claim or pressure point, focus all advice on that exact text.`
-    },
-    ...history.slice(-6),
+    { role: 'system', content: CHAT_SYSTEM_PROMPT },
+    ...history,
     {
       role: 'user',
-      content: `${selectedPoint ? `SELECTED PRESSURE POINT: "${selectedPoint}"\n\n` : ''}${message}
-
-${draft ? `DRAFT CONTEXT:\n${draft.slice(0, 2000)}` : ''}
-${report ? `\nFRACTURE REPORT: Score ${report.overall_score}/100. Verdict: ${report.verdict || ''}` : ''}`
+      content: [
+        selectedPoint ? `Selected pressure point:\n${selectedPoint}` : '',
+        draft ? `Current draft:\n${draft}` : '',
+        report ? `Current Fracture report context:\n${report}` : '',
+        `User request:\n${question}`
+      ].filter(Boolean).join('\n\n')
     }
   ];
+}
+
+// Keep old export name for backward compat
+export function buildPreferenceMessage() { return null; }
+
+function normalizeChatHistory(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(-10).map((message) => {
+    const role = message?.role === 'assistant' ? 'assistant' : 'user';
+    return { role, content: compactContext(message?.content, 5000) };
+  }).filter((m) => m.content);
+}
+
+function compactContext(value, limit) {
+  if (typeof value === 'string') return value.trim().slice(0, limit);
+  if (value && typeof value === 'object') return JSON.stringify(value).slice(0, limit);
+  return '';
 }

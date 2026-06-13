@@ -338,15 +338,6 @@
   async function signOut() {
     const services = await getServices();
     await services.authModule.signOut(services.auth);
-    try { sessionStorage.clear(); } catch (_) {}
-    try {
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('fracture')) keysToRemove.push(key);
-      }
-      keysToRemove.forEach(function (k) { try { localStorage.removeItem(k); } catch (_) {} });
-    } catch (_) {}
     return true;
   }
 
@@ -563,9 +554,10 @@
 
     modal = document.createElement('div');
     modal.className = 'auth-modal-backdrop hidden';
+    modal.style.overflowY = 'auto';
     modal.id = 'fractureAuthModal';
     modal.innerHTML = ''
-      + '<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">'
+      + '<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle" style="max-height:90vh;overflow-y:auto;">'
       + '<button class="auth-close" id="authModalClose" type="button" aria-label="Close sign in">x</button>'
       + '<div class="label">Account Required</div>'
       + '<h2 id="authModalTitle">Sign in to use Fracture Studio.</h2>'
@@ -665,30 +657,26 @@
     return false;
   }
 
-  // Public showModal — called from app.js when Fracture It is clicked without auth
-  function showModal() {
-    showAuthModal(false, 'Sign in to use Fracture Studio, or continue as a guest. Guest sessions are temporary and do not save history.');
-  }
-
   async function initAuthGate() {
     ensureAuthModal();
-    // Studio page: do NOT auto-require auth on load — only when user clicks Fracture It
-    // Non-studio pages linking to studio: gate on click
-    if (!isStudioPage()) {
-      document.addEventListener('click', async function (event) {
-        const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
-        if (!link || !isStudioHref(link.getAttribute('href'))) return;
-        const user = await getUser();
-        if (user || hasGuestAccess()) return;
-        event.preventDefault();
-        try {
-          const destination = new URL(link.getAttribute('href'), window.location.href);
-          rememberReturnPath(destination.pathname + destination.search);
-        } catch (_) {
-          rememberReturnPath('/studio');
-        }
-        showAuthModal(false, 'Sign in for cloud-saved history, or continue as a guest to start immediately.');
-      }, true);
+    document.addEventListener('click', async function (event) {
+      const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+      if (!link || !isStudioHref(link.getAttribute('href'))) return;
+      const user = await getUser();
+      if (user || hasGuestAccess()) return;
+      event.preventDefault();
+      try {
+        const destination = new URL(link.getAttribute('href'), window.location.href);
+        rememberReturnPath(destination.pathname + destination.search);
+      } catch (_) {
+        rememberReturnPath('/studio');
+      }
+      showAuthModal(false, 'Sign in for cloud-saved drafts and report history, or continue as a guest to start immediately. Guest drafts are temporary.');
+    }, true);
+
+    if (isStudioPage()) {
+      rememberReturnPath();
+      await requireAuthForStudio();
     }
   }
 
@@ -854,7 +842,7 @@
     continueWithoutEmail: continueWithoutEmail,
     initAuthGate: initAuthGate,
     showAuthModal: showAuthModal,
-    showModal: showModal,
+    showModal: showAuthModal,
     requireAuthForStudio: requireAuthForStudio,
     completeAuthCallback: completeAuthCallback,
     consumeReturnPath: consumeReturnPath

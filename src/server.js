@@ -1,37 +1,102 @@
-// server.js — Local development server for Fracture Studio v6.0
-import 'dotenv/config';
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { handleAnalyze } from './analyze-handler.js';
-import { handleTextStream } from './text-stream-handler.js';
+import "dotenv/config";
+import express from "express";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { handleAnalyze } from "./analyze-handler.js";
+import { listAdminUsers } from "./admin-users.js";
+import { getPublicAuthConfig } from "./public-config.js";
+import { verifySources } from "./source-verify.js";
+import { handleTextStream } from "./text-stream-handler.js";
+import { createReportPdf } from "./report-pdf.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-
-app.use(express.json({ limit: '500kb' }));
-app.use(express.static(path.join(__dirname, '..', 'public')));
-
-app.options('*', (req, res) => res.status(204).end());
-
-app.post('/api/analyze', (req, res) => handleAnalyze(req, res));
-app.post('/api/chat', (req, res) => handleTextStream(req, res, 'chat'));
-app.post('/api/rebuttal', (req, res) => handleTextStream(req, res, 'rebuttal'));
-
-app.get('/api/public-config', (req, res) => {
-  res.json({ firebaseConfig: null });
-});
-
-app.post('/api/verify-sources', async (req, res) => {
-  res.json({ claims: [], verified_at: new Date().toISOString() });
-});
-
-app.post('/api/report-pdf', (req, res) => {
-  res.status(501).json({ error: 'PDF export requires deployment. Download text report instead.' });
-});
-
 const PORT = process.env.PORT || 8000;
+const PUBLIC_DIR = join(__dirname, "../public");
+
+app.use(express.json({ limit: "256kb" }));
+
+// Keep both clean URLs and static filenames available in development.
+app.use(express.static(PUBLIC_DIR));
+app.get(["/studio", "/studio/case", "/analyze"], (_req, res) => {
+  res.sendFile(join(PUBLIC_DIR, "studio.html"));
+});
+app.use("/studio", express.static(PUBLIC_DIR));
+
+app.post("/api/analyze", handleAnalyze);
+app.post("/api/chat", (req, res) => handleTextStream(req, res, "chat"));
+app.post("/api/rebuttal", (req, res) => handleTextStream(req, res, "rebuttal"));
+
+app.post("/api/verify-sources", async (req, res) => {
+  const essay = typeof req.body?.essay === "string" ? req.body.essay.trim() : "";
+  const audit = req.body?.audit && typeof req.body.audit === "object" ? req.body.audit : null;
+  const citationStyle = req.body?.citation_style === "apa" ? "apa" : "mla";
+
+  if (!essay && !audit) {
+    return res.status(400).json({ error: "Provide draft text or a Fracture report to verify." });
+  }
+  if (essay.length > 40000) {
+    return res.status(400).json({ error: "Draft exceeds the 40,000 character limit." });
+  }
+
+  try {
+    return res.status(200).json(await verifySources({ essay, audit, citationStyle }));
+  } catch (err) {
+    return res.status(503).json({
+      error: `Source verification could not complete: ${err?.message || String(err)}`
+    });
+  }
+});
+
+app.post("/api/report-pdf", async (req, res) => {
+  if (!req.body?.audit || typeof req.body.audit !== "object") {
+    return res.status(400).json({ error: "Run Fracture It before exporting a PDF report." });
+  }
+
+  try {
+    const pdf = await createReportPdf({
+      audit: req.body.audit,
+      sources: req.body.sources,
+      draft: req.body.draft,
+      citationStyle: req.body.citation_style
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'attachment; filename="fracture-studio-report.pdf"');
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).send(pdf);
+  } catch (err) {
+    return res.status(500).json({ error: `PDF export could not complete: ${err?.message || String(err)}` });
+  }
+});
+
+app.post("/api/admin-users", async (req, res) => {
+  const result = await listAdminUsers(req.body?.password);
+  return res.status(result.status).json(result.body);
+});
+
+app.get("/api/public-config", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(getPublicAuthConfig());
+});
+
+app.get("/mission", (_req, res) => res.sendFile(join(PUBLIC_DIR, "mission.html")));
+app.get("/methods", (_req, res) => res.sendFile(join(PUBLIC_DIR, "mission.html")));
+app.get(["/about", "/about.html"], (_req, res) => res.redirect(302, "/"));
+app.get("/blog", (_req, res) => res.sendFile(join(PUBLIC_DIR, "blog.html")));
+app.get(["/changelog", "/changelog.html"], (_req, res) => res.redirect(302, "/"));
+app.get(["/credits", "/credits.html"], (_req, res) => res.redirect(302, "/"));
+app.get(["/contact", "/contact.html"], (_req, res) => res.redirect(302, "/"));
+app.get(["/onboarding", "/onboarding.html"], (_req, res) => res.redirect(302, "/"));
+app.get("/past-work", (_req, res) => res.sendFile(join(PUBLIC_DIR, "past-work.html")));
+app.get("/rebuttals", (_req, res) => res.sendFile(join(PUBLIC_DIR, "rebuttals.html")));
+app.get(["/settings", "/login"], (_req, res) => res.sendFile(join(PUBLIC_DIR, "settings.html")));
+app.get("/auth/callback", (_req, res) => res.sendFile(join(PUBLIC_DIR, "auth-callback.html")));
+app.get("/admin", (_req, res) => res.sendFile(join(PUBLIC_DIR, "admin.html")));
+
+app.use((_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
 app.listen(PORT, () => {
-  console.log(`Fracture Studio v6.0 running on http://localhost:${PORT}`);
-  console.log('Set OPENROUTER_API_KEY in .env to enable analysis.');
+  console.log(`\nFracture Studio running at http://localhost:${PORT}\n`);
 });

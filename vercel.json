@@ -1,25 +1,74 @@
 {
-  "buildCommand": "node -e \"console.log('No build step for Fracture Studio v6')\"",
+  "buildCommand": "node -e \"console.log('No build step needed for Fracture Studio static app')\"",
   "outputDirectory": "public",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/studio", "destination": "/studio.html" },
-    { "source": "/studio/case", "destination": "/studio.html" },
-    { "source": "/studio/dashboard", "destination": "/studio.html" },
-    { "source": "/analyze", "destination": "/studio.html" },
-    { "source": "/onboarding", "destination": "/onboarding.html" },
-    { "source": "/mission", "destination": "/mission.html" },
-    { "source": "/methods", "destination": "/mission.html" },
-    { "source": "/about", "destination": "/about.html" },
-    { "source": "/blog", "destination": "/blog.html" },
-    { "source": "/changelog", "destination": "/changelog.html" },
-    { "source": "/credits", "destination": "/credits.html" },
-    { "source": "/contact", "destination": "/contact.html" },
-    { "source": "/past-work", "destination": "/past-work.html" },
-    { "source": "/rebuttals", "destination": "/rebuttals.html" },
-    { "source": "/settings", "destination": "/settings.html" },
-    { "source": "/login", "destination": "/settings.html" },
-    { "source": "/auth/callback", "destination": "/auth-callback.html" },
-    { "source": "/admin", "destination": "/admin.html" }
+    {
+      "source": "/studio",
+      "destination": "/studio.html"
+    },
+    {
+      "source": "/studio/case",
+      "destination": "/studio.html"
+    },
+    {
+      "source": "/analyze",
+      "destination": "/studio.html"
+    },
+    {
+      "source": "/mission",
+      "destination": "/mission.html"
+    },
+    {
+      "source": "/methods",
+      "destination": "/mission.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/blog",
+      "destination": "/blog.html"
+    },
+    {
+      "source": "/credits",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/onboarding",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/past-work",
+      "destination": "/past-work.html"
+    },
+    {
+      "source": "/rebuttals",
+      "destination": "/rebuttals.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/settings.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/settings.html"
+    },
+    {
+      "source": "/auth/callback",
+      "destination": "/auth-callback.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/studio/(.*)",
+      "destination": "/$1"
+    }
   ]
 }
