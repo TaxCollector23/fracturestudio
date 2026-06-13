@@ -1,6 +1,6 @@
 // audit-utils.js — Fracture Studio v6.0
 
-export const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet';
+export const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 export function isTooThinForAudit(essay) {
   return !essay || essay.trim().split(/\s+/).length < 25;

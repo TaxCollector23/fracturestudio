@@ -26,8 +26,11 @@ export async function handleTextStream(req, res, type) {
 
   try {
     writeSse(res, { fracture_text_progress: { progress: 10, message: 'Connecting...' } });
+    const model = type === 'rebuttal'
+      ? process.env.OPENROUTER_SPEED_MODEL || process.env.OPENROUTER_MODEL || DEFAULT_MODEL
+      : process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
     const upstream = await openRouterStream({
-      model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
+      model,
       messages,
       referer: 'https://fracturestudio.vercel.app'
     });

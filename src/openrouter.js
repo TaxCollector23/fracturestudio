@@ -1,6 +1,6 @@
 // openrouter.js — Fracture Studio v6.0
 
-export const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet';
+export const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 export async function openRouterStream({ model, messages, referer }) {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
