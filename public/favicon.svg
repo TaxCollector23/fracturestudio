@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 46" role="img" aria-label="Fracture Studio">
+  <!-- Exact rendered-style Fracture Studio nav mark: blue frame, dark inset, original F tile -->
+  <rect x="1.5" y="1.5" width="43" height="43" rx="4" fill="#0d1015" stroke="#5674b0" stroke-width="3"/>
+  <rect x="6" y="6" width="34" height="34" rx="6.375" fill="#080b14"/>
+  <path d="M15.5625 12.90625h15.9375v4.78125H20.875v4.25h8.5v4.78125h-8.5V35.21875h-5.3125V12.90625Z" fill="#ffffff"/>
+</svg>

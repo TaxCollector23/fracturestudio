@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Fracture Studio helps writers, debaters, and students test claims, evidence, assumptions, logic, rhetoric, and revision priorities." />
+  <title>Home | Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Page-specific entrance animations */
+    .home-page .nav { animation: fadeDown .48s cubic-bezier(.2,.8,.2,1) both; }
+    .hero-eyebrow { animation: fadeUp .6s .1s both; }
+    .hero-title    { animation: fadeUp .72s .18s both; }
+    .hero-sub      { animation: fadeUp .64s .32s both; }
+    .hero-actions  { animation: fadeUp .62s .44s both; }
+    .hero-score-preview { animation: fadeUp .7s .54s both; }
+    .hero-score-preview .brief-note { animation: fadeUp .52s both; }
+    .hero-score-preview .brief-note:nth-of-type(1) { animation-delay:.72s; }
+    .hero-score-preview .brief-note:nth-of-type(2) { animation-delay:.82s; }
+    .hero-score-preview .brief-note:nth-of-type(3) { animation-delay:.92s; }
+    .home-page .orb { animation: orbLoad 1.2s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(20px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes fadeDown {
+      from { opacity:0; transform:translateY(-10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes orbLoad {
+      from { opacity:0; transform:scale(.84); }
+      to   { opacity:1; transform:scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .home-page .nav, .hero-eyebrow, .hero-title, .hero-sub, .hero-actions, .hero-score-preview, .hero-score-preview .brief-note, .home-page .orb { animation:none !important; }
+    }
+  </style>
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body class="home-page">
+<div class="noise"></div>
+
+<!-- ── Nav ─────────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">ARGUMENT ANALYSIS ENGINE</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link active">Home</a>
+    <a href="studio.html" class="nav-link">Analyze</a>
+    <a href="mission.html" class="nav-link">Methods</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="studio.html" class="nav-cta">Open Studio</a>
+    <a href="settings.html" class="nav-gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<!-- ── Hero ────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="hero-layout" style="position:relative;z-index:1;width:100%;max-width:1180px;">
+    <div class="hero-copy">
+      <div class="hero-eyebrow">
+        <span class="tag">Speech and Debate Argument Coaching</span>
+      </div>
+
+      <h1 class="hero-title">Stress-test every claim.<br><em>Strengthen every conclusion.</em></h1>
+
+      <p class="hero-sub">
+        Fracture Studio helps students and debaters find what is weak, confusing, unsupported, or easy to attack. It turns a draft into a clear repair plan for claims, warrants, rebuttals, sources, and wording.
+      </p>
+
+      <div class="hero-actions">
+        <a href="studio.html" class="btn btn-primary" style="font-size:15px;padding:14px 34px;">
+          Run the review</a>
+        <a href="mission.html" class="btn btn-secondary" style="font-size:14px;padding:13px 28px;">
+          Explore the Methods
+        </a>
+      </div>
+    </div>
+
+    <aside class="hero-score-preview" aria-label="Example Fracture review">
+      <div class="brief-kicker">Review Extract / Risk 02</div>
+      <p class="brief-quote">"Stricter policies consistently lead to better outcomes."</p>
+      <div class="brief-note">
+        <span>Problem</span>
+        <strong>The sentence makes a broad causal promise without defining the measured result.</strong>
+      </div>
+      <div class="brief-note">
+        <span>Pressure test</span>
+        <strong>Better for whom, compared with what baseline, and across which time period?</strong>
+      </div>
+      <div class="brief-note">
+        <span>Next move</span>
+        <strong>Narrow the outcome, state the comparison, and attach the strongest source.</strong>
+      </div>
+    </aside>
+  </div>
+
+  <div class="hero-scroll">
+    <span>Scroll</span>
+    <div class="hero-scroll-line"></div>
+  </div>
+</section>
+
+<!-- ── Stats ────────────────────────────────────────────────────────── -->
+<div class="container" style="position:relative;z-index:1;">
+  <div class="stat-row stat-row--simple" aria-label="Ideal workflow">
+    <div class="stat-item">
+      <div class="stat-val">01 / Paste</div>
+      <div class="stat-label">Drop in the draft you already have.</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">02 / Review</div>
+      <div class="stat-label">Fracture finds the weak claims, gaps, and attacks.</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">03 / Fix</div>
+      <div class="stat-label">Start with the top priorities, not tiny edits.</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">04 / Cite</div>
+      <div class="stat-label">Check data, generate citations, and export.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Why Us vs Standard Feedback ───────────────────────────────────── -->
+<section class="section" id="why">
+  <div class="container">
+    <div class="label">Why Fracture</div>
+    <h2 class="section-title" style="margin-top:16px;">Serious feedback without<br>the private-coaching barrier.</h2>
+    <p class="section-sub">
+      Competitive argument feedback is often expensive, hard to schedule, or limited to students with coaching access. Fracture gives every user a clearer first review: what the argument claims, what supports it, what is assumed, and what should be fixed first.
+    </p>
+
+    <div class="compare-grid">
+      <!-- Them -->
+      <div class="compare-col compare-col--them">
+        <div class="compare-head">Generic Review</div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>Comments float above the page.</strong>
+            The writer receives advice but still has to hunt for the sentence that caused the problem.
+          </div>
+        </div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>Advice sounds interchangeable.</strong>
+            Notes about clarity or support rarely explain why this particular draft becomes vulnerable.
+          </div>
+        </div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>The strongest objection is missing.</strong>
+            A draft can read smoothly while its central premise remains easy to challenge.
+          </div>
+        </div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>Unstated premises go untouched.</strong>
+            The argument depends on ideas that never become visible enough to defend.
+          </div>
+        </div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>Every note appears equally urgent.</strong>
+            Surface polish can take time away from the few changes that would materially strengthen the draft.
+          </div>
+        </div>
+      </div>
+
+      <!-- Us -->
+      <div class="compare-col compare-col--us">
+        <div class="compare-head compare-head--us">Fracture Studio</div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>Each note begins with the source line.</strong>
+            The report leads directly back to the wording that needs attention.
+          </div>
+        </div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>Each weakness is explained in context.</strong>
+            You see the failure mode, the consequence, and the repair strategy together.
+          </div>
+        </div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>The draft faces a credible opposing case.</strong>
+            Pressure testing reveals which parts need evidence, qualification, or a narrower promise.
+          </div>
+        </div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>Implicit premises become reviewable.</strong>
+            Hidden dependencies are surfaced and ranked by how much weight they carry.
+          </div>
+        </div>
+
+        <div class="compare-item">
+
+          <div class="compare-text">
+            <strong>The report ends with an order of operations.</strong>
+            You leave with a short sequence of edits rather than a pile of disconnected comments.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Feature Cards ─────────────────────────────────────────────────── -->
+<section class="section" id="features">
+  <div class="container">
+    <div class="label">Inside the Review</div>
+    <h2 class="section-title" style="margin-top:16px;">One pass. Eight ways<br>to interrogate a draft.</h2>
+    <p class="section-sub">
+      The report separates reasoning, evidence, rhetoric, and practical revision work so you can move from inspection to editing without losing the thread.
+    </p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+
+      <div class="feature-title">Speech and Debate Scorecard</div>
+        <p class="feature-desc">A compact view of argument strength, unstated premises, logic, and rhetorical execution.</p>
+      </div>
+
+      <div class="feature-card">
+
+        <div class="feature-title">Claim Inventory</div>
+        <p class="feature-desc">A line-by-line account of the positions your draft actually commits to defending.</p>
+      </div>
+
+      <div class="feature-card">
+
+        <div class="feature-title">Premise Scan</div>
+        <p class="feature-desc">A ranked list of ideas the argument relies on without stating or protecting them.</p>
+      </div>
+
+      <div class="feature-card">
+
+        <div class="feature-title">Logic Check</div>
+        <p class="feature-desc">Named reasoning errors tied to the exact line where the argument overreaches.</p>
+      </div>
+
+      <div class="feature-card">
+
+      <div class="feature-title">Opponent Model</div>
+        <p class="feature-desc">A serious counter-position designed to reveal the weakest parts of your case.</p>
+      </div>
+
+      <div class="feature-card">
+
+        <div class="feature-title">Delivery Review</div>
+        <p class="feature-desc">A reading of the opening, paragraph movement, strongest line, and weakest line.</p>
+      </div>
+
+      <div class="feature-card">
+
+        <div class="feature-title">Repair Drafts</div>
+        <p class="feature-desc">Replacement language for high-impact claims, warrants, transitions, and conclusions.</p>
+      </div>
+
+      <div class="feature-card">
+
+      <div class="feature-title">Working Record</div>
+        <p class="feature-desc">Save the draft, export the report, copy readable feedback, or return to an earlier case.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How It Works ──────────────────────────────────────────────────── -->
+<section class="section" id="how">
+  <div class="container--narrow">
+    <div class="label">Workflow</div>
+    <h2 class="section-title" style="margin-top:16px;">The simple way<br>to use Fracture.</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Paste what you have</div>
+          <p class="step-desc">Use an essay, speech, debate case, research paragraph, or rough draft. It does not need to be perfect.</p>
+          <div class="step-tags">
+            <span class="tag">Essays</span>
+            <span class="tag">Op-eds</span>
+            <span class="tag">Legal briefs</span>
+            <span class="tag">Academic papers</span>
+            <span class="tag">Debate cases</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Run the review</div>
+          <p class="step-desc">Fracture checks the claims, evidence, assumptions, logic, and likely objections in one report.</p>
+          <div class="step-tags">
+            <span class="tag">Clear progress</span>
+            <span class="tag">Readable feedback</span>
+            <span class="tag">No confusing raw output</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Fix the top problems</div>
+          <p class="step-desc">Use the short repair list first. Fix the biggest issue, then run another pass if the argument changes.</p>
+          <div class="step-tags">
+            <span class="tag">Save reports</span>
+            <span class="tag">Export when needed</span>
+            <span class="tag">Return later</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Use cases ─────────────────────────────────────────────────────── -->
+<section class="section" id="testimonials">
+  <div class="container">
+    <div class="label">Built for Real Work</div>
+    <h2 class="section-title" style="margin-top:16px;">Useful whenever the<br>reasoning has to survive.</h2>
+
+    <div class="testimonial-row" style="margin-top:48px;">
+      <div class="testimonial">
+        <p class="testimonial-quote">Turn a broad thesis into a defensible position before submitting the next draft.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">01</div>
+          <div>
+            <div class="testimonial-name">Academic Writing</div>
+            <div class="testimonial-role">Essays, papers, and research arguments</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial">
+        <p class="testimonial-quote">Expose a case to the best opposing response before it happens in the room.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">02</div>
+          <div>
+            <div class="testimonial-name">Debate Preparation</div>
+            <div class="testimonial-role">Cases, speeches, and rebuttal planning</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial">
+        <p class="testimonial-quote">Find the unsupported premise that makes an otherwise polished brief easy to challenge.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">03</div>
+          <div>
+            <div class="testimonial-name">Professional Review</div>
+            <div class="testimonial-role">Briefs, proposals, and opinion writing</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────────────────────────────── -->
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-box">
+      <p class="label" style="justify-content:center;margin-bottom:20px;">Ready to test your argument?</p>
+      <h2 class="cta-title">Start with the<br>weakest link.</h2>
+      <p class="cta-sub">Bring the draft you have. Leave with a smaller, clearer editing plan.</p>
+      <div class="cta-actions">
+        <a href="studio.html" class="btn btn-primary" style="font-size:15px;padding:14px 36px;">
+          Run the review
+        </a>
+        <a href="mission.html" class="btn btn-secondary" style="font-size:14px;padding:13px 28px;">
+          Explore the Methods
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <a href="index.html" class="footer-brand">
+      <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
+      <div>
+        <div class="footer-brand-name">Fracture Studio</div>
+        <div class="footer-brand-sub">ARGUMENT ANALYSIS ENGINE</div>
+      </div>
+    </a>
+    <nav class="footer-nav">
+      <a href="index.html" class="footer-link">Home</a>
+      <a href="studio.html" class="footer-link">Analyze</a>
+      <a href="mission.html" class="footer-link">Methods</a>
+      <a href="settings.html" class="footer-link">Settings</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Fracture Studio.</span>
+
+  </div>
+</footer>
+
+<script src="auth.js"></script>
+<script src="shared.js"></script>
+<script>
+  // Fade in stat values on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: .15 });
+
+  document.querySelectorAll('.feature-card, .step, .testimonial, .compare-item, .stat-item').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(16px)';
+    el.style.transition = 'opacity .5s ease, transform .5s ease';
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>

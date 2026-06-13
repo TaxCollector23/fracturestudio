@@ -1,11 +1,26 @@
+.env
+.env.*
+!.env.example
+
 node_modules/
-dist/
-*.log
-.env.local
-.env.example
-squid-internal-ca.crt
-*.modified
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Vercel
 .vercel/
-.netlify/
-qa_extract/
-redesign-for-rangan-main/
+
+# PocketBase local data
+.tools/
+pb_data/
+pb_test_data/
+
+# Logs
+*.log
