@@ -11,9 +11,7 @@
   const loadBtn         = document.getElementById('loadBtn');
   const rebuttalsBtn    = document.getElementById('rebuttalsBtn');
   const analysisFormat  = document.getElementById('analysisFormat');
-  const formatHint      = document.getElementById('formatHint');
   const depthLevel      = document.getElementById('depthLevel');
-  const depthHint       = document.getElementById('depthHint');
   const refreshStudioHistory = document.getElementById('refreshStudioHistory');
   const studioHistoryList = document.getElementById('studioHistoryList');
   const statusDot       = document.getElementById('statusDot');
@@ -35,7 +33,6 @@
   const printReportBtn  = document.getElementById('printReportBtn');
   const reportNav       = document.getElementById('reportNav');
   const reportContainer = document.getElementById('reportContainer');
-  const studioOutputColumn = document.getElementById('studioOutputColumn');
   const argumentGraph   = document.getElementById('argumentGraph');
   const argumentMapPlaceholder = document.getElementById('argumentMapPlaceholder');
   const sourceVerificationArea = document.getElementById('sourceVerificationArea');
@@ -67,15 +64,12 @@
   let autoSaveInFlight = false;
   let selectedChatPoint = '';
   let preferredCitationStyle = 'mla';
-  let preferredDepthLevel = 'medium';
   let chatHistory = [];
   let readableReportText = '';
   let finalAuditStreamText = '';
   let finalAuditStreamSections = [];
   let serverReadableStreaming = false;
   let postAnalysisSurveyShown = false;
-  let liveAuditSectionKeys = new Set();
-  let liveAuditFrame = null;
 
   const PACING_PHRASES = [
     'Preparing the audit',
@@ -87,7 +81,7 @@
     'Cross-checking source language',
     'Looking for hidden assumptions',
     'Checking causation links',
-    'Finding the load-bearing point',
+    'Finding the collapse point',
     'Building counterarguments',
     'Stress-testing the logic',
     'Reviewing academic tone',
@@ -154,7 +148,7 @@
     if (progressBar)  progressBar.style.width  = progress + '%';
     if (progressTrack) progressTrack.setAttribute('aria-valuenow', String(Math.floor(progress)));
     if (progressNote && message) progressNote.textContent = message;
-    if (isStreaming && !auditRendered && !serverReadableStreaming) appendReadableAuditDelta();
+    if (isStreaming && !auditRendered && !serverReadableStreaming) renderStreamingReadableReport();
   }
 
   function startProgress() {
@@ -181,9 +175,6 @@
     auditRendered = false;
     resetSourceVerification();
     if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = false;
-    if (studioOutputColumn) studioOutputColumn.hidden = true;
-    const chatCard = document.getElementById('fractureChatCard');
-    if (chatCard) chatCard.hidden = true;
     if (jsonError)  { jsonError.classList.add('hidden'); jsonError.textContent = ''; }
     if (scorePill)  scorePill.textContent = '—';
     if (scoreSummary) scoreSummary.hidden = true;
@@ -192,8 +183,6 @@
     finalAuditStreamText = '';
     finalAuditStreamSections = [];
     serverReadableStreaming = false;
-    liveAuditSectionKeys = new Set();
-    if (liveAuditFrame) { cancelAnimationFrame(liveAuditFrame); liveAuditFrame = null; }
     if (reportContainer) { reportContainer.innerHTML = ''; reportContainer.classList.remove('visible', 'streaming', 'final-streaming'); }
     resetArgumentGraph();
     if (skeleton)   skeleton.classList.add('hidden');
@@ -207,13 +196,9 @@
   }
 
   function appendReadableAuditDelta(delta) {
-    if (delta && !serverReadableStreaming) rawJsonText += '';
-    if (!reportContainer || auditRendered) return;
-    if (liveAuditFrame) return;
-    liveAuditFrame = requestAnimationFrame(function () {
-      liveAuditFrame = null;
-      renderStreamingReadableReport();
-    });
+    if (!delta || !reportContainer || auditRendered) return;
+    if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
+    renderStreamingReadableReport();
   }
 
   function notifyAuditComplete() {
@@ -242,9 +227,7 @@
   }
 
   function quoteBlock(text) {
-    const cleaned = firstText(text, '').replace(/\s+/g, ' ').trim();
-    if (!cleaned) return '<blockquote class="report-quote report-quote-empty">No exact passage available.</blockquote>';
-    return '<blockquote class="report-quote"><span aria-hidden="true">“</span>' + esc(cleaned) + '<span aria-hidden="true">”</span></blockquote>';
+    return '<div class="report-quote">' + esc(text || '') + '</div>';
   }
 
   function dataPoint(text) {
@@ -261,134 +244,6 @@
     }
     return '';
   }
-
-
-  function normalizeAnalysisFormat(value) {
-    const cleaned = String(value || (analysisFormat ? analysisFormat.value : 'argument')).toLowerCase();
-    if (cleaned === 'speech' || cleaned === 'presentation') return 'speech';
-    if (cleaned === 'essay' || cleaned === 'paragraph') return 'essay';
-    if (cleaned === 'rubric' || cleaned === 'rubric-grading') return 'rubric';
-    if (cleaned === 'argument' || cleaned === 'debate' || cleaned === 'debate-case' || cleaned === 'policy' || cleaned === 'source-review' || cleaned === 'not-chosen') return 'argument';
-    return 'argument';
-  }
-
-  function currentMode() {
-    return normalizeAnalysisFormat(analysisFormat ? analysisFormat.value : 'argument');
-  }
-
-  function modeLabels(mode) {
-    const normalized = normalizeAnalysisFormat(mode);
-    if (normalized === 'speech') {
-      return {
-        name: 'Speech',
-        hint: 'Speech mode grades clarity, persuasion, structure, audience memory, transitions, delivery notes, pause points, emphasis, and call to action.',
-        pressureTitle: 'Audience Friction Point',
-        pressureShort: 'Audience friction',
-        pressureQuote: 'Moment that may lose the audience:',
-        pressureWhy: 'Why listeners may lose the thread:',
-        pressureMetricA: 'Audience dependencies',
-        pressureMetricB: 'Audience survival chance',
-        pressureDepends: 'What the audience must understand',
-        pressureAttack: 'Likely listener doubt:',
-        pressureDefense: 'Best clarity or delivery repair:',
-        graphTitle: 'Audience Friction Point'
-      };
-    }
-    if (normalized === 'essay') {
-      return {
-        name: 'Essay',
-        hint: 'Essay mode grades thesis or main idea, grammar, flow, organization, paragraph jobs, evidence use, style, transitions, and general writing quality.',
-        pressureTitle: 'Essay Pressure Point',
-        pressureShort: 'Essay pressure point',
-        pressureQuote: 'Sentence or section limiting the essay most:',
-        pressureWhy: 'Why the writing weakens here:',
-        pressureMetricA: 'Dependent paragraphs',
-        pressureMetricB: 'Essay survival chance',
-        pressureDepends: 'What depends on it',
-        pressureAttack: 'Likely reader concern:',
-        pressureDefense: 'Best essay repair:',
-        graphTitle: 'Essay Pressure Point'
-      };
-    }
-    if (normalized === 'rubric') {
-      return {
-        name: 'Rubric Grading',
-        hint: 'Rubric mode grades only against the rubric you paste or upload. It prioritizes assignment criteria over Fracture’s normal defaults.',
-        pressureTitle: 'Rubric Risk Point',
-        pressureShort: 'Rubric risk',
-        pressureQuote: 'Rubric criterion most at risk:',
-        pressureWhy: 'Why the score drops here:',
-        pressureMetricA: 'Affected rubric criteria',
-        pressureMetricB: 'Rubric survival chance',
-        pressureDepends: 'Criteria affected',
-        pressureAttack: 'Likely grader comment:',
-        pressureDefense: 'Best rubric-based repair:',
-        graphTitle: 'Rubric Risk Point'
-      };
-    }
-    return {
-      name: 'Argument',
-      hint: 'Argument mode is for debates, claims, cases, opinions, and any writing trying to prove a position with logic, evidence, warrants, and impacts.',
-      pressureTitle: 'Collapse Point',
-      pressureShort: 'Collapse point',
-      pressureQuote: 'Load-bearing claim or warrant:',
-      pressureWhy: 'Why it can collapse:',
-      pressureMetricA: 'Dependent claims',
-      pressureMetricB: 'Survival chance',
-      pressureDepends: 'What depends on it',
-      pressureAttack: 'Strongest challenge:',
-      pressureDefense: 'Strongest defense:',
-      graphTitle: 'Collapse Point'
-    };
-  }
-
-
-  function modeSafeText(value) {
-    const text = String(value || '');
-    if (currentMode() !== 'speech') return text;
-    return text
-      .replace(/collapse point/gi, 'audience friction point')
-      .replace(/collapses/gi, 'loses force')
-      .replace(/collapse/gi, 'lose force');
-  }
-
-  function updateFormatHint() {
-    const mode = currentMode();
-    const labels = modeLabels(mode);
-    if (formatHint) formatHint.textContent = labels.hint;
-    if (essayInput) essayInput.setAttribute('data-mode', mode);
-    if (rubricPanel) rubricPanel.hidden = mode !== 'rubric';
-  }
-
-  function normalizeDepthLevel(value) {
-    const cleaned = String(value || '').toLowerCase();
-    if (cleaned === 'concise' || cleaned === 'basic' || cleaned === 'surface') return 'surface';
-    if (cleaned === 'balanced' || cleaned === 'medium') return 'medium';
-    if (cleaned === 'intensive' || cleaned === 'deep' || cleaned === 'extreme') return 'extreme';
-    return 'medium';
-  }
-
-  function depthLabels(value) {
-    const normalized = normalizeDepthLevel(value);
-    if (normalized === 'surface') {
-      return 'Surface level is for regular users: plain-language logic, clarity, source warnings, and the top 2-3 fixes only.';
-    }
-    if (normalized === 'extreme') {
-      return 'Extreme depth is for serious study: full dependency graph, attack tree, source links everywhere, extra arguments, data checks, and detailed repair strategy.';
-    }
-    return 'Medium depth is for competitors and serious students: round-ready logic, warrants, rebuttals, source links, and targeted rewrites.';
-  }
-
-  function currentDepthLevel() {
-    return normalizeDepthLevel(depthLevel ? depthLevel.value : preferredDepthLevel);
-  }
-
-  function updateDepthHint() {
-    preferredDepthLevel = currentDepthLevel();
-    if (depthHint) depthHint.textContent = depthLabels(preferredDepthLevel);
-    if (essayInput) essayInput.setAttribute('data-depth', preferredDepthLevel);
-  }
-
 
   function decodeJsonString(value) {
     try {
@@ -455,152 +310,94 @@
       + '</section>';
   }
 
-  function ensureLiveAuditShell(statusText) {
-    if (!reportContainer) return null;
-    if (studioOutputColumn) studioOutputColumn.hidden = false;
-    if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
-    let article = reportContainer.querySelector('.final-audit-stream');
-    if (!article) {
-      reportContainer.innerHTML = '<article class="final-audit-stream live-audit-writer">'
-        + '<div class="final-audit-stream-status"><span class="streaming-report-pulse"></span><span id="liveAuditStatus">Writing the final audit live</span></div>'
-        + '<div class="final-audit-stream-sections" id="finalAuditStreamSections"></div>'
-        + '<p class="streaming-report-writing" id="finalAuditStreamWriting">The report will type in here as Fracture builds the audit<span class="streaming-report-caret"></span></p>'
-        + '</article>';
-    }
-    reportContainer.classList.add('visible', 'streaming', 'final-streaming');
-    const status = document.getElementById('liveAuditStatus');
-    if (status && statusText) status.textContent = statusText;
-    return document.getElementById('finalAuditStreamSections');
-  }
-
-  function upsertLiveAuditSection(key, title, body, options) {
-    const holder = ensureLiveAuditShell(options && options.statusText);
-    const cleanBody = firstText(body);
-    if (!holder || !cleanBody) return false;
-    const safeKey = String(key || title || 'section').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
-    let node = holder.querySelector('[data-live-section="' + safeKey + '"]');
-    const existed = Boolean(node);
-    if (!node) {
-      node = document.createElement('section');
-      node.className = 'final-audit-stream-section live-typed-section';
-      node.dataset.liveSection = safeKey;
-      node.innerHTML = '<div class="final-audit-stream-kicker"></div><p></p>';
-      holder.appendChild(node);
-    }
-    const kicker = node.querySelector('.final-audit-stream-kicker');
-    const paragraph = node.querySelector('p');
-    if (kicker) kicker.textContent = title || 'Report section';
-    const html = esc(cleanBody).replace(/\n/g, '<br>');
-    if (paragraph && paragraph.innerHTML !== html) paragraph.innerHTML = html;
-    if (!existed) {
-      liveAuditSectionKeys.add(safeKey);
-      const writing = document.getElementById('finalAuditStreamWriting');
-      if (writing) writing.hidden = true;
-      node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-    return true;
-  }
-
-  function buildLiveAuditSectionsFromPartialJson() {
-    const source = String(rawJsonText || '');
-    const labels = modeLabels(currentMode());
-    const sections = [];
-    const score = streamedNumber(source, 'overall_score');
-    const verdict = streamedStringValue(source, 'verdict');
-    const coaching = streamedStringValue(source, 'coaching_note');
-    if (score || verdict) {
-      sections.push({ key: 'verdict', title: 'Verdict', body: [(score ? 'Overall score: ' + score + '/100.' : ''), verdict].filter(Boolean).join('\n') });
-    }
-    if (coaching) sections.push({ key: 'coaching', title: 'What to fix first', body: coaching });
-
-    const prioritySlice = jsonSlice(source, 'priority_fixes', 'collapse_point');
-    const problems = streamedStringValues(prioritySlice, 'problem').slice(0, 4);
-    const reasons = streamedStringValues(prioritySlice, 'why_it_matters').slice(0, 4);
-    const fixes = streamedStringValues(prioritySlice, 'exact_fix').slice(0, 4);
-    const rewrites = streamedStringValues(prioritySlice, 'rewrite').slice(0, 4);
-    problems.forEach(function (problem, index) {
-      sections.push({
-        key: 'priority-' + index,
-        title: 'Priority fix ' + (index + 1),
-        body: [
-          problem,
-          reasons[index] ? 'Why it matters: ' + reasons[index] : '',
-          fixes[index] ? 'Fix: ' + fixes[index] : '',
-          rewrites[index] ? 'Possible wording: “' + rewrites[index] + '”' : ''
-        ].filter(Boolean).join('\n')
-      });
-    });
-
-    const collapseSlice = jsonSlice(source, 'collapse_point', 'argument_dependency_graph');
-    const collapseWhy = streamedStringValue(collapseSlice, 'why_it_collapses');
-    const collapseAttack = streamedStringValue(collapseSlice, 'strongest_attack') || streamedStringValue(collapseSlice, 'opponent_attack');
-    const collapseDefense = streamedStringValue(collapseSlice, 'strongest_defense') || streamedStringValue(collapseSlice, 'reinforcement');
-    if (collapseWhy || collapseAttack || collapseDefense) {
-      sections.push({
-        key: 'pressure-point',
-        title: labels.pressureTitle,
-        body: [
-          collapseWhy ? labels.pressureWhy + ' ' + modeSafeText(collapseWhy) : '',
-          collapseAttack ? labels.pressureAttack + ' ' + modeSafeText(collapseAttack) : '',
-          collapseDefense ? labels.pressureDefense + ' ' + modeSafeText(collapseDefense) : ''
-        ].filter(Boolean).join('\n')
-      });
-    }
-
-    const claimsSlice = jsonSlice(source, 'argument_strength', 'assumption_audit');
-    const claimQuotes = streamedStringValues(claimsSlice, 'quote').slice(0, 4);
-    const diagnoses = streamedStringValues(claimsSlice, 'diagnosis').slice(0, 4);
-    claimQuotes.forEach(function (quote, index) {
-      if (!diagnoses[index] && index > 1) return;
-      sections.push({ key: 'claim-' + index, title: 'Claim check ' + (index + 1), body: ['“' + quote + '”', diagnoses[index] || 'Fracture is checking the support for this claim.'].join('\n') });
-    });
-
-    const citationSlice = jsonSlice(source, 'citation_opportunities', 'extra_argument_ideas');
-    const citationClaims = streamedStringValues(citationSlice, 'claim_to_support').slice(0, 3);
-    const evidenceTypes = streamedStringValues(citationSlice, 'evidence_type').slice(0, 3);
-    citationClaims.forEach(function (claim, index) {
-      sections.push({ key: 'citation-' + index, title: 'Citation need ' + (index + 1), body: [claim, evidenceTypes[index] ? 'Best source type: ' + evidenceTypes[index] : 'Fracture is preparing source leads for this claim.'].filter(Boolean).join('\n') });
-    });
-
-    return sections;
-  }
-
 
   function renderFinalAuditStream() {
-    ensureLiveAuditShell(serverReadableStreaming ? 'Finishing the final audit sections' : 'Writing the final audit live');
+    if (!reportContainer || auditRendered) return;
+    if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
+
+    const sectionsHtml = finalAuditStreamSections.map(function (section, index) {
+      return '<section class="final-audit-stream-section">'
+        + '<div class="final-audit-stream-kicker">' + esc(section.title || ('Section ' + (index + 1))) + '</div>'
+        + '<p>' + esc(section.body || '').replace(/\n/g, '<br>') + '</p>'
+        + '</section>';
+    }).join('');
+
+    reportContainer.innerHTML = '<article class="final-audit-stream">'
+      + '<div class="final-audit-stream-status"><span class="streaming-report-pulse"></span><span>Writing the final readable audit</span></div>'
+      + (sectionsHtml || '<p class="streaming-report-writing">Converting the Fracture JSON into the report you will actually use<span class="streaming-report-caret"></span></p>')
+      + '<span class="streaming-report-caret" aria-hidden="true"></span>'
+      + '</article>';
+    reportContainer.classList.add('visible', 'streaming', 'final-streaming');
   }
 
   function startFinalAuditStream() {
     serverReadableStreaming = true;
+    finalAuditStreamText = '';
+    finalAuditStreamSections = [];
     renderFinalAuditStream();
   }
 
   function appendFinalAuditDelta(section) {
     if (!section || typeof section !== 'object') return;
     serverReadableStreaming = true;
-    const title = firstText(section.title, 'Report section');
-    const body = firstText(section.body);
-    if (!body) return;
-    finalAuditStreamText += (finalAuditStreamText ? '\n\n' : '') + title + '\n' + body;
+    const next = {
+      title: firstText(section.title, 'Report section'),
+      body: firstText(section.body)
+    };
+    if (!next.body) return;
+    finalAuditStreamSections.push(next);
+    finalAuditStreamText += (finalAuditStreamText ? '\n\n' : '') + next.title + '\n' + next.body;
     readableReportText = finalAuditStreamText;
-    upsertLiveAuditSection('server-' + title, title, body, { statusText: 'Finishing the final audit sections' });
+    renderFinalAuditStream();
   }
 
   function finishFinalAuditStream() {
     serverReadableStreaming = false;
     if (reportContainer) reportContainer.classList.remove('streaming');
-    const status = document.getElementById('liveAuditStatus');
-    if (status) status.textContent = 'Final audit ready';
   }
 
   function renderStreamingReadableReport() {
-    if (!reportContainer || auditRendered || serverReadableStreaming) return;
-    const sections = buildLiveAuditSectionsFromPartialJson();
-    ensureLiveAuditShell('Writing the final audit live');
-    if (!sections.length) return;
-    sections.forEach(function (section) {
-      upsertLiveAuditSection(section.key, section.title, section.body, { statusText: 'Writing the final audit live' });
+    if (!reportContainer || auditRendered) return;
+    if (finalReviewPlaceholder) finalReviewPlaceholder.hidden = true;
+
+    const verdict = streamedStringValue(rawJsonText, 'verdict');
+    const prioritySlice = jsonSlice(rawJsonText, 'priority_fixes', 'collapse_point');
+    const problems = streamedStringValues(prioritySlice, 'problem').slice(0, 3);
+    const whyItMatters = streamedStringValues(prioritySlice, 'why_it_matters').slice(0, 3);
+    const exactFixes = streamedStringValues(prioritySlice, 'exact_fix').slice(0, 3);
+    const collapseSlice = jsonSlice(rawJsonText, 'collapse_point', 'argument_strength');
+    const collapse = streamedStringValue(collapseSlice, 'why_it_collapses');
+    const opponentAttack = streamedStringValue(collapseSlice, 'strongest_attack') || streamedStringValue(collapseSlice, 'opponent_attack');
+    const score = streamedNumber(rawJsonText, 'overall_score');
+
+    let html = '<article class="streaming-readable-report">'
+      + '<div class="streaming-report-status">'
+      + '<span class="streaming-report-pulse"></span>'
+      + '<span>Fracture is writing your review' + (score ? ' · Score ' + esc(score) + '/100' : '') + '</span>'
+      + '</div>';
+
+    html += streamingReportSection('Verdict in progress', verdict);
+
+    problems.forEach(function (problem, index) {
+      const details = [
+        whyItMatters[index] ? 'Why it matters: ' + whyItMatters[index] : '',
+        exactFixes[index] ? 'What to change: ' + exactFixes[index] : ''
+      ].filter(Boolean).join(' ');
+      html += streamingReportSection('Priority ' + (index + 1), problem + (details ? ' ' + details : ''));
     });
+
+    html += streamingReportSection('Collapse point', collapse);
+    html += streamingReportSection('Likely challenge', opponentAttack);
+
+    if (!verdict && !problems.length && !collapse) {
+      html += '<p class="streaming-report-writing">' + esc(PACING_PHRASES[pacingIndex] || 'Reading the argument') + '<span class="streaming-report-caret"></span></p>';
+    } else {
+      html += '<span class="streaming-report-caret" aria-hidden="true"></span>';
+    }
+
+    html += '</article>';
+    reportContainer.innerHTML = html;
+    reportContainer.classList.add('visible', 'streaming');
   }
 
   function fallbackPriorityFixes(parsed) {
@@ -671,7 +468,7 @@
     if (score >= 75) return 'Strong with fixable pressure points';
     if (score >= 60) return 'Usable but vulnerable';
     if (score >= 40) return 'Major revision needed';
-    if (score >= 11) return 'Argument breaks under pressure';
+    if (score >= 11) return 'Argument collapses under pressure';
     return 'Not enough argument to evaluate';
   }
 
@@ -748,13 +545,12 @@
       if (fix.rewrite) lines.push('Suggested wording: ' + fix.rewrite);
       lines.push('');
     });
-    const labels = modeLabels(currentMode());
-    lines.push(labels.pressureTitle);
+    lines.push('Collapse Point');
     const collapse = parsed.collapse_point || {};
-    lines.push(firstText(collapse.quote, 'No single load-bearing point detected.'));
-    if (collapse.why_it_collapses) lines.push(labels.pressureWhy + ' ' + modeSafeText(collapse.why_it_collapses));
-    if (collapse.strongest_attack || collapse.opponent_attack) lines.push(labels.pressureAttack + ' ' + modeSafeText(firstText(collapse.strongest_attack, collapse.opponent_attack)));
-    if (collapse.strongest_defense || collapse.reinforcement) lines.push(labels.pressureDefense + ' ' + modeSafeText(firstText(collapse.strongest_defense, collapse.reinforcement)));
+    lines.push(firstText(collapse.quote, 'No single collapse point detected.'));
+    if (collapse.why_it_collapses) lines.push(collapse.why_it_collapses);
+    if (collapse.strongest_attack || collapse.opponent_attack) lines.push('Likely attack: ' + firstText(collapse.strongest_attack, collapse.opponent_attack));
+    if (collapse.strongest_defense || collapse.reinforcement) lines.push('Repair: ' + firstText(collapse.strongest_defense, collapse.reinforcement));
     lines.push('');
     lines.push('Claims');
     asArray((parsed.argument_strength || {}).claims).forEach(function (claim, index) {
@@ -771,38 +567,6 @@
       if (attack.crossfire_question) lines.push('Crossfire question: ' + attack.crossfire_question);
       lines.push('');
     });
-
-    const src = sourceReport(parsed);
-    if (src) {
-      lines.push('Citation, Data, and Source Audit');
-      const summary = src.summary || {};
-      lines.push('Claims checked: ' + (summary.total_claims ?? asArray(src.claims).length));
-      if (summary.note) lines.push(summary.note);
-      asArray(src.claims).slice(0, 8).forEach(function (claim, index) {
-        lines.push((index + 1) + '. ' + firstText(claim.claim, claim.text, 'Claim to verify'));
-        lines.push('Status: ' + sourceStatusText(claim.support_status));
-        if (claim.verification_note) lines.push('Note: ' + claim.verification_note);
-        asArray(claim.sources).slice(0, 3).forEach(function (source, sIndex) {
-          if (source.url) lines.push('Source ' + (sIndex + 1) + ': ' + firstText(source.title, source.site_name, source.url) + ' — ' + source.url);
-        });
-        lines.push('');
-      });
-      lines.push('Extra Arguments and Source Links');
-      asArray(src.research_suggestions).slice(0, 5).forEach(function (idea, index) {
-        lines.push((index + 1) + '. ' + firstText(idea.title, idea.label, 'Research lead'));
-        if (idea.explanation) lines.push(idea.explanation);
-        asArray(idea.links).slice(0, 5).forEach(function (link, lIndex) {
-          if (link.url) lines.push('Link ' + (lIndex + 1) + ': ' + firstText(link.title, link.site_name, link.url) + ' — ' + link.url);
-        });
-        lines.push('');
-      });
-      if (asArray(src.works_cited).length) {
-        lines.push(src.bibliography_title || 'Works Cited starter');
-        asArray(src.works_cited).forEach(function (entry, index) {
-          lines.push((index + 1) + '. ' + firstText(entry.entry, entry.citation, entry.mla, entry.apa, entry.url));
-        });
-      }
-    }
     return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
@@ -827,22 +591,21 @@
   }
 
   function renderCollapsePoint(parsed) {
-    const labels = modeLabels(currentMode());
     const collapse = parsed.collapse_point || {};
     const fallbackClaim = (((parsed.argument_strength || {}).claims) || [])[0] || {};
     const quote = firstText(collapse.quote, fallbackClaim.quote, ((parsed.argument_strength || {}).thesis || {}).quote);
 
     return '<div class="report-item">'
-         + '<span class="report-label">' + esc(labels.pressureQuote) + '</span>'
+         + '<span class="report-label">Load-bearing sentence:</span>'
          + quoteBlock(quote)
-         + '<p><b>' + esc(labels.pressureWhy) + '</b> ' + esc(modeSafeText(firstText(collapse.why_it_collapses, fallbackClaim.diagnosis, 'This point carries more work than it currently supports.'))) + '</p>'
+         + '<p><b>Why it can collapse:</b> ' + esc(firstText(collapse.why_it_collapses, fallbackClaim.diagnosis, 'If this sentence is not proven, the rest of the argument loses force.')) + '</p>'
          + '<div class="report-metric-row">'
-         + '<span class="report-metric">' + esc(labels.pressureMetricA) + ': ' + esc(String(collapse.dependency_count ?? 0)) + '</span>'
-         + '<span class="report-metric report-metric-risk">' + esc(labels.pressureMetricB) + ': ' + esc(String(collapse.survival_probability ?? '—')) + '%</span>'
+         + '<span class="report-metric">Dependent claims: ' + esc(String(collapse.dependency_count ?? 0)) + '</span>'
+         + '<span class="report-metric report-metric-risk">Survival chance: ' + esc(String(collapse.survival_probability ?? '—')) + '%</span>'
          + '</div>'
-         + renderInlineList(labels.pressureDepends, collapse.affected_claims)
-         + '<p><b>' + esc(labels.pressureAttack) + '</b> ' + esc(modeSafeText(firstText(collapse.strongest_attack, collapse.opponent_attack, fallbackClaim.opponent_exploit, 'A skeptical reader will ask what proves this exact point.'))) + '</p>'
-         + '<p><b>' + esc(labels.pressureDefense) + '</b> ' + esc(modeSafeText(firstText(collapse.strongest_defense, collapse.reinforcement, fallbackClaim.fix, 'State the warrant directly, narrow the claim, and support it with the most relevant evidence.'))) + '</p>'
+         + renderInlineList('What depends on it', collapse.affected_claims)
+         + '<p><b>Strongest opponent attack:</b> ' + esc(firstText(collapse.strongest_attack, collapse.opponent_attack, fallbackClaim.opponent_exploit, 'A strong opponent will ask what proves this exact point.')) + '</p>'
+         + '<p><b>Strongest defense:</b> ' + esc(firstText(collapse.strongest_defense, collapse.reinforcement, fallbackClaim.fix, 'Add direct evidence, a warrant sentence, and a qualifier that survives counterexamples.')) + '</p>'
          + '</div>';
   }
 
@@ -944,7 +707,6 @@
     const claims = asArray((parsed.argument_strength || {}).claims).slice(0, 4);
     const fixes = asArray(parsed.priority_fixes);
     const collapse = parsed.collapse_point || {};
-    const labels = modeLabels(currentMode());
     const score = typeof parsed.overall_score === 'number' ? parsed.overall_score : null;
     const graphClaims = claims.length ? claims : fixes.slice(0, 3).map(function (fix) {
       return {
@@ -999,10 +761,10 @@
     + '<div class="node-kicker">Thesis</div>'
     + '<div class="node-text">' + esc(truncateText(firstText(thesis.quote, parsed.verdict, 'No clear thesis found yet.'), 190)) + '</div>'
     + '</div>'
-        + '<div class="collapse-card" role="button" tabindex="0" data-chat-point="' + dataPoint(firstText(collapse.quote, thesis.quote)) + '" title="Select this pressure point for Fracture Chat">'
-    + '<div class="note-title">' + esc(labels.graphTitle) + '</div>'
+        + '<div class="collapse-card" role="button" tabindex="0" data-chat-point="' + dataPoint(firstText(collapse.quote, thesis.quote)) + '" title="Select this collapse point for Fracture Chat">'
+    + '<div class="note-title">Collapse Point</div>'
     + '<p>' + esc(truncateText(firstText(collapse.quote, thesis.quote, 'The most load-bearing claim is not clear yet.'), 150)) + '</p>'
-    + '<small>' + esc(truncateText(modeSafeText(firstText(collapse.why_it_collapses, "This point carries the draft's main pressure.")), 170)) + '</small>'
+    + '<small>' + esc(truncateText(firstText(collapse.why_it_collapses, 'If this point is unsupported, the whole argument loses force.'), 170)) + '</small>'
     + '</div>'
     + '</div>'
     + '<div class="graph-spine"><span></span><span></span><span></span></div>'
@@ -1051,16 +813,15 @@
   }
 
   async function loadFeedbackPreferences() {
-    const format = currentMode();
-    const depth = currentDepthLevel();
-    const rubric = rubricInput ? rubricInput.value.trim() : '';
+    const format = analysisFormat ? analysisFormat.value : '';
+    const depth  = depthLevel ? depthLevel.value : 'medium';
     if (!window.FractureAuth || typeof window.FractureAuth.getPreferences !== 'function') {
-      return { analysisFormat: format, feedbackDepth: depth, rubricText: rubric };
+      return { analysisFormat: format, depthLevel: depth };
     }
     try {
-      return Object.assign({}, await window.FractureAuth.getPreferences(), { analysisFormat: format, feedbackDepth: depth, rubricText: rubric });
+      return Object.assign({}, await window.FractureAuth.getPreferences(), { analysisFormat: format, depthLevel: depth });
     } catch (_) {
-      return { analysisFormat: format, feedbackDepth: depth, rubricText: rubric };
+      return { analysisFormat: format, depthLevel: depth };
     }
   }
 
@@ -1141,12 +902,8 @@
   }
 
   function renderParsedAudit(audit) {
-    if (studioOutputColumn) studioOutputColumn.hidden = false;
-    const chatCard = document.getElementById('fractureChatCard');
-    if (chatCard) chatCard.hidden = false;
     if (!audit || typeof audit !== 'object') return;
     parsedAudit = normalizeRenderedAudit(audit);
-    sourceVerificationData = parsedAudit && parsedAudit.source_verification_report ? parsedAudit.source_verification_report : sourceVerificationData;
     if (!rawJsonText.trim()) rawJsonText = JSON.stringify(audit, null, 2);
     if (typeof audit.overall_score === 'number' && scorePill) {
       scorePill.textContent = String(audit.overall_score);
@@ -1189,9 +946,13 @@
       auditedDraft = workspace.draft.trim();
       rawJsonText = JSON.stringify(analysis.audit, null, 2);
       parsedAudit = analysis.audit;
-      sourceVerificationData = analysis.sources || (analysis.audit && analysis.audit.source_verification_report) || null;
+      sourceVerificationData = analysis.sources || null;
       renderParsedAudit(analysis.audit);
       finalizeJsonTextFromAudit();
+      if (sourceVerificationData) {
+        const verifier = mountSourceVerification();
+        if (verifier && typeof verifier.render === 'function') verifier.render(sourceVerificationData);
+      }
       if (exportBtn) exportBtn.disabled = false;
       if (shareBtn) shareBtn.disabled = false;
       updateReportActions(true);
@@ -1405,184 +1166,6 @@
     }
   }
 
-
-  function sourceReport(parsed) {
-    return parsed && parsed.source_verification_report && typeof parsed.source_verification_report === 'object'
-      ? parsed.source_verification_report
-      : null;
-  }
-
-  function supportStatusClass(status) {
-    const cleaned = String(status || 'needs_review').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-    return 'source-status-' + cleaned;
-  }
-
-  function sourceStatusText(status) {
-    const cleaned = String(status || 'needs_review').toLowerCase();
-    if (cleaned === 'likely_supported') return 'Likely supported';
-    if (cleaned === 'partial_match') return 'Partial match';
-    if (cleaned === 'possible_conflict') return 'Possible conflict';
-    if (cleaned === 'source_not_found') return 'Source not found';
-    if (cleaned === 'citation_incomplete') return 'Citation incomplete';
-    return 'Needs review';
-  }
-
-  function renderSourceLinks(links, max) {
-    const usable = asArray(links).filter(function (link) { return link && link.url; }).slice(0, max || 5);
-    if (!usable.length) return '';
-    return '<div class="report-source-links">' + usable.map(function (link, index) {
-      return '<a class="report-source-link" href="' + esc(link.url) + '" target="_blank" rel="noopener">'
-        + '<span>' + esc(firstText(link.title, link.site_name, 'Source ' + (index + 1))) + '</span>'
-        + '<small>' + esc(firstText(link.site_name, link.url)) + '</small>'
-        + '</a>';
-    }).join('') + '</div>';
-  }
-
-  function renderFinalCitationAudit(parsed) {
-    const data = sourceReport(parsed);
-    const truthItems = asArray(parsed.truth_audit);
-    const opportunities = asArray(parsed.citation_opportunities);
-    if (!data && !truthItems.length && !opportunities.length) {
-      return '<p>No citation or data-check material was generated for this draft. Use Medium or Extreme Depth when the draft has factual claims or evidence needs.</p>';
-    }
-
-    const summary = data && data.summary ? data.summary : {};
-    let html = '<div class="report-item report-source-summary">'
-      + '<p><b>What this section does:</b> It puts citation needs, data verification, and source leads inside the final audit so the user does not have to jump to a separate citation tool.</p>';
-    if (data) {
-      html += '<div class="report-metric-row">'
-        + '<span class="report-metric">Claims checked: ' + esc(String(summary.total_claims ?? asArray(data.claims).length)) + '</span>'
-        + '<span class="report-metric">Likely supported: ' + esc(String(summary.likely_supported ?? 0)) + '</span>'
-        + '<span class="report-metric report-metric-risk">Needs review: ' + esc(String((Number(summary.needs_source_review) || 0) + (Number(summary.citation_incomplete) || 0) + (Number(summary.source_not_found) || 0) + (Number(summary.partial_match) || 0))) + '</span>'
-        + '</div>'
-        + '<p>' + esc(firstText(summary.note, 'Open each source and confirm the exact passage before using it in final writing.')) + '</p>';
-    }
-    html += '</div>';
-
-    const claimRows = data ? asArray(data.claims).slice(0, 8).map(function (claim, index) {
-      const links = renderSourceLinks(claim.sources, 3);
-      return '<div class="report-item report-source-card">'
-        + '<div class="report-metric-row"><span class="report-metric ' + esc(supportStatusClass(claim.support_status)) + '">Claim ' + (index + 1) + ': ' + esc(sourceStatusText(claim.support_status)) + '</span></div>'
-        + quoteBlock(firstText(claim.claim, claim.text, 'Claim to verify'))
-        + '<p><b>Verification note:</b> ' + esc(firstText(claim.verification_note, claim.note, 'Check this claim before relying on it.')) + '</p>'
-        + '<p><b>Citation issues:</b> ' + esc(asArray(claim.citation_issues).join(', ') || 'No specific citation issue flagged.') + '</p>'
-        + (links || '<p class="report-source-empty">No dependable public source link was found for this exact claim yet.</p>')
-        + '</div>';
-    }).join('') : '';
-
-    const truthRows = truthItems.slice(0, 5).map(function (item) {
-      return '<div class="report-item report-source-card">'
-        + '<div class="report-metric-row"><span class="report-metric report-metric-risk">Audit flag: ' + esc(firstText(item.truth_status, 'VERIFY')) + '</span></div>'
-        + quoteBlock(item.claim)
-        + '<p><b>Why check it:</b> ' + esc(item.why_check || '') + '</p>'
-        + '<p><b>Verification step:</b> ' + esc(item.verification_step || '') + '</p>'
-        + '</div>';
-    }).join('');
-
-    const opportunityRows = opportunities.slice(0, 6).map(function (item, index) {
-      const queries = asArray(item.search_queries || item.source_search_queries || item.queries).slice(0, 3).map(function (query) {
-        return '<code>' + esc(firstText(query)) + '</code>';
-      }).filter(Boolean).join(' ');
-      return '<div class="report-item report-source-card">'
-        + '<p><b>Source need ' + (index + 1) + ':</b> ' + esc(firstText(item.claim_to_support, item.claim, item.statistic_needed, 'Claim needs source support')) + '</p>'
-        + '<p><b>Best evidence type:</b> ' + esc(firstText(item.evidence_type, item.source_type, 'credible report, study, dataset, or expert source')) + '</p>'
-        + '<p><b>Why it matters:</b> ' + esc(firstText(item.why_it_matters, item.reason, 'This source would make the claim harder to dismiss.')) + '</p>'
-        + (queries ? '<p><b>Search terms if links are not enough:</b> ' + queries + '</p>' : '')
-        + '</div>';
-    }).join('');
-
-    return html + (claimRows || '') + (truthRows || '') + (opportunityRows || '');
-  }
-
-  function renderFinalExtraArgumentSources(parsed) {
-    const data = sourceReport(parsed);
-    const ideas = asArray(parsed.extra_argument_ideas);
-    const suggestions = data ? asArray(data.research_suggestions) : [];
-    if (!ideas.length && !suggestions.length) {
-      return '<p>No extra argument research was generated. Use Extreme Depth for more missing-argument discovery.</p>';
-    }
-
-    let html = '';
-    if (ideas.length) {
-      html += ideas.slice(0, 5).map(function (idea, index) {
-        return '<div class="report-item report-research-card">'
-          + '<p><b>Missing argument ' + (index + 1) + ':</b> ' + esc(firstText(idea.argument, idea.title, idea.angle, 'Extra argument to investigate')) + '</p>'
-          + '<p><b>Why it supports the thesis:</b> ' + esc(firstText(idea.why_it_supports_thesis, idea.why_it_matters, idea.explanation, 'This may support the thesis from another angle.')) + '</p>'
-          + '<p><b>Evidence needed before adding it:</b> ' + esc(firstText(idea.evidence_needed, idea.source_need, 'Find a credible source that directly supports this angle before adding it.')) + '</p>'
-          + '</div>';
-      }).join('');
-    }
-
-    if (suggestions.length) {
-      html += suggestions.slice(0, 5).map(function (idea, index) {
-        return '<div class="report-item report-research-card report-source-card">'
-          + '<p><b>Source-backed research lead ' + (index + 1) + ':</b> ' + esc(firstText(idea.title, idea.label, 'Research lead')) + '</p>'
-          + '<p>' + esc(firstText(idea.explanation, 'Open these links and only add the argument if the source directly supports it.')) + '</p>'
-          + renderSourceLinks(idea.links, 5)
-          + (firstText(idea.search_query) ? '<p><b>Search query used:</b> <code>' + esc(idea.search_query) + '</code></p>' : '')
-          + '</div>';
-      }).join('');
-    }
-
-    return html;
-  }
-
-  function renderFinalCitationGenerator(parsed) {
-    const data = sourceReport(parsed);
-    const works = data ? asArray(data.works_cited) : [];
-    if (!works.length) {
-      return '<p>No citation-ready source was found inside this audit. This usually means Fracture found research needs, but not a strong enough public-page match to generate a responsible citation. Open the source links above and cite only the pages that directly support your exact claim.</p>';
-    }
-    return '<div class="report-item report-source-summary"><p><b>' + esc(data.bibliography_title || 'Works Cited starter') + ':</b> These are starter citations from matched public pages. Confirm author, date, title, and publisher before final submission.</p></div>'
-      + works.map(function (entry, index) {
-        return '<div class="report-item report-citation-entry">'
-          + '<p><b>' + (index + 1) + '.</b> ' + esc(firstText(entry.entry, entry.citation, entry.mla, entry.apa, entry.url)) + '</p>'
-          + (entry.url ? '<p><a class="report-source-link-inline" href="' + esc(entry.url) + '" target="_blank" rel="noopener">Open source</a></p>' : '')
-          + '</div>';
-      }).join('');
-  }
-
-
-  function renderExtraArgumentIdeas(parsed) {
-    const ideas = asArray(parsed.extra_argument_ideas);
-    if (!ideas.length) {
-      return '<p>No extra argument ideas were generated for this depth level. Use Extreme Depth for more missing-argument discovery.</p>';
-    }
-    return ideas.map(function (idea, index) {
-      const queries = asArray(idea.source_search_queries || idea.search_queries || idea.research_queries).map(function (query) {
-        const q = firstText(query);
-        if (!q) return '';
-        return '<a class="report-research-link" href="https://www.google.com/search?q=' + encodeURIComponent(q) + '" target="_blank" rel="noopener">Search: ' + esc(q) + '</a>';
-      }).filter(Boolean).join('');
-      return '<div class="report-item report-research-card">'
-        + '<p><b>Missing argument ' + (index + 1) + ':</b> ' + esc(firstText(idea.argument, idea.title, idea.angle, 'Extra argument to investigate')) + '</p>'
-        + '<p><b>Why it helps:</b> ' + esc(firstText(idea.why_it_supports_thesis, idea.why_it_matters, idea.explanation, 'This may support the thesis from another angle.')) + '</p>'
-        + '<p><b>Evidence to look for:</b> ' + esc(firstText(idea.evidence_needed, idea.source_need, 'Find a credible source that directly supports this angle before adding it.')) + '</p>'
-        + (queries ? '<div class="report-research-links">' + queries + '</div>' : '')
-        + '</div>';
-    }).join('');
-  }
-
-  function renderCitationOpportunities(parsed) {
-    const opportunities = asArray(parsed.citation_opportunities);
-    if (!opportunities.length) {
-      return '<p>No citation opportunities were generated for this depth level. Use Verify Data + Citations after the audit to search public pages for source links.</p>';
-    }
-    return opportunities.map(function (item, index) {
-      const queries = asArray(item.search_queries || item.source_search_queries || item.queries).map(function (query) {
-        const q = firstText(query);
-        if (!q) return '';
-        return '<a class="report-research-link" href="https://www.google.com/search?q=' + encodeURIComponent(q) + '" target="_blank" rel="noopener">Search: ' + esc(q) + '</a>';
-      }).filter(Boolean).join('');
-      return '<div class="report-item report-research-card">'
-        + '<p><b>Source need ' + (index + 1) + ':</b> ' + esc(firstText(item.claim_to_support, item.claim, item.statistic_needed, 'Claim needs source support')) + '</p>'
-        + '<p><b>Best evidence type:</b> ' + esc(firstText(item.evidence_type, item.source_type, 'credible report, study, dataset, or expert source')) + '</p>'
-        + '<p><b>Why it matters:</b> ' + esc(firstText(item.why_it_matters, item.reason, 'This source would make the claim harder to dismiss.')) + '</p>'
-        + (queries ? '<div class="report-research-links">' + queries + '</div>' : '')
-        + '</div>';
-    }).join('');
-  }
-
   // ── Report renderer ────────────────────────────────────────────────────────
   function renderReport(parsed) {
     const c = reportContainer;
@@ -1702,32 +1285,657 @@
            + '</div>';
     }).join('') || '<p>No rewrite suggestions generated.</p>';
 
-    const extraArgumentSection = renderExtraArgumentIdeas(parsed);
-    const citationOpportunitySection = renderCitationOpportunities(parsed);
-
     readableReportText = buildReadableReportText(parsed);
-    c.innerHTML =
-      section('Verdict and Score', verdictSection, true, 'report-verdict') +
-      section('Score Breakdown', scoreSection, true) +
-      section('Priority Fixes', renderPriorityFixes(parsed), true, 'report-priorities') +
-      section(modeLabels(currentMode()).pressureTitle, renderCollapsePoint(parsed), true) +
-      section('How the Argument Hangs Together', renderDependencyGraph(parsed), true) +
-      section('Thesis Analysis', thesisSection, true) +
-      section('Claim-by-Claim Analysis', claimsSection, true, 'report-claims') +
-      section('Assumption Audit', assumptionsSection, true) +
-      section('Logical Fallacies', fallaciesSection, true) +
-      section('Counterarguments', countersSection, true, 'report-attacks') +
-      section('Attack Tree and Crossfire Questions', renderAttackTree(parsed), true) +
-      section('Citation, Data, and Source Audit', renderFinalCitationAudit(parsed), true, 'report-citations') +
-      section('Extra Arguments With Source Links', renderFinalExtraArgumentSources(parsed), true, 'report-extra-arguments') +
-      section('Citation Generator', renderFinalCitationGenerator(parsed), true, 'report-bibliography') +
-      section('Alternative Solutions Test', renderAlternatives(parsed), true) +
-      section('Rhetorical Analysis', rhetoricSection, true) +
-      section('Make It Stronger: Rewrite Suggestions', rewritesSection, true, 'report-rewrites');
+    var mode = (analysisFormat && analysisFormat.value) || 'argument';
+
+    // Build verdict and score sections (shared across all modes)
+    var verdictAndScore = section('Verdict and Score', verdictSection, true, 'report-verdict')
+      + section('Score Breakdown', scoreSection, true);
+
+    // Priority fixes (shared, always last or near-last)
+    var pfixesHtml = '<ol class="priority-fixes-list">'
+      + (asArray(parsed.priority_fixes).length ? asArray(parsed.priority_fixes) : fallbackPriorityFixes(parsed)).map(function (fix, i) {
+        return '<li class="priority-fix-li">'
+          + '<div class="priority-fix-header"><span class="priority-fix-num">' + (i + 1) + '</span><strong>' + esc(firstText(fix.problem, 'Repair needed')) + '</strong></div>'
+          + (fix.quote ? quoteBlock(fix.quote) : '')
+          + (fix.why_it_matters ? '<p class="pf-why">' + esc(fix.why_it_matters) + '</p>' : '')
+          + (fix.exact_fix ? '<p><b>Fix:</b> ' + esc(fix.exact_fix) + '</p>' : '')
+          + (fix.rewrite ? '<div class="report-label">Rewritten:</div>' + quoteBlock(fix.rewrite) : '')
+          + '</li>';
+      }).join('')
+      + '</ol>';
+
+    // Rubric mode: totally different top-level structure
+    if (mode === 'rubric') {
+      var rubricScoreHtml = '<div class="rubric-score-hero">'
+        + '<div class="rubric-score-main"><span>' + esc(String(parsed.score_earned || 0)) + '</span><small>/ ' + esc(String(parsed.rubric_total_possible || 0)) + ' points</small></div>'
+        + '<div class="rubric-score-pct">' + esc(parsed.percentage || '0%') + '</div>'
+        + '<div class="rubric-grade">' + esc(parsed.letter_grade || '—') + '</div>'
+        + '</div>'
+        + '<div class="verdict-card"><p>' + esc(parsed.verdict || '') + '</p></div>';
+      c.innerHTML = rubricScoreHtml
+        + renderModeSpecificSections(parsed, section)
+        + section('Priority Fixes', pfixesHtml, true, 'report-priorities');
+    } else {
+      // All other modes: verdict + scores, then mode-specific, then shared fallacies, then priority fixes
+      var fallaciesHtml2 = asArray(parsed.logical_fallacies).map(function (f) {
+        return '<div class="report-item"><p><b>' + esc(f.name || 'Fallacy') + '</b></p>' + quoteBlock(f.quote) + '<p>' + esc(f.explanation || '') + '</p><p><b>Fix:</b> ' + esc(f.fix || '') + '</p></div>';
+      }).join('') || '<p>No explicit fallacies flagged.</p>';
+
+      c.innerHTML = verdictAndScore
+        + renderModeSpecificSections(parsed, section)
+        + (parsed.logical_fallacies && asArray(parsed.logical_fallacies).length ? section('Logical Fallacies', fallaciesHtml2, false) : '')
+        + (parsed.rhetorical_analysis ? section('Rhetorical Analysis', rhetoricSection, false) : '')
+        + section('Priority Fixes', pfixesHtml, true, 'report-priorities');
+    }
 
     renderArgumentGraph(parsed);
+    mountSourceVerification();
     updateReportActions(true);
     requestAnimationFrame(function () { c.classList.add('visible'); });
+  }
+
+  // ── Mode-aware section renderers ──────────────────────────────────────────
+
+  function renderModeSpecificSections(parsed, section) {
+    var mode = (analysisFormat && analysisFormat.value) || 'argument';
+    var html = '';
+
+    // ── ARGUMENT mode extras ──
+    if (mode === 'argument' || mode === 'debate-case' || mode === 'policy' || mode === 'not-chosen') {
+      // Claims with full evidence/warrant/impact
+      var claimsHtml = asArray(parsed.claims).map(function (cl, i) {
+        var rc = (cl.rating || 'WEAK').toLowerCase();
+        return '<div class="report-item">'
+          + '<div class="report-metric-row"><span class="report-metric report-metric-' + (rc === 'strong' ? 'strong' : rc === 'moderate' ? '' : 'risk') + '">Claim ' + (i+1) + ': ' + esc(cl.rating || 'WEAK') + '</span></div>'
+          + quoteBlock(cl.quote)
+          + (cl.evidence_used ? '<p><b>Evidence used:</b> ' + esc(cl.evidence_used) + '</p>' : '')
+          + (cl.warrant ? '<p><b>Warrant:</b> ' + esc(cl.warrant) + '</p>' : '')
+          + (cl.missing_warrant ? '<p><b>Missing warrant:</b> ' + esc(cl.missing_warrant) + '</p>' : '')
+          + (cl.impact ? '<p><b>Impact:</b> ' + esc(cl.impact) + '</p>' : '')
+          + (cl.diagnosis ? '<p><b>Diagnosis:</b> ' + esc(cl.diagnosis) + '</p>' : '')
+          + (cl.opponent_exploit ? '<p><b>Opponent attack:</b> ' + esc(cl.opponent_exploit) + '</p>' : '')
+          + (cl.fix ? '<p><b>Fix:</b> ' + esc(cl.fix) + '</p>' : '')
+          + (cl.rewrite ? '<div class="report-label">Rewrite:</div>' + quoteBlock(cl.rewrite) : '')
+          + '</div>';
+      }).join('') || '<p>No claims parsed.</p>';
+      html += section('Claim-by-Claim Analysis (Evidence → Warrant → Impact)', claimsHtml, true, 'report-claims');
+
+      // Attackable Gaps
+      var gapsHtml = asArray(parsed.attackable_gaps).map(function (g) {
+        return '<div class="report-item">'
+          + '<p><b>' + esc(g.gap || '') + '</b></p>'
+          + (g.quote ? quoteBlock(g.quote) : '')
+          + (g.why_vulnerable ? '<p><b>Why vulnerable:</b> ' + esc(g.why_vulnerable) + '</p>' : '')
+          + (g.how_to_close ? '<p><b>How to close:</b> ' + esc(g.how_to_close) + '</p>' : '')
+          + (g.source_needed ? '<div class="report-source-box"><span class="report-label">Source needed:</span><p>' + esc(g.source_needed.what || '') + '</p><p><b>Search:</b> ' + esc(g.source_needed.search_terms || '') + '</p><p><b>Why it helps:</b> ' + esc(g.source_needed.why_it_helps || '') + '</p></div>' : '')
+          + '</div>';
+      }).join('') || '<p>No critical gaps identified.</p>';
+      html += section('Attackable Gaps', gapsHtml, true);
+
+      // Rebuttal Prep
+      var reb = parsed.rebuttal_prep || {};
+      var sr = reb.strongest_rebuttal || {}, er = reb.easiest_rebuttal || {}, snr = reb.sneakiest_rebuttal || {};
+      var rebHtml = '<div class="report-item"><div class="report-metric-row"><span class="report-metric report-metric-risk">Strongest Attack</span></div>'
+        + '<p><b>Attack:</b> ' + esc(sr.attack || '') + '</p>'
+        + '<p><b>Targets:</b> ' + esc(sr.targets || '') + '</p>'
+        + '<p><b>Why dangerous:</b> ' + esc(sr.why_dangerous || '') + '</p>'
+        + '<p><b>How to answer (say this):</b> ' + esc(sr.how_to_answer || '') + '</p>'
+        + (sr.evidence_to_block ? '<p><b>Evidence to block it:</b> ' + esc(sr.evidence_to_block) + '</p>' : '')
+        + '</div>'
+        + '<div class="report-item"><div class="report-metric-row"><span class="report-metric">Easiest Attack</span></div>'
+        + '<p><b>Attack:</b> ' + esc(er.attack || '') + '</p>'
+        + '<p><b>Why easy:</b> ' + esc(er.why_easy || '') + '</p>'
+        + '<p><b>How to answer:</b> ' + esc(er.how_to_answer || '') + '</p></div>'
+        + '<div class="report-item"><div class="report-metric-row"><span class="report-metric">Sneakiest Attack</span></div>'
+        + '<p><b>Attack:</b> ' + esc(snr.attack || '') + '</p>'
+        + '<p><b>Why sneaky:</b> ' + esc(snr.why_sneaky || '') + '</p>'
+        + '<p><b>How to answer:</b> ' + esc(snr.how_to_answer || '') + '</p></div>';
+      html += section('Rebuttal Preparation', rebHtml, true, 'report-rebuttal');
+
+      // Extra Arguments
+      var extras = asArray(parsed.extra_arguments);
+      if (extras.length) {
+        var extHtml = extras.map(function (e) {
+          return '<div class="report-item report-item-extra">'
+            + '<p><b>' + esc(e.argument || '') + '</b></p>'
+            + (e.why_important ? '<p>' + esc(e.why_important) + '</p>' : '')
+            + (e.how_to_add ? '<p><b>How to add it:</b> ' + esc(e.how_to_add) + '</p>' : '')
+            + (e.search_terms ? '<p><b>Search for evidence:</b> ' + esc(e.search_terms) + '</p>' : '')
+            + '</div>';
+        }).join('');
+        html += section('Missing Arguments You Should Be Making', extHtml, true, 'report-extra');
+      }
+
+      // Impact Weighing
+      var iw = parsed.impact_weighing || {};
+      if (iw.why_it_matters || iw.how_to_outweigh) {
+        var iwHtml = '<div class="report-item">'
+          + '<p><b>Is impact weighed?</b> <span class="report-metric report-metric-' + (iw.is_weighed ? 'strong' : 'risk') + '">' + (iw.is_weighed ? 'YES' : 'NO — critical gap') + '</span></p>'
+          + (iw.why_it_matters ? '<p><b>Why weighing matters:</b> ' + esc(iw.why_it_matters) + '</p>' : '')
+          + (iw.magnitude ? '<p><b>Magnitude:</b> ' + esc(iw.magnitude) + '</p>' : '')
+          + (iw.probability ? '<p><b>Probability:</b> ' + esc(iw.probability) + '</p>' : '')
+          + (iw.timeframe ? '<p><b>Timeframe:</b> ' + esc(iw.timeframe) + '</p>' : '')
+          + (iw.how_to_outweigh ? '<p><b>Say this to outweigh:</b></p>' + quoteBlock(iw.how_to_outweigh) : '')
+          + '</div>';
+        html += section('Impact Weighing', iwHtml, false);
+      }
+
+      // Assumption audit
+      var assumeHtml = asArray(parsed.assumption_audit).map(function (a) {
+        return '<div class="report-item">'
+          + '<p><span class="report-metric report-metric-risk">' + esc(a.type || 'HIDDEN') + '</span></p>'
+          + '<p><b>Assumption:</b> ' + esc(a.assumption || '') + '</p>'
+          + (a.quote ? quoteBlock(a.quote) : '')
+          + (a.if_rejected ? '<p><b>If rejected:</b> ' + esc(a.if_rejected) + '</p>' : '')
+          + (a.how_to_defend ? '<p><b>How to defend it:</b> ' + esc(a.how_to_defend) + '</p>' : '')
+          + '</div>';
+      }).join('') || '<p>No hidden assumptions identified.</p>';
+      html += section('Assumption Audit', assumeHtml, false);
+    }
+
+    // ── SPEECH mode ──
+    else if (mode === 'speech') {
+      // Audience Clarity
+      var ac = parsed.audience_clarity || {};
+      var acHtml = '<div class="report-item">'
+        + '<p><b>Main message obvious:</b> ' + (ac.main_message_obvious ? 'Yes' : 'No — fix needed') + '</p>'
+        + '<p><b>Context sufficient:</b> ' + (ac.context_sufficient ? 'Yes' : 'No') + '</p>'
+        + (ac.level_assessment ? '<p><b>Level:</b> ' + esc(ac.level_assessment) + '</p>' : '')
+        + (asArray(ac.confusing_terms).length ? '<p><b>Confusing terms:</b> ' + asArray(ac.confusing_terms).map(esc).join(', ') + '</p>' : '')
+        + renderInlineList('Fixes', ac.fixes)
+        + '</div>';
+      html += section('Audience Clarity Check', acHtml, true);
+
+      // Hook Analysis
+      var ha = parsed.hook_analysis || {};
+      html += section('Hook Strength', '<div class="report-item"><div class="report-metric-row"><span class="report-metric report-metric-' + (ha.rating === 'STRONG' ? 'strong' : ha.rating === 'MODERATE' ? '' : 'risk') + '">' + esc(ha.rating || 'WEAK') + '</span></div>'
+        + quoteBlock(ha.current_hook)
+        + '<p>' + esc(ha.assessment || '') + '</p>'
+        + (ha.stronger_hook ? '<p><b>Stronger hook:</b></p>' + quoteBlock(ha.stronger_hook) : '')
+        + '</div>', true);
+
+      // Delivery Markup
+      var dm = asArray(parsed.delivery_markup);
+      if (dm.length) {
+        var dmHtml = dm.map(function (d) {
+          return '<div class="report-item">'
+            + '<span class="report-label">Original:</span>' + quoteBlock(d.original_text)
+            + '<span class="report-label">With delivery cues:</span>'
+            + '<div class="delivery-annotated">' + esc(d.annotated || '') + '</div>'
+            + (d.note ? '<p><b>Why:</b> ' + esc(d.note) + '</p>' : '')
+            + '</div>';
+        }).join('');
+        html += section('Delivery Markup', dmHtml, true);
+      }
+
+      // Structure
+      var sa = parsed.structure_analysis || {};
+      if (sa.detected_structure || asArray(sa.structural_gaps).length) {
+        var saHtml = '<div class="report-item">'
+          + (sa.detected_structure ? '<p><b>Current structure:</b> ' + esc(sa.detected_structure) + '</p>' : '')
+          + (sa.recommended_structure ? '<p><b>Recommended:</b> ' + esc(sa.recommended_structure) + '</p>' : '')
+          + renderInlineList('Gaps', sa.structural_gaps)
+          + '</div>';
+        if (asArray(sa.paragraph_map).length) {
+          saHtml += asArray(sa.paragraph_map).map(function (p) {
+            return '<div class="report-item">'
+              + '<p><b>Section ' + (p.paragraph || '') + ':</b> ' + esc(p.job || '') + ' — <span class="report-metric">' + esc(p.assessment || '') + '</span></p>'
+              + (p.fix ? '<p>' + esc(p.fix) + '</p>' : '')
+              + '</div>';
+          }).join('');
+        }
+        html += section('Structure and Flow', saHtml, true, 'report-structure');
+      }
+
+      // Delivery Risks
+      var dr = asArray(parsed.delivery_risks);
+      if (dr.length) {
+        html += section('Delivery Risk Warnings', dr.map(function (d) {
+          return '<div class="report-item">' + quoteBlock(d.quote) + '<p><b>Risk:</b> ' + esc(d.risk || '') + '</p><p><b>Fix:</b> ' + esc(d.fix || '') + '</p></div>';
+        }).join(''), true);
+      }
+
+      // Memorability
+      var mc = parsed.memorability_check || {};
+      html += section('Memorability Check', '<div class="report-item">'
+        + '<p><b>Has memorable moment:</b> ' + (mc.has_memorable_moment ? 'Yes' : 'No — add one') + '</p>'
+        + renderInlineList('Found', mc.found)
+        + renderInlineList('Missing', mc.missing)
+        + (mc.suggested_memorable_line ? '<p><b>Try this memorable line:</b></p>' + quoteBlock(mc.suggested_memorable_line) : '')
+        + '</div>', true);
+
+      // Audience Questions
+      var aq = asArray(parsed.audience_questions);
+      if (aq.length) {
+        html += section('Predicted Audience Questions', aq.map(function (q) {
+          return '<div class="report-item"><p><span class="report-metric">' + esc(q.type || 'question') + '</span> ' + esc(q.question || '') + '</p><p><b>How to preempt:</b> ' + esc(q.how_to_preempt || '') + '</p></div>';
+        }).join(''), false);
+      }
+
+      // Visual Aids
+      var va = asArray(parsed.visual_aid_suggestions);
+      if (va.length) {
+        html += section('Visual Aid Suggestions', va.map(function (v) {
+          return '<div class="report-item"><p><b>Where:</b> ' + esc(v.where || '') + '</p><p><b>What:</b> ' + esc(v.what || '') + '</p><p><b>Why:</b> ' + esc(v.why || '') + '</p>' + (v.slide_content ? '<p><b>Slide content:</b> ' + esc(v.slide_content) + '</p>' : '') + '</div>';
+        }).join(''), false);
+      }
+
+      // Call to Action
+      var cta = parsed.call_to_action || {};
+      html += section('Call to Action', '<div class="report-item">'
+        + '<p><b>Present:</b> ' + (cta.present ? 'Yes' : 'No — add one') + '</p>'
+        + (cta.current ? quoteBlock(cta.current) : '')
+        + (cta.assessment ? '<p>' + esc(cta.assessment) + '</p>' : '')
+        + (cta.stronger_ending ? '<p><b>Stronger ending:</b></p>' + quoteBlock(cta.stronger_ending) : '')
+        + '</div>', true, 'report-cta');
+
+      // Persuasion Check
+      var pc = parsed.persuasion_check || {};
+      if (pc.overall) {
+        html += section('Persuasion Check', '<div class="report-item">'
+          + (pc.emotional_appeal ? '<p><b>Emotional appeal:</b> ' + esc(pc.emotional_appeal) + '</p>' : '')
+          + (pc.credibility ? '<p><b>Credibility:</b> ' + esc(pc.credibility) + '</p>' : '')
+          + (pc.rhythm_and_flow ? '<p><b>Rhythm and flow:</b> ' + esc(pc.rhythm_and_flow) + '</p>' : '')
+          + (pc.overall ? '<p><b>Overall:</b> ' + esc(pc.overall) + '</p>' : '')
+          + '</div>', false);
+      }
+    }
+
+    // ── ESSAY mode ──
+    else if (mode === 'essay') {
+      // Main point
+      var mp = parsed.main_point_check || {};
+      html += section('Main Point Check', '<div class="report-item">'
+        + (mp.central_idea ? '<p><b>Central idea:</b> ' + esc(mp.central_idea) + '</p>' : '')
+        + '<p><b>Clear early enough:</b> ' + (mp.is_clear_early ? 'Yes' : 'No') + '</p>'
+        + '<p><b>Every paragraph connects:</b> ' + (mp.every_paragraph_connects ? 'Yes' : 'No') + '</p>'
+        + (mp.assessment ? '<p>' + esc(mp.assessment) + '</p>' : '')
+        + '</div>', true);
+
+      // Paragraph Map
+      var pm = asArray(parsed.paragraph_map);
+      if (pm.length) {
+        var pmHtml = pm.map(function (p) {
+          return '<div class="report-item">'
+            + '<div class="report-metric-row"><span class="report-metric">Paragraph ' + esc(String(p.number || '')) + '</span><span class="report-metric ' + (p.has_clear_job ? '' : 'report-metric-risk') + '">' + esc(p.job || 'Unknown job') + '</span></div>'
+            + (p.topic_sentence ? quoteBlock(p.topic_sentence) : '')
+            + (p.topic_sentence_assessment ? '<p><b>Topic sentence:</b> ' + esc(p.topic_sentence_assessment) + '</p>' : '')
+            + (p.assessment ? '<p>' + esc(p.assessment) + '</p>' : '')
+            + (p.doing_too_much ? '<p><span class="report-metric report-metric-risk">Doing too much</span></p>' : '')
+            + (p.should_move ? '<p><span class="report-metric report-metric-risk">Should move</span></p>' : '')
+            + (p.fix ? '<p><b>Fix:</b> ' + esc(p.fix) + '</p>' : '')
+            + '</div>';
+        }).join('');
+        html += section('Paragraph Purpose Map', pmHtml, true, 'report-para-map');
+      }
+
+      // Evidence Integration
+      var ei = asArray(parsed.evidence_integration);
+      if (ei.length) {
+        html += section('Evidence Integration', ei.map(function (e) {
+          return '<div class="report-item">' + quoteBlock(e.quote)
+            + '<p><b>Introduced:</b> ' + (e.is_introduced ? 'Yes' : 'No') + ' | <b>Explained:</b> ' + (e.is_explained ? 'Yes' : 'No') + ' | <b>Connected:</b> ' + (e.is_connected_to_point ? 'Yes' : 'No') + (e.just_dropped_in ? ' | <b>Just dropped in: Yes</b>' : '') + '</p>'
+            + (e.fix ? '<p><b>Fix:</b> ' + esc(e.fix) + '</p>' : '')
+            + '</div>';
+        }).join(''), true);
+      }
+
+      // Flow
+      var ft = parsed.flow_and_transitions || {};
+      html += section('Flow and Transitions', '<div class="report-item">'
+        + (ft.assessment ? '<p>' + esc(ft.assessment) + '</p>' : '')
+        + renderInlineList('Abrupt jumps', ft.abrupt_jumps)
+        + renderInlineList('Repeated transitions', ft.repeated_transitions)
+        + renderInlineList('Fixes', ft.fixes)
+        + '</div>', true);
+
+      // Redundancy
+      var rc2 = parsed.redundancy_check || {};
+      if (asArray(rc2.repeated_ideas).length || asArray(rc2.filler_sentences).length) {
+        html += section('Redundancy Check', '<div class="report-item">'
+          + renderInlineList('Repeated ideas', rc2.repeated_ideas)
+          + renderInlineList('Repeated evidence', rc2.repeated_evidence)
+          + (asArray(rc2.filler_sentences).length ? '<p><b>Filler sentences:</b></p>' + asArray(rc2.filler_sentences).map(quoteBlock).join('') : '')
+          + '</div>', false);
+      }
+
+      // Quote analysis
+      var qa2 = asArray(parsed.quote_analysis);
+      if (qa2.length) {
+        html += section('Quote Analysis', qa2.map(function (q) {
+          return '<div class="report-item">' + quoteBlock(q.quote)
+            + '<p>' + ['Introduced: ' + (q.is_introduced ? 'Yes' : 'No'), 'Explained: ' + (q.is_explained_after ? 'Yes' : 'No'), 'Too long: ' + (q.is_too_long ? 'Yes' : 'No'), 'Supports point: ' + (q.supports_the_point ? 'Yes' : 'No')].join(' | ') + '</p>'
+            + (q.fix ? '<p><b>Fix:</b> ' + esc(q.fix) + '</p>' : '')
+            + '</div>';
+        }).join(''), false);
+      }
+
+      // Grammar
+      var gs = parsed.grammar_style || {};
+      if (gs.sentence_variety || asArray(gs.grammar_errors).length) {
+        html += section('Grammar and Style', '<div class="report-item">'
+          + renderInlineList('Grammar errors', gs.grammar_errors)
+          + (gs.sentence_variety ? '<p><b>Sentence variety:</b> ' + esc(gs.sentence_variety) + '</p>' : '')
+          + (gs.word_choice ? '<p><b>Word choice:</b> ' + esc(gs.word_choice) + '</p>' : '')
+          + renderInlineList('Passive voice issues', gs.passive_voice_issues)
+          + renderInlineList('Repetitive phrasing', gs.repetitive_phrasing)
+          + '</div>', false);
+      }
+
+      // Conclusion
+      var conc = parsed.conclusion_strength || {};
+      html += section('Conclusion Strength', '<div class="report-item">'
+        + (conc.assessment ? '<p>' + esc(conc.assessment) + '</p>' : '')
+        + '<p>' + ['Restates without copying: ' + (conc.restates_without_copying ? 'Yes' : 'No'), 'Explains significance: ' + (conc.explains_why_it_matters ? 'Yes' : 'No'), 'No new evidence: ' + (conc.no_new_evidence ? 'Yes' : 'No'), 'Strong final thought: ' + (conc.strong_final_thought ? 'Yes' : 'No')].join(' | ') + '</p>'
+        + (conc.stronger_conclusion ? '<p><b>Stronger closing line:</b></p>' + quoteBlock(conc.stronger_conclusion) : '')
+        + '</div>', true);
+    }
+
+    // ── COLLEGE ESSAY mode ──
+    else if (mode === 'college-essay') {
+      // Thesis Pressure Test
+      var tpt = parsed.thesis_pressure_test || {};
+      html += section('Thesis Pressure Test', '<div class="report-item">' + quoteBlock(tpt.quote)
+        + '<p>' + ['Specific: ' + (tpt.is_specific ? 'Yes' : 'No'), 'Arguable: ' + (tpt.is_arguable ? 'Yes' : 'No'), 'Too obvious: ' + (tpt.is_too_obvious ? 'Yes' : 'No'), 'Too broad: ' + (tpt.is_too_broad ? 'Yes' : 'No')].join(' | ') + '</p>'
+        + (tpt.assessment ? '<p>' + esc(tpt.assessment) + '</p>' : '')
+        + (tpt.stronger_thesis ? '<p><b>More precise thesis:</b></p>' + quoteBlock(tpt.stronger_thesis) : '')
+        + '</div>', true, 'report-thesis');
+
+      // Paragraph Architecture
+      var pa = asArray(parsed.paragraph_architecture);
+      if (pa.length) {
+        html += section('Paragraph Architecture', pa.map(function (p) {
+          return '<div class="report-item">'
+            + '<div class="report-metric-row"><span class="report-metric">¶' + (p.number || '') + '</span><span class="report-metric ' + (p.has_clear_job ? '' : 'report-metric-risk') + '">' + esc(p.job || '') + '</span></div>'
+            + (p.topic_sentence ? quoteBlock(p.topic_sentence) : '')
+            + (p.doing_two_jobs ? '<p><span class="report-metric report-metric-risk">Doing two jobs</span></p>' : '')
+            + (p.needs_more_analysis ? '<p><span class="report-metric report-metric-risk">Needs more analysis after evidence</span></p>' : '')
+            + (p.fix ? '<p><b>Fix:</b> ' + esc(p.fix) + '</p>' : '')
+            + '</div>';
+        }).join(''), true, 'report-para-arch');
+      }
+
+      // Evidence/Analysis Balance
+      var eab = parsed.evidence_analysis_balance || {};
+      html += section('Evidence vs. Analysis Balance', '<div class="report-item">'
+        + (eab.analysis_ratio ? '<p><b>' + esc(eab.analysis_ratio) + '</b></p>' : '')
+        + (eab.too_much_summary ? '<p><span class="report-metric report-metric-risk">Too much summary</span></p>' : '')
+        + (asArray(eab.evidence_without_analysis).length ? '<p><b>Evidence dropped without analysis:</b></p>' + asArray(eab.evidence_without_analysis).map(quoteBlock).join('') : '')
+        + (eab.fix ? '<p><b>Fix:</b> ' + esc(eab.fix) + '</p>' : '')
+        + '</div>', true);
+
+      // Close Reading Audit
+      var cra = asArray(parsed.close_reading_audit);
+      if (cra.length) {
+        html += section('Close Reading Audit', cra.map(function (cr) {
+          return '<div class="report-item">' + quoteBlock(cr.quote)
+            + '<p>' + ['Analyzes specific words: ' + (cr.analyzes_specific_words ? 'Yes' : 'No'), 'Explains imagery/tone/diction: ' + (cr.explains_imagery_tone_diction ? 'Yes' : 'No'), 'Just summarizes: ' + (cr.just_summarizes ? 'Yes' : 'No')].join(' | ') + '</p>'
+            + (cr.feedback ? '<p><b>What deeper analysis would say:</b> ' + esc(cr.feedback) + '</p>' : '')
+            + '</div>';
+        }).join(''), true);
+      }
+
+      // Counterargument Quality
+      var cq = parsed.counterargument_quality || {};
+      html += section('Counterargument Integrity', '<div class="report-item">'
+        + '<p><b>Has counterargument:</b> ' + (cq.has_counterargument ? 'Yes' : 'No') + ' | <b>Real and strong:</b> ' + (cq.is_real_and_strong ? 'Yes' : 'No') + ' | <b>Fairly represented:</b> ' + (cq.is_fairly_represented ? 'Yes' : 'No') + '</p>'
+        + (cq.assessment ? '<p>' + esc(cq.assessment) + '</p>' : '')
+        + (cq.better_counterargument ? '<p><b>Better counterargument:</b></p>' + quoteBlock(cq.better_counterargument) : '')
+        + '</div>', true);
+
+      // Academic Voice Coach
+      var avc = asArray(parsed.academic_voice_coach);
+      if (avc.length) {
+        html += section('Academic Voice Coach', avc.map(function (a) {
+          return '<div class="report-item">' + quoteBlock(a.quote)
+            + '<p><b>Issue:</b> ' + esc(a.issue || '') + '</p>'
+            + '<p><b>Problem:</b> ' + esc(a.problem || '') + '</p>'
+            + (a.suggestion ? '<p><b>Direction:</b> ' + esc(a.suggestion) + '</p>' : '')
+            + '</div>';
+        }).join(''), false);
+      }
+
+      // Professor Lens
+      var pl = parsed.professor_lens || {};
+      if (pl.end_comment || asArray(pl.margin_comments).length) {
+        html += section('Professor Lens', '<div class="report-item">'
+          + (asArray(pl.margin_comments).length ? '<p><b>Margin comments:</b></p><ul>' + asArray(pl.margin_comments).map(function(c){ return '<li>' + esc(c) + '</li>'; }).join('') + '</ul>' : '')
+          + (pl.end_comment ? '<p><b>End comment:</b></p>' + quoteBlock(pl.end_comment) : '')
+          + '</div>', true, 'report-professor');
+      }
+
+      // Conclusion
+      var cc = parsed.conclusion_check || {};
+      html += section('Conclusion Strength', '<div class="report-item">'
+        + (cc.assessment ? '<p>' + esc(cc.assessment) + '</p>' : '')
+        + (cc.stronger_closing ? '<p><b>Stronger closing:</b></p>' + quoteBlock(cc.stronger_closing) : '')
+        + '</div>', false);
+    }
+
+    // ── RESEARCH PAPER mode ──
+    else if (mode === 'research-paper') {
+      // Research Question Audit
+      var rqa = parsed.research_question_audit || {};
+      html += section('Research Question Audit', '<div class="report-item">'
+        + (rqa.detected_question ? '<p><b>Detected question:</b> ' + esc(rqa.detected_question) + '</p>' : '')
+        + '<p>' + ['Clear: ' + (rqa.is_clear ? 'Yes' : 'No'), 'Answerable: ' + (rqa.is_answerable ? 'Yes' : 'No'), 'Too broad: ' + (rqa.too_broad ? 'Yes' : 'No'), 'Paper answers it: ' + (rqa.paper_answers_it ? 'Yes' : 'No')].join(' | ') + '</p>'
+        + (rqa.assessment ? '<p>' + esc(rqa.assessment) + '</p>' : '')
+        + (rqa.narrower_question ? '<p><b>More focused question:</b></p>' + quoteBlock(rqa.narrower_question) : '')
+        + '</div>', true, 'report-rq');
+
+      // Alignment Map
+      var ram = parsed.research_alignment_map || {};
+      if (ram.drift_points || !ram.thesis_answers_question) {
+        html += section('Research Alignment Map', '<div class="report-item">'
+          + '<p>' + ['Thesis answers question: ' + (ram.thesis_answers_question ? 'Yes' : 'No'), 'Sections support thesis: ' + (ram.sections_support_thesis ? 'Yes' : 'No'), 'Conclusion matches evidence: ' + (ram.conclusion_matches_evidence ? 'Yes' : 'No')].join(' | ') + '</p>'
+          + renderInlineList('Drift points', ram.drift_points)
+          + '</div>', true);
+      }
+
+      // Section Architecture
+      var sa2 = asArray(parsed.section_architecture);
+      if (sa2.length) {
+        html += section('Paper Structure Map', sa2.map(function (s) {
+          return '<div class="report-item"><div class="report-metric-row"><span class="report-metric ' + (s.present ? '' : 'report-metric-risk') + '">' + esc(s.section || '') + ': ' + (s.present ? 'Present' : 'MISSING') + '</span></div>'
+            + (s.assessment ? '<p>' + esc(s.assessment) + '</p>' : '')
+            + (s.fix ? '<p><b>Fix:</b> ' + esc(s.fix) + '</p>' : '')
+            + '</div>';
+        }).join(''), true, 'report-structure');
+      }
+
+      // Citation Coverage Map
+      var ccm = asArray(parsed.citation_coverage_map);
+      if (ccm.length) {
+        html += section('Citation Coverage Map', ccm.map(function (c) {
+          return '<div class="report-item"><p><b>Claim:</b> ' + esc(c.claim || '') + '</p>'
+            + '<p><b>Citation present:</b> ' + (c.citation_present ? 'Yes' : '<span class="report-metric report-metric-risk">NO</span>') + ' | <b>Source strength:</b> ' + esc(c.source_strength || '—') + '</p>'
+            + (c.problem ? '<p><b>Problem:</b> ' + esc(c.problem) + '</p>' : '')
+            + (c.fix ? '<p><b>Fix:</b> ' + esc(c.fix) + '</p>' : '')
+            + '</div>';
+        }).join(''), true, 'report-citations');
+      }
+
+      // Missing Citation Flags
+      var mcf = asArray(parsed.missing_citation_flags);
+      if (mcf.length) {
+        html += section('Citation Needed Flags', mcf.map(function (f) {
+          return '<div class="report-item">' + quoteBlock(f.sentence)
+            + '<p><b>Why it needs a citation:</b> ' + esc(f.why || '') + '</p>'
+            + (f.needed_source ? '<p><b>Find:</b> ' + esc(f.needed_source) + '</p>' : '')
+            + '</div>';
+        }).join(''), true);
+      }
+
+      // Source Quality Ladder
+      var sql2 = asArray(parsed.source_quality_ladder);
+      if (sql2.length) {
+        html += section('Source Quality Ladder', sql2.map(function (s) {
+          var rc3 = s.rating === 'STRONG' ? 'strong' : s.rating === 'NEEDS_REPLACEMENT' ? 'risk' : '';
+          return '<div class="report-item"><p><b>' + esc(s.source || '') + '</b> — <span class="report-metric ' + (rc3 ? 'report-metric-' + rc3 : '') + '">' + esc(s.rating || '—') + '</span> (' + esc(s.type || 'unclear') + ')</p>'
+            + (s.problem ? '<p>' + esc(s.problem) + '</p>' : '')
+            + (s.replacement ? '<p><b>Replace with:</b> ' + esc(s.replacement) + '</p>' : '')
+            + '</div>';
+        }).join(''), false);
+      }
+
+      // Evidence Fit Test
+      var eft = asArray(parsed.evidence_fit_test);
+      if (eft.length) {
+        html += section('Evidence Fit Test', eft.map(function (e) {
+          return '<div class="report-item"><p><b>Claim:</b> ' + esc(e.claim || '') + '</p>'
+            + '<p><b>Evidence type:</b> ' + esc(e.evidence_type || '') + ' — <span class="report-metric ' + (e.fit === 'POOR' ? 'report-metric-risk' : '') + '">' + esc(e.fit || '—') + '</span></p>'
+            + (e.problem ? '<p><b>Problem:</b> ' + esc(e.problem) + '</p>' : '')
+            + (e.fix ? '<p><b>Fix:</b> ' + esc(e.fix) + '</p>' : '')
+            + '</div>';
+        }).join(''), false);
+      }
+
+      // Literature Review Audit
+      var lra = parsed.literature_review_audit || {};
+      if (lra.assessment) {
+        html += section('Literature Review Audit', '<div class="report-item">'
+          + '<p>' + ['Compares sources: ' + (lra.compares_sources ? 'Yes' : 'No'), 'Groups by theme: ' + (lra.groups_by_theme ? 'Yes' : 'No'), 'Shows disagreement: ' + (lra.shows_disagreement ? 'Yes' : 'No'), 'Identifies gap: ' + (lra.identifies_research_gap ? 'Yes' : 'No')].join(' | ') + '</p>'
+          + (lra.assessment ? '<p>' + esc(lra.assessment) + '</p>' : '')
+          + (lra.fix ? '<p><b>Fix:</b> ' + esc(lra.fix) + '</p>' : '')
+          + '</div>', false);
+      }
+
+      // Conclusion Overclaim
+      var coc = parsed.conclusion_overclaim_check || {};
+      if (coc.assessment) {
+        html += section('Conclusion Overclaim Check', '<div class="report-item">'
+          + '<p>' + ['Matches evidence: ' + (coc.matches_evidence ? 'Yes' : 'No'), 'Introduces new claims: ' + (coc.introduces_new_claims ? 'Yes' : 'No'), 'Exaggerates: ' + (coc.exaggerates ? 'Yes' : 'No')].join(' | ') + '</p>'
+          + (coc.assessment ? '<p>' + esc(coc.assessment) + '</p>' : '')
+          + '</div>', false);
+      }
+    }
+
+    // ── RUBRIC mode ──
+    else if (mode === 'rubric') {
+      // Criterion-by-criterion
+      var crits = asArray(parsed.criterion_scores);
+      if (crits.length) {
+        var critsHtml = crits.map(function (c) {
+          var pct = c.score_possible > 0 ? Math.round(c.score_earned / c.score_possible * 100) : 0;
+          return '<div class="report-item rubric-criterion">'
+            + '<div class="report-metric-row"><span class="report-metric">' + esc(c.criterion || '') + '</span><span class="report-metric ' + (pct >= 80 ? 'report-metric-strong' : pct < 50 ? 'report-metric-risk' : '') + '">' + esc(String(c.score_earned || 0)) + ' / ' + esc(String(c.score_possible || 0)) + ' points</span></div>'
+            + (c.evidence_from_text ? quoteBlock(c.evidence_from_text) : '')
+            + (c.reason ? '<p>' + esc(c.reason) + '</p>' : '')
+            + (c.what_is_missing ? '<p><b>Missing:</b> ' + esc(c.what_is_missing) + '</p>' : '')
+            + (c.how_to_improve ? '<p><b>To improve:</b> ' + esc(c.how_to_improve) + '</p>' : '')
+            + '</div>';
+        }).join('');
+        html += section('Criterion-by-Criterion Scores', critsHtml, true, 'report-rubric');
+      }
+
+      // Teacher Comment
+      if (parsed.teacher_comment) {
+        html += section('Teacher Comment', '<div class="report-item teacher-comment"><p>' + esc(parsed.teacher_comment) + '</p></div>', true);
+      }
+
+      // Point Recovery Plan
+      var prp = asArray(parsed.point_recovery_plan);
+      if (prp.length) {
+        html += section('Point Recovery Plan', '<ol class="report-recovery-list">' + prp.map(function (p) {
+          return '<li><b>' + esc(p.action || '') + '</b> (+' + esc(String(p.points_possible || 0)) + ' possible points)<br><span>' + esc(p.how_to_do_it || '') + '</span></li>';
+        }).join('') + '</ol>', true, 'report-recovery');
+      }
+
+      html += '<p class="rubric-note">' + esc(parsed.note || 'This grade is based only on the pasted rubric.') + '</p>';
+    }
+
+    // ── MODEL UN mode ──
+    else if (mode === 'model-un') {
+      // Delegate Brief
+      var db = parsed.delegate_brief || {};
+      html += section('Delegate Brief', '<div class="report-item">'
+        + (db.country_stance ? '<p><b>Country stance:</b> ' + esc(db.country_stance) + '</p>' : '')
+        + renderInlineList('National interests', db.national_interests)
+        + renderInlineList('Red lines (would never support)', db.red_lines)
+        + renderInlineList('Likely allies', db.likely_allies)
+        + renderInlineList('Likely opponents', db.likely_opponents)
+        + (db.past_un_actions ? '<p><b>Past UN actions:</b> ' + esc(db.past_un_actions) + '</p>' : '')
+        + renderInlineList('Useful facts to cite', db.useful_facts)
+        + '</div>', true, 'report-brief');
+
+      // Writing Audit
+      var wa = parsed.writing_audit || {};
+      html += section('Writing Audit', '<div class="report-item">'
+        + '<p>' + ['Explains the issue: ' + (wa.explains_the_issue ? 'Yes' : 'No'), 'Matches country: ' + (wa.matches_country_position ? 'Yes' : '<b>No — critical</b>'), 'Past UN action: ' + (wa.includes_past_un_action ? 'Yes' : 'No'), 'Country policy: ' + (wa.includes_country_policy ? 'Yes' : 'No'), 'Realistic solutions: ' + (wa.proposes_realistic_solutions ? 'Yes' : 'No'), 'Too generic: ' + (wa.too_generic ? '<b>Yes</b>' : 'No')].join(' | ') + '</p>'
+        + (wa.assessment ? '<p>' + esc(wa.assessment) + '</p>' : '')
+        + '</div>', true);
+
+      // Strategy Map
+      var sm = parsed.strategy_map || {};
+      if (asArray(sm.best_caucus_topics).length) {
+        var stHtml = asArray(sm.best_caucus_topics).map(function (t) {
+          return '<div class="report-item"><p><b>' + esc(t.topic || '') + '</b></p>'
+            + (t.why_it_helps ? '<p>' + esc(t.why_it_helps) + '</p>' : '')
+            + (t.opening_line ? '<p><b>Opening line:</b></p>' + quoteBlock(t.opening_line) : '')
+            + renderInlineList('Countries supporting', t.countries_supporting)
+            + renderInlineList('Countries opposing', t.countries_opposing)
+            + '</div>';
+        }).join('');
+        html += section('Caucus Strategy', stHtml, true, 'report-strategy');
+      }
+
+      if (sm.bloc_strategy || sm.negotiation_approach) {
+        html += section('Negotiation and Bloc Strategy', '<div class="report-item">'
+          + (sm.bloc_strategy ? '<p><b>Bloc:</b> ' + esc(sm.bloc_strategy) + '</p>' : '')
+          + (sm.negotiation_approach ? '<p><b>Approach:</b> ' + esc(sm.negotiation_approach) + '</p>' : '')
+          + renderInlineList('Talk to first', sm.countries_to_talk_to_first)
+          + renderInlineList('Avoid saying', sm.what_to_avoid_saying)
+          + (sm.compromise_to_offer ? '<p><b>Compromise to offer:</b> ' + esc(sm.compromise_to_offer) + '</p>' : '')
+          + '</div>', false);
+      }
+
+      // Resolution Clauses
+      var rc4 = asArray(parsed.resolution_clauses);
+      if (rc4.length) {
+        html += section('Resolution Clauses', rc4.map(function (r) {
+          return '<div class="report-item">'
+            + quoteBlock(r.operative_clause)
+            + '<p>' + ['Realistic: ' + (r.is_realistic ? 'Yes' : 'No'), 'Too vague: ' + (r.too_vague ? 'Yes' : 'No'), 'Sovereignty concern: ' + (r.sovereignty_concern ? 'Yes' : 'No'), 'Needs funding: ' + (r.needs_funding ? 'Yes' : 'No')].join(' | ') + '</p>'
+            + (r.assessment ? '<p>' + esc(r.assessment) + '</p>' : '')
+            + '</div>';
+        }).join(''), true, 'report-clauses');
+      }
+
+      // Speech Coach
+      var sc2 = parsed.speech_coach || {};
+      if (sc2.delivery_notes) {
+        html += section('Speech Coach', '<div class="report-item">'
+          + (sc2.delivery_notes ? '<p><b>Delivery notes:</b> ' + esc(sc2.delivery_notes) + '</p>' : '')
+          + renderInlineList('Questions delegates will ask', sc2.questions_delegates_will_ask)
+          + renderInlineList('Responses to attacks', sc2.responses_to_attacks)
+          + (sc2.fit_to_time ? '<p><b>Time fit:</b> ' + esc(sc2.fit_to_time) + '</p>' : '')
+          + '</div>', false);
+      }
+
+      // Source Pack
+      var sp = asArray(parsed.source_pack);
+      if (sp.length) {
+        html += section('Source Pack', sp.map(function (s) {
+          return '<div class="report-item"><p><b>Claim:</b> ' + esc(s.claim || '') + '</p>'
+            + '<p><b>Source type:</b> ' + esc(s.source_type || '') + '</p>'
+            + (s.search_terms ? '<p><b>Search:</b> ' + esc(s.search_terms) + '</p>' : '')
+            + '</div>';
+        }).join(''), false);
+      }
+
+      // Policy Accuracy Check
+      var pac = parsed.policy_accuracy_check || {};
+      if (asArray(pac.red_flags).length || !pac.realistic_for_country) {
+        html += section('Policy Accuracy Check', '<div class="report-item">'
+          + '<p><b>Realistic for country:</b> ' + (pac.realistic_for_country ? 'Yes' : '<span class="report-metric report-metric-risk">No — flag</span>') + '</p>'
+          + '<p><b>Foreign policy consistent:</b> ' + (pac.foreign_policy_consistent ? 'Yes' : 'No') + '</p>'
+          + renderInlineList('Red flags', pac.red_flags)
+          + '</div>', true);
+      }
+    }
+
+    return html;
   }
 
   function maybeShowPostAnalysisSurvey() {
@@ -1785,8 +1993,22 @@
     const essay = essayInput.value.trim();
     if (!essay) { setStatus('error', 'Paste an argument before using Fracture.'); return; }
 
+    // Auth gate: require sign-in or guest access before running
+    const isAuthed = window.FractureAuth &&
+      typeof window.FractureAuth.getUser === 'function' &&
+      await window.FractureAuth.getUser();
+    const isGuest = window.FractureAuth &&
+      typeof window.FractureAuth.hasGuestAccess === 'function' &&
+      window.FractureAuth.hasGuestAccess();
+    if (!isAuthed && !isGuest) {
+      if (window.FractureAuth && typeof window.FractureAuth.showAuthModal === 'function') {
+        window.FractureAuth.showAuthModal(false,
+          'Sign in to run Fracture and save your report history, or continue as a guest to start immediately.');
+      }
+      return;
+    }
+
     resetOutput();
-    if (studioOutputColumn) studioOutputColumn.hidden = false;
     auditedDraft = essay;
     isStreaming = true;
     setBtns(true);
@@ -1882,6 +2104,7 @@
             if (!preferences || preferences.saveReports !== false) return saveCurrentWork(false);
             return null;
           });
+        runSourceVerification();
       } catch (e) {
         setStatus('error', 'The report could not be displayed. Please run Fracture again.');
         if (jsonError) {
@@ -2038,26 +2261,6 @@
   }
 
   // ── Event listeners ────────────────────────────────────────────────────────
-
-  if (rubricFile) rubricFile.addEventListener('change', function () {
-    const file = rubricFile.files && rubricFile.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function () {
-      if (rubricInput) rubricInput.value = String(reader.result || '').trim();
-      if (statusDetail) statusDetail.textContent = 'Rubric loaded. Paste your essay, then run rubric grading.';
-    };
-    reader.onerror = function () {
-      if (statusDetail) statusDetail.textContent = 'Could not read that rubric file. Paste the rubric text instead.';
-    };
-    reader.readAsText(file);
-  });
-
-  if (analysisFormat) analysisFormat.addEventListener('change', updateFormatHint);
-  if (depthLevel) depthLevel.addEventListener('change', function () { updateDepthHint(); persistActiveWorkspace({ feedbackDepth: currentDepthLevel() }); });
-  updateFormatHint();
-  updateDepthHint();
-
   essayInput.addEventListener('input', updateCharCount);
   essayInput.addEventListener('input', function () { persistActiveWorkspace(); });
   document.addEventListener('click', function (event) {
@@ -2117,13 +2320,6 @@
   setStatus('idle', 'Waiting for an argument.');
   setProgress(0, 'Ready when you are');
   if (skeleton) skeleton.classList.add('hidden');
-  if (window.FractureAuth && typeof window.FractureAuth.getPreferences === 'function' && depthLevel) {
-    window.FractureAuth.getPreferences().then(function (preferences) {
-      const savedDepth = normalizeDepthLevel(preferences && preferences.feedbackDepth);
-      depthLevel.value = savedDepth;
-      updateDepthHint();
-    }).catch(function () { updateDepthHint(); });
-  }
   maybeLoadSharedAnalysis();
   window.setTimeout(maybeLoadSavedProject, 350);
 })();

@@ -296,18 +296,6 @@ export function normalizeAudit(audit, essay) {
       why_check: stringOr(item?.why_check, "The argument relies on this factual statement."),
       verification_step: stringOr(item?.verification_step, "Use Verify Sources to compare this claim against a public source.")
     })),
-    citation_opportunities: ensureArray(input.citation_opportunities).map((item) => ({
-      claim_to_support: stringOr(item?.claim_to_support, item?.claim, item?.statistic_needed, "A claim in this draft needs stronger source support."),
-      evidence_type: stringOr(item?.evidence_type, item?.source_type, "A credible public source that directly supports the claim."),
-      why_it_matters: stringOr(item?.why_it_matters, item?.reason, "This source would make the claim harder to dismiss."),
-      search_queries: stringArray(item?.search_queries || item?.source_search_queries || item?.queries)
-    })),
-    extra_argument_ideas: ensureArray(input.extra_argument_ideas).map((item) => ({
-      argument: stringOr(item?.argument, item?.title, item?.angle, "A missing argument angle to research."),
-      why_it_supports_thesis: stringOr(item?.why_it_supports_thesis, item?.why_it_matters, item?.explanation, "This could support the thesis from another angle if verified."),
-      evidence_needed: stringOr(item?.evidence_needed, item?.source_need, "Find a credible source before adding this point."),
-      source_search_queries: stringArray(item?.source_search_queries || item?.search_queries || item?.research_queries)
-    })),
     alternative_solutions_test: ensureArray(input.alternative_solutions_test).map((item) => ({
       alternative: stringOr(item?.alternative, "A credible competing approach"),
       why_it_competes: stringOr(item?.why_it_competes, "A reader may prefer this option if it addresses the same problem with less risk."),
@@ -389,14 +377,6 @@ export function normalizeAudit(audit, essay) {
     }));
   }
 
-  if (!normalized.citation_opportunities.length) {
-    normalized.citation_opportunities = buildHeuristicCitationOpportunities(text, normalized).slice(0, 3);
-  }
-
-  if (!normalized.extra_argument_ideas.length) {
-    normalized.extra_argument_ideas = buildHeuristicExtraArguments(text, normalized).slice(0, 3);
-  }
-
   if (!normalized.rewrite_suggestions.length) {
     normalized.rewrite_suggestions = [
       {
@@ -407,96 +387,8 @@ export function normalizeAudit(audit, essay) {
     ];
   }
 
-  repairDependencyData(normalized);
   scrubUnsupportedGeneratedNumbers(normalized, text);
   return normalized;
-}
-
-function repairDependencyData(audit) {
-  const thesis = audit.argument_strength?.thesis?.quote || "Thesis";
-  const claims = ensureArray(audit.argument_strength?.claims).filter((claim) => claim && claim.quote);
-  const links = [];
-  claims.forEach((claim, index) => {
-    const rating = normalizeRating(claim.rating);
-    links.push({
-      from: claim.quote,
-      to: thesis,
-      relationship: "supports",
-      strength: rating,
-      risk: rating === "STRONG"
-        ? "This claim directly supports the thesis, but the writer should still protect its warrant and source match."
-        : rating === "MODERATE"
-          ? "If this support is narrowed or challenged, the thesis still survives but loses force."
-          : "If this support is not repaired, a reader can reject this part of the thesis without answering the rest."
-    });
-    if (index > 0) {
-      links.push({
-        from: claims[index - 1].quote,
-        to: claim.quote,
-        relationship: "leads to",
-        strength: rating === "WEAK" ? "WEAK" : "MODERATE",
-        risk: "If the transition between these points is unclear, the reader has to reconstruct the argument instead of following it."
-      });
-    }
-  });
-  if (!ensureArray(audit.argument_dependency_graph?.links).length || ensureArray(audit.argument_dependency_graph?.links).some((link) => !link.from || !link.to || link.from === "Supporting point")) {
-    audit.argument_dependency_graph.links = links.slice(0, 10);
-    audit.argument_dependency_graph.explanation = "The dependency map connects each major claim to the thesis and shows where paragraph-to-paragraph movement may break. This prevents Fracture from treating claims as isolated bullet points.";
-  }
-  if (audit.collapse_point) {
-    const collapseQuote = String(audit.collapse_point.quote || "").toLowerCase();
-    const affected = claims
-      .filter((claim) => claim.quote && claim.quote.toLowerCase() !== collapseQuote)
-      .slice(0, 5)
-      .map((claim) => claim.quote.length > 120 ? claim.quote.slice(0, 117) + "..." : claim.quote);
-    if (!ensureArray(audit.collapse_point.affected_claims).length) audit.collapse_point.affected_claims = affected;
-    if (!audit.collapse_point.dependency_count || audit.collapse_point.dependency_count < affected.length) audit.collapse_point.dependency_count = affected.length;
-  }
-}
-
-function importantSearchTerms(text) {
-  const tokens = String(text || "").toLowerCase().match(/[a-z0-9][a-z0-9'-]{3,}/g) || [];
-  const stop = new Set(["that","this","with","from","have","will","would","should","because","therefore","argument","claim","their","there","about","after","before","more","most","some","into","than","then","when","where","which","while"]);
-  return Array.from(new Set(tokens.filter((token) => !stop.has(token)))).slice(0, 8).join(" ");
-}
-
-function buildHeuristicCitationOpportunities(text, audit) {
-  const thesis = audit?.argument_strength?.thesis?.quote || splitSentences(text)[0] || text;
-  const terms = importantSearchTerms(thesis || text) || "argument evidence";
-  const firstClaim = audit?.argument_strength?.claims?.[0]?.quote || thesis;
-  return [
-    {
-      claim_to_support: firstClaim,
-      evidence_type: "A credible statistic, report, study, or dataset that directly supports the main claim.",
-      why_it_matters: "The central claim becomes stronger when the reader can verify its real-world scale or effect.",
-      search_queries: [`${terms} statistics report evidence`, `${terms} study data`, `${terms} expert source evidence`]
-    },
-    {
-      claim_to_support: "The draft's strongest causal or impact claim.",
-      evidence_type: "A source that proves the link between the cause and the impact, not just background information.",
-      why_it_matters: "A reader can reject the argument if the causal bridge is not supported.",
-      search_queries: [`${terms} causes impact evidence`, `${terms} benefits harms research`]
-    }
-  ];
-}
-
-function buildHeuristicExtraArguments(text, audit) {
-  const thesis = audit?.argument_strength?.thesis?.quote || splitSentences(text)[0] || text;
-  const terms = importantSearchTerms(thesis || text) || "argument evidence";
-  return [
-    {
-      argument: "Add a practical-impact argument if the draft mostly argues in abstract terms.",
-      why_it_supports_thesis: "Practical impact helps the reader see why the thesis matters outside the page.",
-      evidence_needed: "Find a concrete example, report, or dataset showing the real-world effect.",
-      source_search_queries: [`${terms} real world impact example`, `${terms} case study evidence`]
-    },
-    {
-      argument: "Add a fairness, cost, or stakeholder argument if the draft ignores who is affected.",
-      why_it_supports_thesis: "A stakeholder angle can make the argument more complete and harder to dismiss.",
-      evidence_needed: "Find source-backed information about affected groups, tradeoffs, or consequences.",
-      source_search_queries: [`${terms} stakeholders fairness evidence`, `${terms} cost benefit report`]
-    }
-  ];
 }
 
 function rebalanceScoreBreakdown(audit) {
@@ -850,27 +742,13 @@ function stringArray(value) {
 
 function buildHeuristicDependencyLinks(audit) {
   const thesis = audit.argument_strength?.thesis?.quote || "Thesis";
-  const claims = ensureArray(audit.argument_strength?.claims).slice(0, 6);
-  const links = [];
-  claims.forEach((claim, index) => {
-    links.push({
-      from: claim.quote,
-      to: thesis,
-      relationship: "supports",
-      strength: claim.rating,
-      risk: claim.rating === "STRONG"
-        ? "This support helps the thesis, but the writer should still protect the warrant and source match."
-        : "If this connection is not repaired, the thesis loses part of its support."
-    });
-    if (index > 0) {
-      links.push({
-        from: claims[index - 1].quote,
-        to: claim.quote,
-        relationship: "leads to",
-        strength: claim.rating === "WEAK" ? "WEAK" : "MODERATE",
-        risk: "If these points do not transition cleanly, the reader may not see how the argument develops."
-      });
-    }
-  });
-  return links;
+  return ensureArray(audit.argument_strength?.claims).slice(0, 6).map((claim) => ({
+    from: claim.quote,
+    to: thesis,
+    relationship: "supports",
+    strength: claim.rating,
+    risk: claim.rating === "STRONG"
+      ? "This connection appears useful, but it should still survive close questioning."
+      : "If this connection is not repaired, the thesis loses part of its support."
+  }));
 }

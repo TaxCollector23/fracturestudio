@@ -1,7 +1,7 @@
 {
   "name": "fracture-studio",
-  "version": "5.7.0",
-  "description": "Fracture Studio \u2014 AI-powered surgical argument analysis engine",
+  "version": "2.0.0",
+  "description": "Fracture Studio — AI-powered surgical argument analysis engine",
   "private": true,
   "type": "module",
   "scripts": {

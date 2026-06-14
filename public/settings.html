@@ -370,11 +370,6 @@
           Guest drafts are temporary. Sign in before leaving Studio if you want to keep an argument in cloud history.
         </div>
 
-        <label class="auth-remember settings-remember">
-          <input id="rememberDeviceSetting" type="checkbox" checked />
-          <span>Remember me on this device</span>
-        </label>
-
         <div class="controls" style="justify-content:flex-start;">
           <button class="btn-primary" id="googleSignInBtn" type="button">Continue with Google</button>
           <button class="btn-sm" id="signOutBtn" type="button">Sign Out</button>
@@ -416,9 +411,9 @@
             <div class="field">
               <label for="feedbackDepth">Feedback depth</label>
               <select id="feedbackDepth">
-                <option value="surface">Surface level</option>
-                <option value="medium">Medium depth</option>
-                <option value="extreme">Extreme depth</option>
+                <option value="concise">Concise</option>
+                <option value="balanced">Balanced</option>
+                <option value="intensive">Intensive</option>
               </select>
             </div>
 
@@ -570,43 +565,6 @@
         details.appendChild(report);
       }
 
-      var actions = document.createElement('div');
-      actions.className = 'settings-history-actions';
-      var openStudio = document.createElement('button');
-      openStudio.type = 'button';
-      openStudio.className = 'btn-sm';
-      openStudio.textContent = 'Open in Studio';
-      openStudio.addEventListener('click', function () {
-        if (window.FractureAuth && typeof window.FractureAuth.setActiveWorkspace === 'function') {
-          window.FractureAuth.setActiveWorkspace(project);
-        }
-        var suffix = project.id ? '?project=' + encodeURIComponent(project.id) : '';
-        window.location.href = 'studio.html' + suffix;
-      });
-      var copyDraft = document.createElement('button');
-      copyDraft.type = 'button';
-      copyDraft.className = 'btn-sm';
-      copyDraft.textContent = 'Copy draft';
-      copyDraft.addEventListener('click', function () {
-        var text = project.draft || '';
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text);
-        }
-      });
-      var rebuttals = document.createElement('a');
-      rebuttals.className = 'btn-sm';
-      rebuttals.textContent = 'Prepare rebuttals';
-      rebuttals.href = 'rebuttals.html' + (project.id ? '?project=' + encodeURIComponent(project.id) : '');
-      rebuttals.addEventListener('click', function () {
-        if (window.FractureAuth && typeof window.FractureAuth.setActiveWorkspace === 'function') {
-          window.FractureAuth.setActiveWorkspace(project);
-        }
-      });
-      actions.appendChild(openStudio);
-      actions.appendChild(copyDraft);
-      actions.appendChild(rebuttals);
-      details.appendChild(actions);
-
       item.appendChild(details);
       return item;
     }
@@ -628,8 +586,8 @@
         var storageNote = document.getElementById('accountStorageNote');
 
         if (user) {
-          if (intro) intro.textContent = 'Review earlier cloud-saved arguments. Open any item directly back inside Studio with its draft and report restored.';
-          if (storageNote) storageNote.textContent = 'Signed-in saves are added to cloud history so you can reopen the draft in Studio, continue revising, and rerun Fracture.';
+          if (intro) intro.textContent = 'Review earlier cloud-saved arguments and open an item to revisit its report summary.';
+          if (storageNote) storageNote.textContent = 'Signed-in saves are added to cloud history so you can return to an earlier argument and its report.';
         } else {
           if (intro) intro.textContent = 'Sign in to review cloud-saved arguments and earlier reports.';
           if (storageNote) storageNote.textContent = 'Guest drafts are temporary. Sign in before leaving Studio if you want to keep an argument in cloud history.';

@@ -8,7 +8,6 @@
   const FIREBASE_FIRESTORE_CDN = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/firebase-firestore.js';
   const RETURN_PATH_KEY = 'fracture_auth_return';
   const GUEST_ACCESS_KEY = 'fracture_guest_access';
-  const REMEMBER_DEVICE_KEY = 'fracture_remember_device';
   const ACTIVE_WORKSPACE_KEY = 'fracture_active_workspace';
   const DEFAULT_FIREBASE_CONFIG = {
     apiKey: 'AIzaSyCfvIx3BFLSW3jM7UVI55xEUWU6ruw_KGQ',
@@ -25,7 +24,7 @@
   };
 
   const DEFAULT_PREFERENCES = {
-    feedbackDepth: 'medium',
+    feedbackDepth: 'balanced',
     feedbackTone: 'direct',
     citationStyle: 'mla',
     emailUpdates: false,
@@ -70,32 +69,6 @@
     } catch (_) {
       return false;
     }
-  }
-
-  function rememberDeviceEnabled() {
-    try {
-      const stored = localStorage.getItem(REMEMBER_DEVICE_KEY);
-      if (stored === null) {
-        localStorage.setItem(REMEMBER_DEVICE_KEY, 'true');
-        return true;
-      }
-      return stored !== 'false';
-    } catch (_) {
-      return true;
-    }
-  }
-
-  function setRememberDevice(value) {
-    try { localStorage.setItem(REMEMBER_DEVICE_KEY, value ? 'true' : 'false'); } catch (_) {}
-    return Boolean(value);
-  }
-
-  async function applyAuthPersistence(services) {
-    if (!services || !services.authModule || !services.auth) return;
-    const persistence = rememberDeviceEnabled()
-      ? services.authModule.browserLocalPersistence
-      : services.authModule.browserSessionPersistence;
-    await services.authModule.setPersistence(services.auth, persistence);
   }
 
   function continueWithoutEmail() {
@@ -249,8 +222,7 @@
       const firebaseApp = appModule.getApps().length ? appModule.getApp() : appModule.initializeApp(config);
       const auth = authModule.getAuth(firebaseApp);
       const db = firestoreModule.getFirestore(firebaseApp);
-      // Default is checked: keep the session on this device unless the user turns it off.
-      await authModule.setPersistence(auth, rememberDeviceEnabled() ? authModule.browserLocalPersistence : authModule.browserSessionPersistence);
+      await authModule.setPersistence(auth, authModule.browserLocalPersistence);
       const services = {
         auth: auth,
         db: db,
@@ -309,12 +281,11 @@
     rememberCurrentPathIfNoDestination();
     try {
       const services = await getServices();
-      await applyAuthPersistence(services);
       const provider = new services.authModule.GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'none' });
+      provider.setCustomParameters({ prompt: 'select_account' });
       const credential = await services.authModule.signInWithPopup(services.auth, provider);
-      if (credential && credential.user) await syncProfile(credential.user);
-      return normalizedUser(credential && credential.user);
+      await syncProfile(credential.user);
+      return normalizedUser(credential.user);
     } catch (error) {
       throw friendlyAuthError(error);
     }
@@ -326,7 +297,6 @@
     if (!password) throw new Error('Enter your password.');
     try {
       const services = await getServices();
-      await applyAuthPersistence(services);
       const credential = await services.authModule.signInWithEmailAndPassword(services.auth, cleanEmail, password);
       await syncProfile(credential.user);
       return normalizedUser(credential.user);
@@ -342,7 +312,6 @@
     if (String(password || '').length < 8) throw new Error('Use a password with at least 8 characters.');
     try {
       const services = await getServices();
-      await applyAuthPersistence(services);
       const credential = await services.authModule.createUserWithEmailAndPassword(services.auth, cleanEmail, password);
       if (cleanName) {
         await services.authModule.updateProfile(credential.user, { displayName: cleanName });
@@ -499,14 +468,6 @@
     return next;
   }
 
-  function normalizeFeedbackDepth(value) {
-    const cleaned = String(value || '').toLowerCase();
-    if (cleaned === 'concise' || cleaned === 'basic' || cleaned === 'surface') return 'surface';
-    if (cleaned === 'balanced' || cleaned === 'medium') return 'medium';
-    if (cleaned === 'intensive' || cleaned === 'deep' || cleaned === 'extreme') return 'extreme';
-    return DEFAULT_PREFERENCES.feedbackDepth;
-  }
-
   function setText(id, value) {
     const element = document.getElementById(id);
     if (element) element.textContent = value;
@@ -524,7 +485,7 @@
 
   function collectPreferences() {
     return {
-      feedbackDepth: normalizeFeedbackDepth((document.getElementById('feedbackDepth') || {}).value || DEFAULT_PREFERENCES.feedbackDepth),
+      feedbackDepth: (document.getElementById('feedbackDepth') || {}).value || DEFAULT_PREFERENCES.feedbackDepth,
       feedbackTone: (document.getElementById('feedbackTone') || {}).value || DEFAULT_PREFERENCES.feedbackTone,
       citationStyle: (document.getElementById('citationStyle') || {}).value || DEFAULT_PREFERENCES.citationStyle,
       emailUpdates: Boolean((document.getElementById('emailUpdates') || {}).checked),
@@ -593,15 +554,14 @@
 
     modal = document.createElement('div');
     modal.className = 'auth-modal-backdrop hidden';
+    modal.style.overflowY = 'auto';
     modal.id = 'fractureAuthModal';
     modal.innerHTML = ''
-      + '<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">'
+      + '<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle" style="max-height:90vh;overflow-y:auto;">'
       + '<button class="auth-close" id="authModalClose" type="button" aria-label="Close sign in">x</button>'
-      + '<div class="label">Secure sign in</div>'
-      + '<h2 id="authModalTitle">Sign in once. Stay signed in.</h2>'
+      + '<div class="label">Account Required</div>'
+      + '<h2 id="authModalTitle">Sign in to use Fracture Studio.</h2>'
       + '<p id="authModalMessage">Save drafts, keep report history, and return to your work across sessions.</p>'
-      + '<p class="auth-trust-note">Use Google or email. “Remember me” is on by default so this device should not keep asking you to sign in.</p>'
-      + '<label class="auth-remember"><input id="authRememberDevice" type="checkbox" checked /> <span>Remember me on this device</span></label>'
       + '<button class="btn-primary auth-wide" id="authModalGoogle" type="button">Continue with Google</button>'
       + '<div class="auth-divider"><span>or continue with email</span></div>'
       + '<div class="auth-email-fields">'
@@ -629,11 +589,6 @@
     const nameInput = document.getElementById('authModalName');
     const emailInput = document.getElementById('authModalEmail');
     const passwordInput = document.getElementById('authModalPassword');
-    const rememberInput = document.getElementById('authRememberDevice');
-    if (rememberInput) {
-      rememberInput.checked = rememberDeviceEnabled();
-      rememberInput.addEventListener('change', function () { setRememberDevice(rememberInput.checked); });
-    }
 
     closeBtn.addEventListener('click', function () {
       if (modal.dataset.required === 'true') return;
@@ -641,18 +596,13 @@
     });
 
     googleBtn.addEventListener('click', function () {
-      if (rememberInput) setRememberDevice(rememberInput.checked);
       setText('authModalStatus', 'Opening Google sign in...');
-      signInGoogle().then(function () {
-        setText('authModalStatus', 'Signed in.');
-        modal.classList.add('hidden');
-      }).catch(function (error) {
+      signInGoogle().catch(function (error) {
         setText('authModalStatus', error.message || 'Google sign in could not start.');
       });
     });
 
     signInBtn.addEventListener('click', async function () {
-      if (rememberInput) setRememberDevice(rememberInput.checked);
       setText('authModalStatus', 'Signing in...');
       try {
         await signInEmail(emailInput.value, passwordInput.value);
@@ -663,7 +613,6 @@
     });
 
     createBtn.addEventListener('click', async function () {
-      if (rememberInput) setRememberDevice(rememberInput.checked);
       setText('authModalStatus', 'Creating account...');
       try {
         await signUpEmail(nameInput.value, emailInput.value, passwordInput.value);
@@ -769,9 +718,7 @@
     if (googleBtn) {
       googleBtn.addEventListener('click', function () {
         setText('settingsMessage', 'Opening Google sign in...');
-        runSettingsAction(googleBtn, 'Opening...', async function () {
-          const remember = document.getElementById('rememberDeviceSetting');
-          if (remember) setRememberDevice(remember.checked);
+        runSettingsAction(googleBtn, 'Opening Google...', async function () {
           await signInGoogle();
           setText('settingsMessage', 'Signed in with Google.');
           await refreshAccountUI();
@@ -784,8 +731,6 @@
       signInBtn.addEventListener('click', function () {
         setText('settingsMessage', 'Signing in with email...');
         runSettingsAction(signInBtn, 'Signing in...', async function () {
-          const remember = document.getElementById('rememberDeviceSetting');
-          if (remember) setRememberDevice(remember.checked);
           await signInEmail(
             (document.getElementById('emailInput') || {}).value || '',
             (document.getElementById('passwordInput') || {}).value || ''
@@ -801,8 +746,6 @@
       createBtn.addEventListener('click', function () {
         setText('settingsMessage', 'Creating your email account...');
         runSettingsAction(createBtn, 'Creating account...', async function () {
-          const remember = document.getElementById('rememberDeviceSetting');
-          if (remember) setRememberDevice(remember.checked);
           await signUpEmail(
             (document.getElementById('nameInput') || {}).value || '',
             (document.getElementById('emailInput') || {}).value || '',
@@ -872,14 +815,11 @@
     bindSettingsActions();
     await refreshAccountUI();
     const preferences = await getPreferences();
-    setValue('feedbackDepth', normalizeFeedbackDepth(preferences.feedbackDepth));
+    setValue('feedbackDepth', preferences.feedbackDepth);
     setValue('feedbackTone', preferences.feedbackTone);
     setValue('citationStyle', preferences.citationStyle);
     setChecked('emailUpdates', preferences.emailUpdates);
     setChecked('saveReports', preferences.saveReports);
-    setChecked('rememberDeviceSetting', rememberDeviceEnabled());
-    const rememberDeviceSetting = document.getElementById('rememberDeviceSetting');
-    if (rememberDeviceSetting) rememberDeviceSetting.addEventListener('change', function () { setRememberDevice(rememberDeviceSetting.checked); });
     await renderProjects();
   }
 
@@ -902,10 +842,9 @@
     continueWithoutEmail: continueWithoutEmail,
     initAuthGate: initAuthGate,
     showAuthModal: showAuthModal,
+    showModal: showAuthModal,
     requireAuthForStudio: requireAuthForStudio,
     completeAuthCallback: completeAuthCallback,
-    rememberDeviceEnabled: rememberDeviceEnabled,
-    setRememberDevice: setRememberDevice,
     consumeReturnPath: consumeReturnPath
   };
 })();

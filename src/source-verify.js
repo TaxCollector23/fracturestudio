@@ -1,14 +1,14 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
-const CLAIM_LIMIT = 8;
-const RESULTS_PER_CLAIM = 5;
+const CLAIM_LIMIT = 6;
+const RESULTS_PER_CLAIM = 3;
 const RESEARCH_RESULT_LIMIT = 5;
 const SEARCH_TIMEOUT_MS = 4500;
 const PAGE_TIMEOUT_MS = 4000;
 const PAGE_MAX_BYTES = 350000;
 const MAX_REDIRECTS = 3;
-const VERIFY_DEADLINE_MS = 28000;
+const VERIFY_DEADLINE_MS = 50000;
 const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const USER_AGENT = "FractureStudioSourceVerifier/1.0 (+https://fracturestudio.vercel.app)";
 const searchCache = new Map();
@@ -108,31 +108,7 @@ async function buildResearchSuggestions({ essay, audit, citationStyle, deadline 
   const terms = importantTerms(thesis || essay).slice(0, 8).join(" ");
   if (!terms) return [];
 
-  const leads = [];
-
-  for (const item of ensureArray(audit?.citation_opportunities).slice(0, 4)) {
-    const query = ensureArray(item?.search_queries || item?.source_search_queries || item?.queries).find(Boolean)
-      || `${importantTerms(`${item?.claim_to_support || item?.claim || terms} ${item?.evidence_type || ""}`).slice(0, 8).join(" ")} data report evidence`;
-    leads.push({
-      label: "Citation source lead",
-      title: cleanText(item?.claim_to_support || item?.claim || "Find a source for a claim Fracture flagged."),
-      explanation: cleanText(item?.why_it_matters || item?.reason || "Open these links and only cite the source if it directly supports the exact sentence."),
-      query
-    });
-  }
-
-  for (const item of ensureArray(audit?.extra_argument_ideas).slice(0, 4)) {
-    const query = ensureArray(item?.source_search_queries || item?.search_queries || item?.research_queries).find(Boolean)
-      || `${importantTerms(`${item?.argument || terms} ${item?.evidence_needed || ""}`).slice(0, 8).join(" ")} evidence report`;
-    leads.push({
-      label: "Extra argument source lead",
-      title: cleanText(item?.argument || item?.title || "Research a missing argument that may support your thesis."),
-      explanation: cleanText(item?.why_it_supports_thesis || item?.why_it_matters || item?.explanation || "Use the links to test whether this missing argument is real and worth adding."),
-      query
-    });
-  }
-
-  leads.push(
+  const leads = [
     {
       label: "Statistics to add",
       title: "Find one concrete number that proves the size, trend, or impact of your claim.",
@@ -151,7 +127,7 @@ async function buildResearchSuggestions({ essay, audit, citationStyle, deadline 
       explanation: "Open these links to prepare a rebuttal or qualifier. A good case gets stronger when it knows the best attack against it.",
       query: `${terms} criticism counterargument limitations evidence`
     }
-  );
+  ];
 
   const suggestions = [];
   for (const lead of leads) {

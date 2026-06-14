@@ -59,7 +59,7 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">Working Draft</div>
-          <div class="panel-sub">Add an argument, speech, essay, or rubric-based assignment for a focused review.</div>
+          <div class="panel-sub">Add an essay, speech, case, brief, or paragraph for a structured review.</div>
           <div class="badge-row">
             <span class="badge">Structural Analysis</span>
             <span class="badge">Assumption Audit</span>
@@ -71,47 +71,52 @@
         </div>
       </div>
 
-      <div class="studio-format-row">
-        <label for="analysisFormat">What are you analyzing?</label>
-        <select id="analysisFormat">
-          <option value="argument" selected>Argument / debate logic</option>
-          <option value="speech">Speech / presentation</option>
-          <option value="essay">Essay / general writing</option>
-          <option value="rubric">Rubric grading</option>
-        </select>
-        <div class="format-hint" id="formatHint">Choose a type so Fracture grades the draft with the right rubric.</div>
+      <div class="studio-mode-depth-row">
+        <div class="studio-mode-group">
+          <label for="analysisFormat">Mode</label>
+          <select id="analysisFormat">
+            <option value="argument">Argument / Debate</option>
+            <option value="speech">Speech / Presentation</option>
+            <option value="essay">Essay / Academic Writing</option>
+            <option value="college-essay">College Academic Essay</option>
+            <option value="research-paper">Research Paper</option>
+            <option value="rubric">Rubric Grading</option>
+            <option value="model-un">Model UN</option>
+          </select>
+        </div>
+        <div class="studio-depth-group">
+          <label for="depthLevel">Depth</label>
+          <select id="depthLevel">
+            <option value="surface">Surface</option>
+            <option value="medium" selected>Medium</option>
+            <option value="extreme">Extreme</option>
+          </select>
+        </div>
       </div>
-
-      <div class="studio-format-row studio-depth-row">
-        <label for="depthLevel">Depth level</label>
-        <select id="depthLevel">
-          <option value="surface">Surface level</option>
-          <option value="medium" selected>Medium depth</option>
-          <option value="extreme">Extreme depth</option>
-        </select>
-        <div class="format-hint" id="depthHint">Medium gives the normal Fracture report. Extreme unlocks the full debate-level audit, extra arguments, and source strategy.</div>
-      </div>
-
-      <div class="studio-format-row rubric-row" id="rubricPanel" hidden>
-        <label for="rubricInput">Rubric / assignment instructions</label>
-        <textarea id="rubricInput" class="rubric-input" placeholder="Paste the grading rubric here. Fracture will grade the draft by this rubric first, then explain the exact changes that would raise the score."></textarea>
-        <div class="rubric-upload-row">
-          <input id="rubricFile" type="file" accept=".txt,.md,.text,.csv" />
-          <span class="format-hint">Text files are read directly. For PDFs or docs, paste the rubric text here.</span>
+      <div class="depth-hint-bar" id="depthHintBar">
+        <div class="depth-hint" data-depth="surface">
+          <span class="depth-chip surface">Surface</span>
+          <span>Quick check &mdash; top 3 issues, simple fixes. Like reviewing a school essay before submitting.</span>
+        </div>
+        <div class="depth-hint" data-depth="medium" style="display:flex">
+          <span class="depth-chip medium">Medium</span>
+          <span>Full report &mdash; claims, warrants, rebuttals, sources. Like preparing for a regional debate.</span>
+        </div>
+        <div class="depth-hint" data-depth="extreme">
+          <span class="depth-chip extreme">Extreme</span>
+          <span>Forensic audit &mdash; every assumption, attack tree, strategic prep. Like preparing for nationals.</span>
         </div>
       </div>
 
-      <label class="sr-only" for="essayInput">Draft</label>
+      <label class="sr-only" for="essayInput">Argument draft</label>
       <textarea
         id="essayInput"
-        placeholder="Paste the writing here. Fracture automatically ignores normal document headings like name, date, class, and title before grading. It will:
-- Score the argument across structure, assumptions, logic, and rhetoric
-- Identify claims and rate their support
-- Find hidden assumptions and weak warrants
-- Flag unsupported facts and logical fallacies
-- Build strong counterarguments and rebuttal paths
-- Review tone, flow, strongest sentence, and weakest sentence
-- Give complete rewrite options for the highest-impact fixes"
+        placeholder="Paste your writing here — argument, essay, speech, debate case, research paper, or MUN position paper.
+
+Fracture analyzes based on your chosen Mode and Depth.
+
+Rubric Grading: paste your writing, then paste the rubric below it starting with a line: --- RUBRIC ---
+Model UN: paste your position paper, opening speech, or resolution."
       ></textarea>
 
       <div class="textarea-footer">
@@ -142,7 +147,7 @@
 
     </section>
 
-    <div class="studio-output-column" id="studioOutputColumn" hidden>
+    <div class="studio-output-column">
   <section class="studio-review-stage" aria-label="Fracture review workspace">
     <div class="analysis-stage-card analysis-stage-map">
       <div class="analysis-stage-head">
@@ -199,7 +204,7 @@
     </div>
   </div>
 
-  <section class="studio-followup tool-card" id="fractureChatCard" hidden>
+  <section class="studio-followup tool-card" id="fractureChatCard">
     <div class="argument-map-head">
       <div>
         <div class="node-kicker">Focused Coaching</div>
@@ -222,16 +227,16 @@
     <div class="tool-output chat-transcript" id="chatOutput" aria-live="polite"></div>
   </section>
 
-  <section class="studio-sources-stage analysis-stage-card" aria-label="Citation and data verification area" hidden>
+  <section class="studio-sources-stage analysis-stage-card" aria-label="Citation and data verification area">
     <div class="analysis-stage-head">
       <div>
         <div class="node-kicker">Source Review</div>
-        <div class="tool-title">Citations, Extra Arguments & Data Check</div>
+        <div class="tool-title">Citations & Data Check</div>
       </div>
       <span class="graph-status">Loads After Audit</span>
     </div>
     <div class="analysis-stage-empty analysis-stage-empty--sources" id="worksCitedPlaceholder" aria-hidden="true"></div>
-    <div class="studio-sources" id="sourceVerificationArea" aria-label="Citation generator, data verification, source links, and extra argument research"></div>
+    <div class="studio-sources" id="sourceVerificationArea" aria-label="Citation generator, data verification, and extra argument research"></div>
   </section>
 
   <!-- Studio Footer -->
@@ -249,5 +254,21 @@
 <script src="auth.js"></script>
 <script src="source-verification.js"></script>
 <script src="app.js"></script>
+
+<script>
+(function() {
+  var depthSel = document.getElementById('depthLevel');
+  var hints = document.querySelectorAll('.depth-hint');
+  function updateDepthHint() {
+    var val = depthSel ? depthSel.value : 'medium';
+    hints.forEach(function(el) {
+      el.style.display = el.getAttribute('data-depth') === val ? 'flex' : 'none';
+    });
+  }
+  if (depthSel) depthSel.addEventListener('change', updateDepthHint);
+  updateDepthHint();
+})();
+</script>
+
 </body>
 </html>

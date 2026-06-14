@@ -353,15 +353,6 @@
         append(list, makeEl('li', '', citation));
       });
       append(citedSection, list);
-      const copyCitations = makeEl('button', 'fracture-source-button', 'Copy citations');
-      copyCitations.type = 'button';
-      copyCitations.addEventListener('click', function () {
-        const textToCopy = worksCited.join('\n');
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(textToCopy);
-      });
-      const copyWrap = makeEl('div', 'fracture-source-actions');
-      append(copyWrap, copyCitations);
-      append(citedSection, copyWrap);
     }
 
     append(body, rowSection, researchSection, citedSection);
@@ -414,12 +405,12 @@
     const button = makeEl('button', 'fracture-source-button', 'Verify Data + Citations');
     button.type = 'button';
     append(actions, button);
-    append(root, renderMessage('Verify Data + Citations is ready after an audit. It checks factual claims, finds source links, generates citations, and searches for extra argument leads.'), actions);
+    append(root, renderMessage('Data checking, citation generation, and extra-argument research are ready after an audit is generated.'), actions);
     target.appendChild(root);
 
     async function verify() {
       button.disabled = true;
-      root.replaceChild(renderMessage('Verifying cited data, finding source links, generating citations, and hunting for extra argument leads.', 'loading'), root.firstChild);
+      root.replaceChild(renderMessage('Checking data, building citations, and finding extra argument leads.', 'loading'), root.firstChild);
       try {
         const data = await verifySources(config.getEssay, config.getAudit, config.getCitationStyle);
         root.replaceChild(renderVerification(data), root.firstChild);
