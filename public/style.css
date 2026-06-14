@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..800;1,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..900&display=swap');
 
 /* ── Design Tokens ────────────────────────────────────────────────────── */
 :root {
@@ -17,9 +17,9 @@
   --text-3:      #5a5a7a;
   --danger:      #f87171;
   --success:     #34d399;
-  --mono:        'Playfair Display', Georgia, serif;
-  --sans:        'Playfair Display', Georgia, serif;
-  --serif:       'Instrument Sans', Arial, sans-serif;
+  --mono:        'Geist', system-ui, sans-serif;
+  --sans:        'Geist', system-ui, sans-serif;
+  --serif:       'Geist', system-ui, sans-serif;
   --radius:      18px;
   --shadow:      0 24px 64px rgba(0,0,5,0.85);
   --glow:        0 0 60px rgba(108,99,255,0.18);

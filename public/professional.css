@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..800;1,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..900&display=swap');
 
 /* Professional interface layer. Loaded after legacy page styles. */
 :root,
@@ -20,9 +20,9 @@
   --success: #80a8d8;
   --warning: #a8b5c5;
   --danger: #d06f77;
-  --sans: "Playfair Display", Georgia, serif;
-  --serif: "Instrument Sans", Arial, sans-serif;
-  --mono: "Playfair Display", Georgia, serif;
+  --sans: "Geist", system-ui, sans-serif;
+  --serif: "Geist", system-ui, sans-serif;
+  --mono: "Geist", system-ui, sans-serif;
   --radius: 4px;
   --shadow: 0 14px 40px rgba(0, 0, 0, .24);
   --glow: none;
