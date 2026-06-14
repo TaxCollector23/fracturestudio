@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Platypi:ital,wght@0,300..800;1,300..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..800;1,400..700&display=swap');
 
 /* Professional interface layer. Loaded after legacy page styles. */
 :root,
@@ -20,30 +20,35 @@
   --success: #80a8d8;
   --warning: #a8b5c5;
   --danger: #d06f77;
-  --sans: "Platypi", system-ui, sans-serif;
+  --sans: "Playfair Display", Georgia, serif;
   --serif: "Instrument Sans", Arial, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --mono: "Instrument Sans", Arial, sans-serif;
   --radius: 4px;
   --shadow: 0 14px 40px rgba(0, 0, 0, .24);
   --glow: none;
 }
 
 [data-theme="light"] {
-  --bg: #f7f8fa;
-  --bg-2: #eff2f5;
+  /* Pure white base, black as primary accent, dark blue as secondary accent. No grays. */
+  --bg: #ffffff;
+  --bg-2: #ffffff;
   --surface: #ffffff;
-  --surface-2: #eef1f4;
-  --surface-3: #e3e7ec;
-  --border: rgba(16, 24, 36, .14);
-  --border-2: rgba(16, 24, 36, .3);
-  --text: #101722;
-  --text-1: #101722;
-  --text-2: #526071;
-  --text-3: #6e7b8b;
-  --accent: #175ed8;
-  --accent-2: #104aa8;
-  --accent-3: #0f4fba;
-  --shadow: 0 12px 30px rgba(18, 26, 38, .09);
+  --surface-2: #ffffff;
+  --surface-3: #ffffff;
+  --border: rgba(0, 0, 0, .16);
+  --border-2: rgba(0, 0, 0, .42);
+  --text: #000000;
+  --text-1: #000000;
+  --text-2: #000000;
+  --text-3: #000000;
+  --accent: #000000;
+  --accent-2: #11307a;
+  --accent-3: #0a2360;
+  --success: #11307a;
+  --warning: #000000;
+  --danger: #a3151d;
+  --shadow: 0 12px 30px rgba(0, 0, 0, .10);
+  --glow: none;
 }
 
 * { box-sizing: border-box; }
@@ -178,23 +183,37 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background: var(--accent) !important;
   border: 1px solid var(--accent) !important;
   color: #ffffff !important;
+  font-family: var(--sans) !important;
+  font-weight: 700 !important;
+  letter-spacing: .005em !important;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease !important;
 }
-.btn-primary:hover { background: var(--accent-3) !important; transform: none !important; }
+.btn-primary:hover { background: var(--accent-3) !important; border-color: var(--accent-3) !important; transform: translateY(-1px) !important; box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 28%, transparent) !important; }
 .btn-primary[aria-busy="true"], .btn-sm[aria-busy="true"] { cursor: progress; opacity: .72; }
 .btn-secondary, .btn-sm {
   background: transparent !important;
-  border: 1px solid var(--border) !important;
-  color: var(--text-2) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-2) 55%, transparent) !important;
+  color: var(--text) !important;
+  font-family: var(--sans) !important;
+  font-weight: 600 !important;
+  letter-spacing: .005em !important;
+  text-decoration: none !important;
+  transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease !important;
 }
-.btn-secondary:hover, .btn-sm:hover { background: var(--surface-2) !important; border-color: var(--border-2) !important; color: var(--text) !important; transform: none !important; }
+.btn-secondary:hover, .btn-sm:hover {
+  background: color-mix(in srgb, var(--accent-2) 10%, transparent) !important;
+  border-color: var(--accent-2) !important;
+  color: var(--text) !important;
+  transform: translateY(-1px) !important;
+}
 .controls .btn-sm, .json-toolbar .btn-sm {
-  background: color-mix(in srgb, var(--surface-2) 78%, transparent) !important;
-  border-color: color-mix(in srgb, var(--accent-2) 24%, var(--border)) !important;
-  color: var(--text-2) !important;
+  background: transparent !important;
+  border-color: color-mix(in srgb, var(--accent-2) 55%, transparent) !important;
+  color: var(--text) !important;
 }
 .controls .btn-sm:hover, .json-toolbar .btn-sm:hover {
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)) !important;
-  border-color: color-mix(in srgb, var(--accent-2) 58%, var(--border)) !important;
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent) !important;
+  border-color: var(--accent-2) !important;
   color: var(--text) !important;
 }
 input, textarea, select, .admin-field {
@@ -1692,4 +1711,70 @@ body.home-page .load-scale {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── v6 UI polish: ported hover/transition motion (redesign-for-rangan) ── */
+a,
+button,
+.nav-link,
+.nav-cta,
+.nav-gear,
+.footer-link,
+.blog-filter,
+.tab,
+.studio-tab {
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease,
+              transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+
+/* Cards lighten their border and lift slightly on hover, like the redesign grid */
+.feature-card,
+.marketing-card,
+.pastwork-card,
+.blog-card,
+.testimonial,
+.compare-col,
+.tool-card,
+.saved-item,
+.reb-section,
+.account-strip {
+  transition: border-color .2s ease, background-color .2s ease,
+              transform .2s ease, box-shadow .2s ease;
+}
+.feature-card:hover,
+.marketing-card:hover,
+.pastwork-card:hover,
+.blog-card:hover,
+.tool-card:hover {
+  border-color: var(--border-2);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+/* Links shift toward full text color on hover */
+.nav-link:hover,
+.footer-link:hover,
+a.muted-link:hover {
+  color: var(--text);
+}
+
+/* Soft entrance for the studio report sections as they stream in */
+.final-audit-section {
+  animation: finalAuditSectionIn .42s cubic-bezier(.2,.8,.2,1) both;
+}
+
+/* Live status dots breathe, matching the redesign's pulse */
+.status-dot.live,
+.reb-live-dot,
+.tool-live-dot {
+  animation: rebPulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a, button, .feature-card, .marketing-card, .pastwork-card, .blog-card,
+  .tool-card, .final-audit-section, .status-dot.live {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
 }

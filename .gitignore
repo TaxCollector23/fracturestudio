@@ -30,3 +30,4 @@ pb_test_data/
 
 # Hidden local dev helpers
 # (.local-dev kept but optional)
+.vercel

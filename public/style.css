@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Geist:wght@300..900&family=Platypi:ital,wght@0,300..800;1,300..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..800;1,400..700&display=swap');
 
 /* ── Design Tokens ────────────────────────────────────────────────────── */
 :root {
@@ -17,26 +17,26 @@
   --text-3:      #5a5a7a;
   --danger:      #f87171;
   --success:     #34d399;
-  --mono:        'DM Mono', ui-monospace, monospace;
-  --sans:        'Platypi', system-ui, sans-serif;
-  --serif:       'Geist', system-ui, sans-serif;
+  --mono:        'Instrument Sans', Arial, sans-serif;
+  --sans:        'Playfair Display', Georgia, serif;
+  --serif:       'Instrument Sans', Arial, sans-serif;
   --radius:      18px;
   --shadow:      0 24px 64px rgba(0,0,5,0.85);
   --glow:        0 0 60px rgba(108,99,255,0.18);
 }
 
 [data-theme="light"] {
-  --bg:        #f4f4fd;
-  --bg-2:      #eeeef8;
+  --bg:        #ffffff;
+  --bg-2:      #ffffff;
   --surface:   #ffffff;
-  --surface-2: #f8f8ff;
-  --border:    rgba(80,70,200,0.15);
-  --border-2:  rgba(80,70,200,0.28);
-  --text:      #14142b;
-  --text-2:    #4a4a6a;
-  --text-3:    #8888aa;
-  --shadow:    0 12px 40px rgba(50,40,120,0.12);
-  --glow:      0 0 40px rgba(108,99,255,0.10);
+  --surface-2: #ffffff;
+  --border:    rgba(0,0,0,0.16);
+  --border-2:  rgba(0,0,0,0.42);
+  --text:      #000000;
+  --text-2:    #000000;
+  --text-3:    #000000;
+  --shadow:    0 12px 40px rgba(0,0,0,0.10);
+  --glow:      none;
 }
 
 /* ── Reset ────────────────────────────────────────────────────────────── */
