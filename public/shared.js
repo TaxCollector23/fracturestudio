@@ -99,3 +99,100 @@
     initHomeLoadAnimations();
   });
 })();
+
+/* ── v1 rework: page transitions, smooth scroll, scroll reveal ────────── */
+(function () {
+  'use strict';
+  if (typeof document === 'undefined') return;
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function smoothScrollTo(target) {
+    var nav = document.querySelector('.nav');
+    var offset = (nav ? nav.offsetHeight : 0) + 18;
+    var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top: Math.max(top, 0), behavior: reduce ? 'auto' : 'smooth' });
+  }
+
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('a') : null;
+    if (!a) return;
+    var href = a.getAttribute('href');
+    if (!href) return;
+
+    // In-page anchor → fancy smooth scroll with fixed-nav offset
+    if (href.charAt(0) === '#' && href.length > 1) {
+      var target = null;
+      try { target = document.querySelector(href); } catch (_) {}
+      if (target) {
+        e.preventDefault();
+        smoothScrollTo(target);
+        if (history.replaceState) history.replaceState(null, '', href);
+      }
+      return;
+    }
+
+    // Let the browser handle new-tab / modified / non-left / external / special links
+    if (a.target === '_blank' || a.hasAttribute('download')) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) return;
+
+    var url;
+    try { url = new URL(a.href); } catch (_) { return; }
+    if (url.host !== window.location.host) return;
+    // Same page, different hash only → ignore (anchor branch handles real targets)
+    if (url.pathname === window.location.pathname && url.hash) return;
+
+    if (reduce) return;
+    // Page-exit transition, then navigate
+    e.preventDefault();
+    document.body.classList.add('fracture-exit');
+    setTimeout(function () { window.location.href = a.href; }, 230);
+  });
+
+  // Reset exit state when restored from bfcache (back/forward)
+  window.addEventListener('pageshow', function () {
+    document.body.classList.remove('fracture-exit');
+  });
+
+  function initReveal() {
+    // Home page already runs its own entrance animation
+    if (document.body.classList.contains('home-page')) return;
+
+    var selectors = [
+      '.feature-card', '.step', '.testimonial', '.compare-col', '.stat-row',
+      '.marketing-card', '.mission-grid', '.mission-text-block', '.cta-box',
+      '.section-title', '.section-sub', '.studio-header', '.panel',
+      '.reb-section', '.pastwork-card', '.blog-card'
+    ];
+    var els = [];
+    selectors.forEach(function (sel) {
+      Array.prototype.forEach.call(document.querySelectorAll(sel), function (el) {
+        if (els.indexOf(el) === -1) els.push(el);
+      });
+    });
+    if (!els.length) return;
+
+    if (!('IntersectionObserver' in window) || reduce) {
+      els.forEach(function (el) { el.classList.add('in-view'); });
+      return;
+    }
+
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) {
+          en.target.classList.add('in-view');
+          obs.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
+
+    els.forEach(function (el, i) {
+      el.setAttribute('data-reveal', '');
+      el.style.transitionDelay = Math.min((i % 6) * 0.05, 0.3) + 's';
+      obs.observe(el);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', initReveal);
+})();

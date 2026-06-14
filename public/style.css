@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Geist:wght@300..900&family=Platypi:ital,wght@0,300..800;1,300..800&display=swap');
 
 /* ── Design Tokens ────────────────────────────────────────────────────── */
 :root {
@@ -18,8 +18,8 @@
   --danger:      #f87171;
   --success:     #34d399;
   --mono:        'DM Mono', ui-monospace, monospace;
-  --sans:        'Outfit', system-ui, sans-serif;
-  --serif:       'DM Serif Display', Georgia, serif;
+  --sans:        'Platypi', system-ui, sans-serif;
+  --serif:       'Geist', system-ui, sans-serif;
   --radius:      18px;
   --shadow:      0 24px 64px rgba(0,0,5,0.85);
   --glow:        0 0 60px rgba(108,99,255,0.18);
@@ -1705,3 +1705,74 @@ button:disabled { opacity: .45; cursor: default; transform: none !important; box
 @keyframes rebPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
 .reb-error { color: var(--danger); }
 
+
+/* ── v1 rework: Geist Bold headings ──────────────────────────────────── */
+.auth-modal h2,
+.hero-title,
+.section-title,
+.step-num,
+.cta-title,
+.stat-val,
+.studio-headline,
+.mission-hero-title,
+.mission-heading {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ── v1 rework: About-page documentation link box ────────────────────── */
+.docs-or {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-3);
+  letter-spacing: .04em;
+  text-transform: lowercase;
+}
+.docs-link-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  background: rgba(108,99,255,.06);
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: border-color .18s ease, color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.docs-link-box:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(108,99,255,.12);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(108,99,255,.22);
+}
+.docs-link-box svg { color: var(--accent-2); transition: transform .18s ease; }
+.docs-link-box:hover svg { transform: translate(2px,-2px); }
+
+/* ── v1 rework: page transitions + scroll reveal ─────────────────────── */
+@keyframes fractureFadeIn { from { opacity: 0; } to { opacity: 1; } }
+body { animation: fractureFadeIn .42s ease both; }
+body.fracture-exit {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity .24s ease, transform .24s ease;
+  animation: none;
+}
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity .6s cubic-bezier(.22,.61,.36,1), transform .6s cubic-bezier(.22,.61,.36,1);
+  will-change: opacity, transform;
+}
+[data-reveal].in-view { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  body, [data-reveal] {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

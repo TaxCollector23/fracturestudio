@@ -11,20 +11,20 @@
       "destination": "/studio.html"
     },
     {
-      "source": "/analyze",
-      "destination": "/studio.html"
+      "source": "/about",
+      "destination": "/about.html"
     },
     {
       "source": "/mission",
-      "destination": "/mission.html"
+      "destination": "/about.html"
     },
     {
       "source": "/methods",
-      "destination": "/mission.html"
+      "destination": "/about.html"
     },
     {
-      "source": "/about",
-      "destination": "/index.html"
+      "source": "/docs",
+      "destination": "https://fracturestudio.mintlify.app"
     },
     {
       "source": "/blog",

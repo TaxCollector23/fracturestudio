@@ -24,3 +24,9 @@ pb_test_data/
 
 # Logs
 *.log
+
+# Claude Code local config
+.claude/
+
+# Hidden local dev helpers
+# (.local-dev kept but optional)

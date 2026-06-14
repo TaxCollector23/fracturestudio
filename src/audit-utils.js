@@ -1,6 +1,5 @@
 export const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 export const DEFAULT_MODEL = "openai/gpt-oss-120b:free";
-export { AUDIT_SYSTEM_PROMPT as SYSTEM_PROMPT } from "./prompts.js";
 
 export function words(text) {
   return text.match(/[A-Za-z0-9']+/g) || [];

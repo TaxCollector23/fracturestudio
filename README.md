@@ -1,94 +1,59 @@
 # Fracture Studio
 
-**Argument Analysis Engine** — structured AI feedback for essays, briefs, speeches, and debate cases.
+Fracture Studio is an argument auditing tool built for anyone who writes to persuade. Paste in a speech, debate case, Model UN position paper, college essay, research paper, or any piece of writing, and the Fracture Engine returns a full analysis in under a minute.
+
+Live at [fracturestudio.vercel.app](https://fracturestudio.vercel.app)
+
+---
+
+## What it does
+
+You paste your writing. Fracture reads it, figures out what you are actually trying to argue, and tells you where it holds up and where it falls apart. The report covers the logical structure, the strength of individual claims, hidden assumptions the reader might reject, counterarguments a skilled opponent would raise, and a ranked list of fixes ordered by how much each one would improve the piece.
+
+It also runs a source check — pulling public web results for the factual claims in your draft and flagging which ones have support, which ones are vague, and which ones need a citation before they can carry weight.
+
+After the audit, you can ask follow-up questions in Fracture Chat, or generate a rebuttal plan if you are preparing for a live debate or presentation.
+
+---
+
+## Analysis modes
+
+**Argument / Debate**
+For debate cases, policy briefs, persuasive claims, and position papers. Grades claim-warrant-evidence-impact structure, burden of proof, hidden assumptions, and how well the argument would hold up under direct pressure.
+
+**Speech / Presentation**
+For pieces meant to be heard. Focuses on how clearly the argument lands for an audience — hook, signposting, pacing, memorable lines, and where a listener might tune out or push back.
+
+**Essay / General Writing**
+For academic and analytical writing. Covers thesis clarity, paragraph structure, transitions, tone, evidence integration, and how each section earns its place.
+
+**Rubric Grading**
+Paste in a rubric alongside your draft and Fracture grades criterion by criterion, estimates likely scores, and tells you exactly what would move each category up.
+
+---
+
+## Depth levels
+
+**Surface** — a fast pass focused on the two or three things that matter most. Good for a quick check before submission.
+
+**Medium** — the default. A full audit with claim analysis, assumption audit, counterarguments, source check, and a complete revision path.
+
+**Extreme** — the deepest read. Eight or more priority fixes, a full dependency graph showing how claims connect, expanded attack tree, and additional argument angles to research.
+
+---
 
 ## Pages
 
-| Page | File | Description |
-|------|------|-------------|
-| Landing | `public/index.html` | Hero, why us vs generic AI, features, how-it-works, testimonials |
-| Studio | `public/studio.html` | Run a structured audit, inspect the argument map, verify sources, generate rapid rebuttals, and use Fracture Chat |
-| Mission | `public/mission.html` | Our principles, transparency, the full system prompt |
-| Settings | `public/settings.html` | Firebase sign-in, password reset, preferences, and saved work |
-| Admin | `public/admin.html` | Private Firebase profile list for signed-in users |
+**Studio** — where you run the audit. Paste your draft, choose a mode and depth, and read the report. Includes the argument map, source verification panel, Fracture Chat, and rebuttal builder.
 
-## Setup
+**Past Work** — saved audits you can return to. Requires a free account.
 
-```bash
-# 1. Install dependencies
-npm install
+**About** — explains how Fracture reads and scores writing, what each part of an argument is checked for, and links to the full documentation.
 
-# 2. Environment
-This ZIP already includes the `.env` values restored from the uploaded project for local testing.
+**Settings** — account preferences, citation style (MLA or APA), feedback depth and tone defaults.
 
-# 3. Start the server
-npm start
-# → http://localhost:8000
-```
+---
 
-## Security Architecture
+## Documentation
 
-- **API key is server-side only.** `OPENROUTER_API_KEY` lives in `.env`, loaded by `dotenv`. It is never sent to the browser, never in any HTML/JS file, never in any response.
-- All AI calls are proxied through server routes. The browser never receives the OpenRouter key.
-- `/api/analyze` streams live report-generation events and returns a normalized JSON audit.
-- `/api/chat` streams detailed plain-text Fracture Chat coaching with follow-up conversation context.
-- `/api/rebuttal` streams rapid debate responses through the fast model.
-- `/api/verify-sources` searches public pages, compares retrieved page text to draft claims, and builds a strong-match-only MLA 9th or APA 7th bibliography without fabricating entries.
-- `/api/report-pdf` exports a formatted PDF report with the diagnosis, priority fixes, source-verification summary, bibliography, and submitted draft.
-- Firebase Authentication sends free password-reset emails without a separate mail server.
-- `/api/admin-users` reads Firebase profiles only after the server validates the admin password.
-- Input is size-limited (50kb body, 40,000 char essay max) to prevent abuse.
-- Static files are served from `public/` — no framework, no build step, no client-side secrets.
-
-## Project Structure
-
-```
-fracture-studio/
-├── src/
-│   ├── server.js          # Express server and local route wiring
-│   ├── prompts.js         # Centralized analysis, chat, and rebuttal prompts
-│   ├── analyze-handler.js # Shared local/Vercel analysis stream
-│   ├── text-stream-handler.js # Shared Fracture Chat and Speed Rebuttal stream
-│   ├── source-verify.js   # Public-web claim/source triage and Works Cited builder
-│   └── admin-users.js     # Server-only Firebase Admin profile lookup
-├── public/
-│   ├── index.html         # Landing page
-│   ├── studio.html        # Analysis studio
-│   ├── mission.html       # Mission & principles
-│   ├── settings.html      # Account settings + forgot-password action
-│   ├── admin.html         # Private account profile viewer
-│   ├── style.css          # All styles (shared + per-page)
-│   ├── shared.js          # Theme toggle, shared utilities
-│   └── app.js             # Studio analysis logic
-├── .env.example           # Environment variable template
-├── .gitignore
-└── package.json
-```
-
-## Analysis Output
-
-Every audit generates a structured JSON report with:
-
-- **Overall score** (1–100) + 4-dimensional breakdown (each /25)
-- **Verdict** — one paragraph: persuasiveness, biggest strength, most urgent weakness
-- **Coaching note** — single highest-leverage improvement action
-- **Claim-by-claim analysis** — STRONG/MODERATE/WEAK ratings with named flaws and fixes
-- **Assumption audit** — hidden premises with HIGH/MEDIUM/LOW load-bearing ratings
-- **Logical fallacies** — named, quoted verbatim, explained, rewritten
-- **Steelmanned counter-arguments** — strongest opposition + damage assessment
-- **Rhetorical analysis** — hook, flow, best/worst sentence with rewrite
-- **Rewrite suggestions** — complete sentences, not instructions
-
-
-## Local start
-
-Windows PowerShell may block `npm.ps1`. Use one of these instead:
-
-```powershell
-npm.cmd install
-npm.cmd start
-```
-
-Or double-click `START-HERE-WINDOWS.cmd`. The local server defaults to `http://localhost:8000`.
-
-This local package restores the `.env` values that existed in the uploaded ZIP. It also keeps Firebase browser auth wired. The uploaded ZIP did not contain a Firebase Admin service-account JSON, so the server-side admin user lookup still needs that credential if it was not already configured on your machine.
+User and developer documentation lives at [the Fracture Studio docs](https://fracturestudio.mintlify.app), also reachable from the About page.
