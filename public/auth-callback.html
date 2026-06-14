@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signing In | Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .auth-callback-shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .auth-callback-card {
+      max-width: 420px;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+      background: rgba(108, 99, 255, 0.06);
+      text-align: center;
+    }
+    .auth-callback-card h1 {
+      font-size: 22px;
+      margin: 8px 0 10px;
+    }
+    .auth-callback-card p {
+      color: var(--text-2);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  </style>
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body>
+  <main class="auth-callback-shell">
+    <div class="auth-callback-card">
+      <div class="label">Fracture Studio</div>
+      <h1>Finishing sign in</h1>
+      <p id="authCallbackStatus" role="status" aria-live="polite">Confirming your session...</p>
+    </div>
+  </main>
+  <script src="auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async function () {
+      const status = document.getElementById('authCallbackStatus');
+      try {
+        if (!window.FractureAuth) throw new Error('Auth module did not load.');
+        const user = await window.FractureAuth.completeAuthCallback();
+        if (user) {
+          const next = window.FractureAuth.consumeReturnPath() || '/studio';
+          window.location.replace(next);
+          return;
+        }
+        status.textContent = 'No session found. Redirecting to settings...';
+        window.location.replace('/settings');
+      } catch (err) {
+        status.textContent = err.message || 'Sign in could not be completed.';
+        setTimeout(function () {
+          window.location.replace('/settings');
+        }, 2500);
+      }
+    });
+  </script>
+</body>
+</html>
