@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Platypi:ital,wght@0,300..800;1,300..800&display=swap');
 
 /* Professional interface layer. Loaded after legacy page styles. */
 :root,
@@ -20,7 +20,7 @@
   --success: #80a8d8;
   --warning: #a8b5c5;
   --danger: #d06f77;
-  --sans: "Instrument Sans", Arial, sans-serif;
+  --sans: "Platypi", system-ui, sans-serif;
   --serif: "Instrument Sans", Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
   --radius: 4px;
@@ -96,7 +96,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .label, .mission-eyebrow, .studio-title { font-size: 11px; }
 .section-title, .mission-heading, .studio-headline, .article-title {
-  font-family: var(--sans);
+  font-family: var(--serif);
   font-weight: 800;
   letter-spacing: -.035em;
 }
@@ -222,7 +222,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent) !importa
 .hero-title {
   background: none;
   color: var(--text);
-  font-family: var(--sans);
+  font-family: var(--serif);
   font-size: clamp(52px, 6.2vw, 82px);
   font-weight: 800;
   line-height: 1.02;
