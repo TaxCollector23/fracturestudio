@@ -7,7 +7,93 @@ import {
 } from "./audit-utils.js";
 import { buildAuditMessages } from "./prompts.js";
 import { collectTextFromOpenRouter, openRouterStream } from "./openrouter.js";
+import { verifySources } from "./source-verify.js";
 import { startSse, writeDone, writeSse } from "./sse-utils.js";
+
+function asArr(value) { return Array.isArray(value) ? value : []; }
+function firstNonEmpty(...values) {
+  for (const v of values) { if (typeof v === "string" && v.trim()) return v.trim(); }
+  return "";
+}
+function clip(value, max = 360) {
+  const t = String(value || "").replace(/\s+/g, " ").trim();
+  return t.length > max ? t.slice(0, max - 1).trimEnd() + "…" : t;
+}
+
+function sourceStatusLabel(status) {
+  const s = String(status || "needs_review").toLowerCase();
+  return {
+    likely_supported: "likely supported",
+    partial_match: "partial match",
+    possible_conflict: "possible conflict",
+    source_not_found: "source not found",
+    quote_not_supported: "quote not found on page",
+    citation_incomplete: "citation incomplete",
+    source_too_vague: "claim too vague to match"
+  }[s] || "needs review";
+}
+
+// Turn the source-verification report into readable streamed sections.
+function readableSourceSections(sourceData) {
+  if (!sourceData || typeof sourceData !== "object") return [];
+  const summary = sourceData.summary || {};
+  const claims = asArr(sourceData.claims).slice(0, 6);
+  const leads = asArr(sourceData.research_suggestions).slice(0, 3);
+  const works = asArr(sourceData.works_cited).slice(0, 10);
+  const sections = [];
+
+  sections.push({
+    title: "Citation & data check",
+    body: [
+      `Claims checked against public sources: ${summary.total_claims ?? claims.length}`,
+      `Likely supported: ${summary.likely_supported ?? 0}`,
+      `Needs review or incomplete: ${(Number(summary.needs_source_review) || 0) + (Number(summary.citation_incomplete) || 0) + (Number(summary.source_not_found) || 0) + (Number(summary.partial_match) || 0)}`,
+      firstNonEmpty(summary.note, "Open every linked source and confirm the exact passage before relying on it.")
+    ].filter(Boolean).join("\n")
+  });
+
+  if (claims.length) {
+    sections.push({
+      title: "Claims to verify (with sources)",
+      body: claims.map((c, i) => {
+        const links = asArr(c.sources).slice(0, 3)
+          .map((s) => s.url ? `${firstNonEmpty(s.title, s.site_name, "Source")}: ${s.url}` : "")
+          .filter(Boolean).join("\n   ");
+        return [
+          `${i + 1}. ${clip(firstNonEmpty(c.claim, c.text, "Claim"))}`,
+          `   Status: ${sourceStatusLabel(c.support_status)}`,
+          firstNonEmpty(c.verification_note) ? `   Note: ${clip(c.verification_note)}` : "",
+          links ? `   ${links}` : "   No dependable public link found yet."
+        ].filter(Boolean).join("\n");
+      }).join("\n\n")
+    });
+  }
+
+  if (leads.length) {
+    sections.push({
+      title: "Research leads & source links",
+      body: leads.map((lead, i) => {
+        const links = asArr(lead.links).slice(0, 3)
+          .map((l) => l.url ? `${firstNonEmpty(l.title, l.site_name, "Link")}: ${l.url}` : "")
+          .filter(Boolean).join("\n   ");
+        return [
+          `${i + 1}. ${clip(firstNonEmpty(lead.title, lead.label, "Research lead"))}`,
+          firstNonEmpty(lead.explanation) ? `   ${clip(lead.explanation)}` : "",
+          links ? `   ${links}` : (firstNonEmpty(lead.search_query) ? `   Search: ${lead.search_query}` : "")
+        ].filter(Boolean).join("\n");
+      }).join("\n\n")
+    });
+  }
+
+  if (works.length) {
+    sections.push({
+      title: sourceData.bibliography_title || "Works Cited starter",
+      body: works.map((w, i) => `${i + 1}. ${firstNonEmpty(w.entry, w.citation, w.mla, w.apa, w.url)}`).join("\n")
+    });
+  }
+
+  return sections;
+}
 
 const PROGRESS_MESSAGES = [
   "Preparing the audit",
@@ -168,15 +254,44 @@ async function streamReadableAudit(res, audit) {
     writeSse(res, { fracture_report_delta: { title: section.title, body: section.body } });
     await sleep(18);
   }
-  writeSse(res, { fracture_report_done: true });
+  // Note: fracture_report_done is emitted by finish() after optional source sections.
 }
 
-async function finish(res, audit, recovered = false) {
+async function finish(res, audit, recovered = false, options = {}) {
   writeProgress(res, recovered ? 91 : 90, recovered ? "Recovered a stable report" : "Turning JSON into the readable report");
   await streamReadableAudit(res, audit);
+
+  // Wire in the citation/source engine: search public pages for the draft's
+  // factual claims, attach the report to the audit, and stream readable sections.
+  let finalAudit = audit;
+  if (options.essay && !isTooThinForAudit(options.essay)) {
+    try {
+      writeProgress(res, 93, "Finding sources, data checks, and citations");
+      const citationStyle = String(options.citationStyle || "mla").toLowerCase() === "apa" ? "apa" : "mla";
+      const sourceData = await verifySources({ essay: options.essay, audit, citationStyle });
+      finalAudit = { ...audit, citation_style: citationStyle, source_verification_report: sourceData };
+      const sourceSections = readableSourceSections(sourceData);
+      for (const section of sourceSections) {
+        writeSse(res, { fracture_report_delta: { title: section.title, body: section.body } });
+        await sleep(18);
+      }
+    } catch (err) {
+      finalAudit = {
+        ...audit,
+        source_verification_report: {
+          error: err?.message || String(err),
+          claims: [], works_cited: [], research_suggestions: [],
+          summary: { total_claims: 0, note: "Source verification could not complete this time. The argument audit above is still usable; verify factual claims before final submission." }
+        }
+      };
+      writeSse(res, { fracture_report_delta: { title: "Citation & data check", body: "Source verification could not complete this time. The argument audit above is still usable — verify any factual claims manually before final submission." } });
+    }
+  }
+
+  writeSse(res, { fracture_report_done: true });
   writeProgress(res, recovered ? 94 : 96, recovered ? "Recovered a stable report" : "Formatting the final interface");
-  writeSse(res, { fracture_audit: audit });
-  writeSse(res, { fracture_normalized_json: JSON.stringify(audit, null, 2) });
+  writeSse(res, { fracture_audit: finalAudit });
+  writeSse(res, { fracture_normalized_json: JSON.stringify(finalAudit, null, 2) });
   writeProgress(res, 100, "Report ready");
   writeDone(res);
 }
@@ -239,5 +354,5 @@ export async function handleAnalyze(req, res) {
   writeProgress(res, 86, "Validating the report structure");
   const { audit, recovered } = prepareAuditFromModelText(rawText, essay);
   writeProgress(res, recovered ? 91 : 90, recovered ? "Repairing a malformed model response" : "Report structure verified");
-  return await finish(res, audit, recovered);
+  return await finish(res, audit, recovered, { essay, citationStyle: req.body?.preferences?.citationStyle });
 }
