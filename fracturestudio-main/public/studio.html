@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Fracture Studio helps writers test claims, evidence, assumptions, logic, and rhetoric with clear academic feedback." />
+  <title>Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body>
+<div class="noise"></div>
+
+<!-- ── Nav ─────────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">ARGUMENT ANALYSIS ENGINE</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="/studio" class="nav-link active">Studio</a>
+    <a href="/about" class="nav-link">About</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="index.html" class="nav-cta nav-cta--secondary">Home</a>
+    <a href="settings.html" class="nav-gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<!-- ── Studio ────────────────────────────────────────────────────────── -->
+<div class="studio-shell">
+
+  <!-- Header -->
+  <div class="studio-header">
+    <div class="studio-title-block">
+      <div class="studio-title">Studio / Argument Audit</div>
+      <div class="studio-headline">Fracture the draft.<br><em style="font-family:var(--serif);font-style:italic;">Plan the repair.</em></div>
+    </div>
+    <div class="studio-header-right">
+      <a class="studio-past-work-tab" href="past-work.html">
+        <span>Saved workspace</span>
+        <strong>Past Work</strong>
+        <small>Open earlier drafts and reports</small>
+      </a>
+    </div>
+  </div>
+
+  <!-- Main split -->
+  <div class="studio-main">
+
+    <!-- Input Panel -->
+    <section class="panel" id="inputPanel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Working Draft</div>
+          <div class="panel-sub">Add an essay, speech, case, brief, or paragraph for a structured review.</div>
+          <div class="badge-row">
+            <span class="badge">Structural Analysis</span>
+            <span class="badge">Assumption Audit</span>
+            <span class="badge">Logic &amp; Fallacies</span>
+            <span class="badge">Rhetorical Coaching</span>
+            <span class="badge">Counter-Arguments</span>
+            <span class="badge">Rewrite Suggestions</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="studio-mode-depth-row">
+        <div class="studio-mode-group">
+          <label for="analysisFormat">Mode</label>
+          <select id="analysisFormat">
+            <option value="argument">Argument / Debate</option>
+            <option value="speech">Speech / Presentation</option>
+            <option value="essay">Essay / Academic Writing</option>
+            <option value="college-essay">College Academic Essay</option>
+            <option value="research-paper">Research Paper</option>
+            <option value="rubric">Rubric Grading</option>
+            <option value="model-un">Model UN</option>
+          </select>
+        </div>
+        <div class="studio-depth-group">
+          <label for="depthLevel">Depth</label>
+          <select id="depthLevel">
+            <option value="surface">Surface</option>
+            <option value="medium" selected>Medium</option>
+            <option value="extreme">Extreme</option>
+          </select>
+        </div>
+      </div>
+      <div class="depth-hint-bar" id="depthHintBar">
+        <div class="depth-hint" data-depth="surface">
+          <span class="depth-chip surface">Surface</span>
+          <span>Fast clarity check &mdash; the 3 problems to fix before you submit, each with a direct repair. Quick to read, immediately useful.</span>
+        </div>
+        <div class="depth-hint" data-depth="medium" style="display:flex">
+          <span class="depth-chip medium">Medium</span>
+          <span>Full preparation report &mdash; every major claim, warrant gaps, rebuttal readiness, fallacies, and 4&ndash;6 priority fixes. Like prepping for a regional competition.</span>
+        </div>
+        <div class="depth-hint" data-depth="extreme">
+          <span class="depth-chip extreme">Extreme</span>
+          <span>Forensic tournament audit &mdash; every assumption, 5&ndash;7 opponent attacks with exact rebuttals, dependent claim chains, missing arguments, and impact weighing. Like preparing for nationals.</span>
+        </div>
+      </div>
+
+      <!-- Rubric file upload (shown only in Rubric mode) -->
+      <div class="rubric-upload-row" id="rubricUploadRow" hidden>
+        <div class="rubric-upload-label">
+          <span>Rubric File</span>
+          <small>Upload a rubric (.txt, .pdf, .docx) and Fracture will grade against it — no need to paste it in the text box.</small>
+        </div>
+        <label class="rubric-file-btn" for="rubricFileInput">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload Rubric
+        </label>
+        <input type="file" id="rubricFileInput" accept=".txt,.pdf,.docx,.doc" style="display:none" />
+        <span class="rubric-file-name" id="rubricFileName">No file chosen</span>
+        <button class="rubric-file-clear" id="rubricFileClear" hidden type="button">&times; Remove</button>
+      </div>
+
+      <label class="sr-only" for="essayInput">Argument draft</label>
+      <textarea
+        id="essayInput"
+        placeholder="Paste your writing here — argument, essay, speech, debate case, research paper, or MUN position paper.
+
+Fracture analyzes based on your chosen Mode and Depth.
+
+Rubric Grading: paste your writing, then paste the rubric below it starting with a line: --- RUBRIC ---
+(Or upload a rubric file using the Rubric File button above.)
+Model UN: paste your position paper, opening speech, or resolution."
+      ></textarea>
+
+      <div class="textarea-footer">
+        <span>Best with a clear claim, evidence, warrant, and impact.</span>
+        <span id="charCount">0 chars</span>
+      </div>
+
+      <div class="controls">
+        <button class="btn-sm" id="clearBtn" type="button">Clear</button>
+        <button class="btn-sm" id="loadBtn" type="button">Load Saved</button>
+        <button class="btn-sm" id="saveBtn" type="button">Save</button>
+        <a class="btn-sm" id="rebuttalsBtn" href="rebuttals.html">Prepare Rebuttals</a>
+        <button class="btn-primary" id="analyzeBtn" type="button">Fracture It</button>
+      </div>
+
+      <div class="status-row" id="statusRow" role="status" aria-live="polite">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">Idle</span>
+        <span id="statusDetail" style="color:var(--text-3);font-size:11px;">Waiting for an argument.</span>
+        <span class="progress-pill" id="progressPill">0%</span>
+      </div>
+
+      <div class="progress-note" id="progressNote">Ready when you are</div>
+      <div class="progress-wrap" id="progressTrack" role="progressbar" aria-label="Argument analysis progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="progress-bar" id="progressBar"></div>
+        <span class="progress-bar-label" id="auditProgressLabel">0%</span>
+      </div>
+
+    </section>
+
+    <div class="studio-output-column">
+  <section class="studio-review-stage" aria-label="Fracture review workspace">
+    <div class="analysis-stage-card analysis-stage-map">
+      <div class="analysis-stage-head">
+        <div>
+          <div class="node-kicker">Visual Structure</div>
+          <div class="tool-title" id="visualMapTitle">Argument Map</div>
+        </div>
+        <span class="graph-status">Loads After Audit</span>
+      </div>
+      <div class="analysis-stage-empty" id="argumentMapPlaceholder" aria-hidden="true"></div>
+      <div class="argument-map" id="argumentGraph" hidden></div>
+    </div>
+
+    <!-- Output Panel -->
+    <section class="panel panel--output analysis-stage-card analysis-stage-report" id="outputPanel">
+      <div class="output-header">
+        <div>
+          <div class="node-kicker">Fracture Engine</div>
+          <div class="panel-title">Final Review</div>
+          <div class="panel-sub">A structured account of the draft's strongest and weakest reasoning.</div>
+        </div>
+        <div id="scoreSummary" hidden style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-3);">Overall Score:</span>
+          <span class="score-pill" id="scorePill">—</span>
+        </div>
+      </div>
+
+      <div class="analysis-stage-empty" id="finalReviewPlaceholder" aria-hidden="true"></div>
+
+      <div class="skeleton hidden" id="skeleton"></div>
+
+      <nav class="report-nav" id="reportNav" aria-label="Report sections" hidden>
+        <a href="#report-verdict">Verdict</a>
+        <a href="#report-priorities">Priorities</a>
+        <a href="#report-claims">Claims</a>
+        <a href="#report-attacks">Attacks</a>
+        <a href="#report-rewrites">Rewrites</a>
+      </nav>
+
+      <div id="reportContainer" class="report" aria-live="polite"></div>
+      <div class="json-error hidden" id="jsonError"></div>
+
+      <div class="json-toolbar">
+        <div class="toolbar-left">
+          <button class="btn-sm" id="copyReportBtn" type="button" disabled>Copy Report</button>
+          <button class="btn-sm" id="downloadTextBtn" type="button" disabled>Download Text</button>
+          <button class="btn-sm" id="printReportBtn" type="button" disabled>Print</button>
+          <button class="btn-sm" id="exportBtn" type="button" disabled>Export PDF Report</button>
+          <button class="btn-sm" id="shareBtn" type="button" disabled>Share Link</button>
+        </div>
+      </div>
+    </section>
+  </section>
+    </div>
+  </div>
+
+  <section class="studio-followup tool-card" id="fractureChatCard">
+    <div class="argument-map-head">
+      <div>
+        <div class="node-kicker">Focused Coaching</div>
+        <div class="tool-title">Fracture Chat</div>
+        <p class="tool-copy">Ask for a clearer warrant, a stronger rewrite, a fair counterargument, or the best next revision.</p>
+      </div>
+      <span class="graph-status">Streaming AI</span>
+    </div>
+    <div class="chat-point hidden" id="chatSelectedPoint"></div>
+    <label class="sr-only" for="chatInput">Question for Fracture Chat</label>
+    <textarea class="tool-textarea" id="chatInput" placeholder="Ask Fracture Chat about your draft or select a mapped claim above."></textarea>
+    <div class="tool-actions">
+      <button class="btn-sm tool-run" id="chatBtn" type="button" disabled>Ask Fracture Chat</button>
+      <div class="tool-actions-secondary">
+        <button class="tool-clear" id="chatClearBtn" type="button">Clear conversation</button>
+        <span class="tool-status" id="chatStatus">Ready</span>
+      </div>
+    </div>
+    <div class="tool-progress"><span id="chatProgress"></span></div>
+    <div class="tool-output chat-transcript" id="chatOutput" aria-live="polite"></div>
+  </section>
+
+  <section class="studio-sources-stage analysis-stage-card" aria-label="Citation and data verification area">
+    <div class="analysis-stage-head">
+      <div>
+        <div class="node-kicker">Source Review</div>
+        <div class="tool-title">Citations & Data Check</div>
+      </div>
+      <span class="graph-status">Loads After Audit</span>
+    </div>
+    <div class="analysis-stage-empty analysis-stage-empty--sources" id="worksCitedPlaceholder" aria-hidden="true"></div>
+    <div class="studio-sources" id="sourceVerificationArea" aria-label="Citation generator, data verification, and extra argument research"></div>
+  </section>
+
+  <!-- Studio Footer -->
+  <div class="studio-footer">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <span class="pill-tag">Review Lens: Academic Writing · Debate · Rhetoric</span>
+      <span class="pill-tag">Validated Structure · Essay-Specific · Actionable Feedback</span>
+    </div>
+    <span></span>
+  </div>
+
+</div>
+
+<script src="shared.js"></script>
+<script src="auth.js"></script>
+<script src="source-verification.js"></script>
+<script src="app.js"></script>
+
+<script>
+(function() {
+  var depthSel = document.getElementById('depthLevel');
+  var hints = document.querySelectorAll('.depth-hint');
+  function updateDepthHint() {
+    var val = depthSel ? depthSel.value : 'medium';
+    hints.forEach(function(el) {
+      el.style.display = el.getAttribute('data-depth') === val ? 'flex' : 'none';
+    });
+  }
+  if (depthSel) depthSel.addEventListener('change', updateDepthHint);
+  updateDepthHint();
+})();
+</script>
+
+</body>
+</html>

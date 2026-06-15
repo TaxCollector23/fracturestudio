@@ -1,0 +1,6 @@
+.tools/
+pb_data/
+pb_test_data/
+node_modules/
+.env
+*.log

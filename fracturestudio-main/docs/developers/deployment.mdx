@@ -1,0 +1,31 @@
+---
+title: "Deployment"
+description: "How Fracture Studio is deployed."
+---
+
+Fracture Studio is deployed on Vercel. The same codebase runs locally through Express and in production as Vercel serverless functions.
+
+## How it is structured
+
+- `public/` holds the static frontend (no framework, no build step).
+- `src/` holds the server modules and shared logic.
+- `api/` holds thin serverless wrappers that import from `src/` so the same handlers run in both environments.
+- `vercel.json` defines clean URL rewrites such as `/studio`, `/about`, and `/docs`.
+
+## Deploying
+
+<Steps>
+  <Step title="Connect the repository">
+    Import the GitHub repository into Vercel.
+  </Step>
+  <Step title="Set environment variables">
+    Add the values from your `.env` to the Vercel project settings. See [Environment Variables](/developers/environment-variables).
+  </Step>
+  <Step title="Deploy">
+    Every push to the main branch triggers a deployment.
+  </Step>
+</Steps>
+
+<Note>
+The build command is a no-op because the frontend is static. Output is served from `public/`.
+</Note>
