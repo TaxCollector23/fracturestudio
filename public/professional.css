@@ -1778,3 +1778,82 @@ a.muted-link:hover {
     transform: none !important;
   }
 }
+
+/* ── Rubric file upload row ─────────────────────────────────────────────── */
+.rubric-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin: 0 0 10px;
+  border: 1.5px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface-2, rgba(0,0,0,.03));
+  transition: border-color .2s;
+}
+[data-theme="dark"] .rubric-upload-row {
+  background: rgba(255,255,255,.04);
+}
+.rubric-upload-row:focus-within {
+  border-color: var(--accent, #2563eb);
+}
+.rubric-upload-label {
+  flex: 1;
+  min-width: 160px;
+}
+.rubric-upload-label span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--text);
+}
+.rubric-upload-label small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.rubric-file-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1.5px solid var(--accent, #2563eb);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #2563eb);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+  user-select: none;
+}
+.rubric-file-btn:hover {
+  background: var(--accent, #2563eb);
+  color: #fff;
+}
+.rubric-file-name {
+  font-size: 12px;
+  color: var(--text-3);
+  flex: 1;
+  min-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rubric-file-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+.rubric-file-clear:hover {
+  color: var(--text);
+  background: var(--border);
+}

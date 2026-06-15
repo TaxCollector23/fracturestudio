@@ -96,16 +96,31 @@
       <div class="depth-hint-bar" id="depthHintBar">
         <div class="depth-hint" data-depth="surface">
           <span class="depth-chip surface">Surface</span>
-          <span>Quick check &mdash; top 3 issues, simple fixes. Like reviewing a school essay before submitting.</span>
+          <span>Fast clarity check &mdash; the 3 problems to fix before you submit, each with a direct repair. Quick to read, immediately useful.</span>
         </div>
         <div class="depth-hint" data-depth="medium" style="display:flex">
           <span class="depth-chip medium">Medium</span>
-          <span>Full report &mdash; claims, warrants, rebuttals, sources. Like preparing for a regional debate.</span>
+          <span>Full preparation report &mdash; every major claim, warrant gaps, rebuttal readiness, fallacies, and 4&ndash;6 priority fixes. Like prepping for a regional competition.</span>
         </div>
         <div class="depth-hint" data-depth="extreme">
           <span class="depth-chip extreme">Extreme</span>
-          <span>Forensic audit &mdash; every assumption, attack tree, strategic prep. Like preparing for nationals.</span>
+          <span>Forensic tournament audit &mdash; every assumption, 5&ndash;7 opponent attacks with exact rebuttals, dependent claim chains, missing arguments, and impact weighing. Like preparing for nationals.</span>
         </div>
+      </div>
+
+      <!-- Rubric file upload (shown only in Rubric mode) -->
+      <div class="rubric-upload-row" id="rubricUploadRow" hidden>
+        <div class="rubric-upload-label">
+          <span>Rubric File</span>
+          <small>Upload a rubric (.txt, .pdf, .docx) and Fracture will grade against it — no need to paste it in the text box.</small>
+        </div>
+        <label class="rubric-file-btn" for="rubricFileInput">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload Rubric
+        </label>
+        <input type="file" id="rubricFileInput" accept=".txt,.pdf,.docx,.doc" style="display:none" />
+        <span class="rubric-file-name" id="rubricFileName">No file chosen</span>
+        <button class="rubric-file-clear" id="rubricFileClear" hidden type="button">&times; Remove</button>
       </div>
 
       <label class="sr-only" for="essayInput">Argument draft</label>
@@ -116,6 +131,7 @@
 Fracture analyzes based on your chosen Mode and Depth.
 
 Rubric Grading: paste your writing, then paste the rubric below it starting with a line: --- RUBRIC ---
+(Or upload a rubric file using the Rubric File button above.)
 Model UN: paste your position paper, opening speech, or resolution."
       ></textarea>
 
@@ -153,7 +169,7 @@ Model UN: paste your position paper, opening speech, or resolution."
       <div class="analysis-stage-head">
         <div>
           <div class="node-kicker">Visual Structure</div>
-          <div class="tool-title">Argument Map</div>
+          <div class="tool-title" id="visualMapTitle">Argument Map</div>
         </div>
         <span class="graph-status">Loads After Audit</span>
       </div>
