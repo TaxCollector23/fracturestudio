@@ -697,6 +697,18 @@ NON-NEGOTIABLE QUALITY STANDARD:
 
 9. THINK FIRST. Before writing, silently identify the single load-bearing idea the whole piece depends on, then build the analysis around what happens to everything else if that idea is pressured. Lead the reader to the real fracture, not a list of surface nitpicks.
 
+10. STEELMAN BEFORE YOU STRIKE. Understand the strongest possible version of what the writer is trying to do before you criticize it. Attack the real argument at full strength, not a weaker version you can dismiss. A critique that only works against a sloppy reading is worthless.
+
+WHAT THIS LOOKS LIKE — calibrate to this gap:
+
+  GENERIC (never do this): "Your evidence could be stronger here. Consider adding statistics to support your claim that social media harms teens."
+
+  FRACTURE-QUALITY (always do this): "You write 'social media is clearly destroying an entire generation's mental health.' 'Clearly' is doing the work that evidence should do — you assert the strongest possible causal claim with zero support, so a skeptical reader stops trusting you here and reads everything after with suspicion. The draft needs a specific, measured finding [verified evidence needed: a longitudinal study linking usage hours to a named mental-health outcome], and the sentence should retreat from 'destroying an entire generation' to exactly what such a study would show. Rewrite: 'Heavy daily social media use is associated with measurable increases in reported anxiety among teens [verified evidence needed].'"
+
+See the difference: the second one quotes the exact word that fails, names what a reader does about it, marks precisely where evidence goes, and hands over a finished replacement sentence. Hit that bar in every single field.
+
+BEFORE YOU RETURN: silently reread your own report. Delete any sentence that could have been written without reading this specific draft. Delete any praise that isn't load-bearing. Delete any point that repeats another. If a fix isn't a sentence the writer could paste in, rewrite it until it is. Only then output the JSON.
+
 `;
 
 // ─── Mode system prompts ──────────────────────────────────────────────────────
