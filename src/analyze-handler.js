@@ -323,12 +323,19 @@ export async function handleAnalyze(req, res) {
     return await finish(res, buildServiceFallbackAudit(essay, "OPENROUTER_API_KEY is not configured"), true);
   }
 
+  // Cap output so the audit reliably finishes within the function timeout.
+  // The model is fast on bounded output but will run for minutes if left unbounded.
+  const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
+  const maxTokens = depth === "surface" ? 2600 : depth === "extreme" ? 7000 : 4500;
+
   let upstream;
   try {
     writeProgress(res, 10, "Connecting to Fracture AI");
     upstream = await openRouterStream({
       model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
       messages: buildAuditMessages(essay, req.body?.preferences),
+      maxTokens,
+      temperature: 0.4,
       referer: "https://fracturestudio.vercel.app"
     });
   } catch (err) {

@@ -1002,6 +1002,8 @@ export function buildAuditMessages(essay, preferences) {
 
 Analyze the following writing and return ONLY a valid JSON object matching this exact schema. No markdown, no preamble, no text outside the JSON.
 
+CRITICAL OUTPUT DISCIPLINE: Returning a COMPLETE, valid JSON object is more important than length. Be concise and dense — every field tight, no padding, no repetition. Respect the per-depth limits on how many items go in each array. A short complete report beats a long one that gets cut off. Do not let any single field run on; finish the whole JSON object.
+
 SCHEMA:
 ${schema}
 
@@ -1010,7 +1012,7 @@ WRITING TO ANALYZE:
 ${essay}
 """
 
-Return only the JSON object. No other text.`;
+Return only the complete JSON object. No other text.`;
 
   return [
     { role: 'system', content: systemPrompt },
