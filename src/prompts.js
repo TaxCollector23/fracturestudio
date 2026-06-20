@@ -931,6 +931,7 @@ const LEAN_SCHEMA = `{
   "strengths": [
     { "quote": "exact strong sentence verbatim", "why": "what specifically makes it work" }
   ],
+  "_strengths_note": "REQUIRED: include at least 1 strength (2-3 if the piece is strong). Never leave strengths empty.",
   "claims": [
     {
       "quote": "exact claim verbatim",
@@ -939,6 +940,7 @@ const LEAN_SCHEMA = `{
       "fix": "one concrete repair, or empty string if the claim is already strong"
     }
   ],
+  "_claims_note": "REQUIRED: rate EVERY major claim in the piece here (typically 3-6), including strong ones. Never leave claims empty — this is the claim-by-claim map and is separate from priority_fixes.",
   "collapse_point": {
     "quote": "the single load-bearing sentence the argument most depends on",
     "why_it_collapses": "what breaks across the piece if this point fails",
