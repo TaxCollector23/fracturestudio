@@ -403,6 +403,8 @@ export function normalizeAudit(audit, essay) {
     .map((c) => ({
       quote: sourceQuoteOr(c?.quote, text, ""),
       rating: normalizeRating(c?.rating),
+      warrant: stringOr(c?.warrant, ""),
+      missing_warrant: stringOr(c?.missing_warrant, ""),
       diagnosis: stringOr(c?.diagnosis, ""),
       fix: stringOr(c?.fix, "")
     }))
@@ -412,6 +414,45 @@ export function normalizeAudit(audit, essay) {
     normalized.counterargument = {
       strongest_objection: stringOr(input.counterargument.strongest_objection, ""),
       how_to_answer: stringOr(input.counterargument.how_to_answer, "")
+    };
+  }
+  // Preserve the richer v6-style sections the model produced.
+  normalized.assumption_audit = ensureArray(input.assumption_audit)
+    .map((a) => ({
+      assumption: stringOr(a?.assumption, ""),
+      load_bearing: normalizeLoad(a?.load_bearing),
+      if_rejected: stringOr(a?.if_rejected, a?.if_changed, a?.vulnerability, ""),
+      how_to_defend: stringOr(a?.how_to_defend, a?.justification, a?.defense, "")
+    }))
+    .filter((a) => a.assumption);
+  normalized.logical_fallacies = ensureArray(input.logical_fallacies)
+    .map((f) => ({
+      name: stringOr(f?.name, ""),
+      quote: sourceQuoteOr(f?.quote, text, ""),
+      explanation: stringOr(f?.explanation, ""),
+      fix: stringOr(f?.fix, "")
+    }))
+    .filter((f) => f.name && f.explanation);
+  normalized.attack_tree = ensureArray(input.attack_tree)
+    .map((t) => ({
+      attack: stringOr(t?.attack, ""),
+      targets: stringOr(t?.targets, ""),
+      why_dangerous: stringOr(t?.why_dangerous, ""),
+      response: stringOr(t?.response, "")
+    }))
+    .filter((t) => t.attack);
+  if (input.rhetorical_analysis && typeof input.rhetorical_analysis === "object") {
+    const ra = input.rhetorical_analysis;
+    normalized.rhetorical_analysis = {
+      strongest_sentence: {
+        quote: sourceQuoteOr(ra.strongest_sentence?.quote, text, ""),
+        why: stringOr(ra.strongest_sentence?.why, "")
+      },
+      weakest_sentence: {
+        quote: sourceQuoteOr(ra.weakest_sentence?.quote, text, ""),
+        why: stringOr(ra.weakest_sentence?.why, ""),
+        fix: stringOr(ra.weakest_sentence?.fix, "")
+      }
     };
   }
   // Keep the model's own score_breakdown + explanations when it used lean keys

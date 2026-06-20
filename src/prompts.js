@@ -597,17 +597,17 @@ function getDepthInstruction(depth) {
     case 'surface':
       return `
 DEPTH LEVEL: SURFACE — Quick Clarity Check. A fast, high-signal pre-submission pass.
-Fill the schema but keep it tight: up to 3 claims, up to 3 priority_fixes (the highest-impact only), 1-2 strengths, a 3-4 sentence verdict, a 2-sentence coaching_note. If the piece is strong, say so and keep priority_fixes to only what genuinely matters — do not pad to hit a count. Each field one or two sentences. No filler.`;
+Keep it tight: up to 3 claims, up to 3 priority_fixes (highest-impact only), 1-2 strengths, up to 2 assumption_audit items, only clear logical_fallacies (often none), up to 2 attack_tree items, a 3-4 sentence verdict, a 2-sentence coaching_note. Still fill rhetorical_analysis, collapse_point, and counterargument briefly. If the piece is strong, say so and do not pad to hit counts. Each field one or two sentences. No filler.`;
 
     case 'extreme':
       return `
 DEPTH LEVEL: EXTREME — Forensic Audit. The deepest read, but still a COMPLETE JSON object.
-Fill the schema thoroughly: analyze up to 7 of the most important claims, up to 7 priority_fixes ordered by impact, 2-3 strengths, a 6-8 sentence verdict, a 3-4 sentence coaching_note, and the most pressure-tested collapse_point and counterargument you can build. Quote exact text for every point and explain the reasoning mechanism, not just a label. Be thorough but concise per field so the whole JSON finishes — a complete forensic report beats an unfinished one. Ruthless calibration is not stingy: genuinely excellent work still earns the 90s or 100.`;
+Fill the schema thoroughly: up to 6 of the most important claims (each with warrant and missing_warrant), up to 6 priority_fixes ordered by impact, 2-3 strengths, 3-4 assumption_audit items, every real logical_fallacy you can quote, up to 4 attack_tree items, full rhetorical_analysis, a pressure-tested collapse_point, and the strongest counterargument. Quote exact text for every point and explain the reasoning mechanism, not just a label. Be thorough but concise per field so the whole JSON finishes — a complete forensic report beats an unfinished one. Ruthless calibration is not stingy: genuinely excellent work still earns the 90s or 100.`;
 
     default: // medium
       return `
 DEPTH LEVEL: MEDIUM — Serious Report. A complete, clear picture with specific repairs.
-Fill the schema fully: 3-5 of the most important claims, 4-6 priority_fixes, 1-2 strengths, a 5-6 sentence verdict, a 2-3 sentence coaching_note, a real collapse_point, and the strongest counterargument with how to answer it. Each field tight and specific. If the piece is strong, keep priority_fixes to only what genuinely matters rather than padding to a count.`;
+Fill the schema fully but tightly: 3-5 of the most important claims (with warrant and missing_warrant), 4-6 priority_fixes, 1-2 strengths, 2-3 assumption_audit items, the clear logical_fallacies (often 0-2), up to 3 attack_tree items, rhetorical_analysis, a real collapse_point, and the strongest counterargument with how to answer it. Each field tight and specific. If the piece is strong, keep priority_fixes to only what genuinely matters rather than padding to a count.`;
   }
 }
 
@@ -936,16 +936,47 @@ const LEAN_SCHEMA = `{
     {
       "quote": "exact claim verbatim",
       "rating": "STRONG or MODERATE or WEAK",
+      "warrant": "the reasoning that connects this claim's evidence to its conclusion (state it even if the draft only implies it)",
+      "missing_warrant": "the logical step the draft skips, or empty string if the warrant is complete",
       "diagnosis": "the precise reasoning strength or the exact flaw — name the mechanism",
       "fix": "one concrete repair, or empty string if the claim is already strong"
     }
   ],
   "_claims_note": "REQUIRED: rate EVERY major claim in the piece here (typically 3-6), including strong ones. Never leave claims empty — this is the claim-by-claim map and is separate from priority_fixes.",
+  "assumption_audit": [
+    {
+      "assumption": "an unstated idea the argument silently depends on",
+      "load_bearing": "HIGH or MEDIUM or LOW",
+      "if_rejected": "what breaks if the reader does not grant this assumption",
+      "how_to_defend": "how to state, support, or qualify it"
+    }
+  ],
+  "logical_fallacies": [
+    {
+      "name": "the exact fallacy or reasoning error",
+      "quote": "verbatim passage where it occurs",
+      "explanation": "why this specific reasoning fails — the mechanism, not just the label",
+      "fix": "what to write instead"
+    }
+  ],
+  "_fallacies_note": "Only include real fallacies you can quote. If there are none, return an empty array — do not invent them.",
   "collapse_point": {
     "quote": "the single load-bearing sentence the argument most depends on",
     "why_it_collapses": "what breaks across the piece if this point fails",
     "strongest_attack": "the most damaging fair objection to this point",
     "strongest_defense": "the best available repair or defense"
+  },
+  "attack_tree": [
+    {
+      "attack": "a distinct way a skilled opponent or skeptical reader would attack the argument",
+      "targets": "the exact claim or warrant under attack",
+      "why_dangerous": "how the attack spreads if unanswered",
+      "response": "the exact rebuttal the writer can give"
+    }
+  ],
+  "rhetorical_analysis": {
+    "strongest_sentence": { "quote": "the single best sentence verbatim", "why": "why it lands" },
+    "weakest_sentence": { "quote": "the single weakest sentence verbatim", "why": "what is wrong with it", "fix": "a finished rewrite" }
   },
   "priority_fixes": [
     {

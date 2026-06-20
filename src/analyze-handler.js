@@ -230,10 +230,64 @@ function readableAuditSections(audit) {
         return [
           `${index + 1}. ${compact(firstText(claim.quote, "Claim"), 360)}`,
           firstText(claim.rating) ? `Rating: ${claim.rating}` : "",
+          firstText(claim.warrant) ? `Warrant: ${compact(claim.warrant, 240)}` : "",
+          firstText(claim.missing_warrant) ? `Missing step: ${compact(claim.missing_warrant, 240)}` : "",
           firstText(claim.diagnosis) ? `Diagnosis: ${compact(claim.diagnosis)}` : "",
           firstText(claim.fix) ? `Repair: ${compact(claim.fix)}` : ""
         ].filter(Boolean).join(" — ");
       }).join("\n")
+    });
+  }
+
+  const assumptions = asArray(parsed.assumption_audit);
+  if (assumptions.length) {
+    sections.push({
+      title: "Hidden assumptions",
+      body: assumptions.slice(0, 4).map((a, i) => [
+        `${i + 1}. ${compact(firstText(a.assumption, "Assumption"), 320)}`,
+        firstText(a.load_bearing) ? `Load-bearing: ${a.load_bearing}` : "",
+        firstText(a.if_rejected) ? `If rejected: ${compact(a.if_rejected, 240)}` : "",
+        firstText(a.how_to_defend) ? `Defend by: ${compact(a.how_to_defend, 240)}` : ""
+      ].filter(Boolean).join(" — ")).join("\n")
+    });
+  }
+
+  const fallacies = asArray(parsed.logical_fallacies);
+  if (fallacies.length) {
+    sections.push({
+      title: "Logical fallacies",
+      body: fallacies.slice(0, 5).map((f, i) => [
+        `${i + 1}. ${firstText(f.name, "Reasoning error")}`,
+        firstText(f.quote) ? `Text: ${compact(f.quote, 220)}` : "",
+        firstText(f.explanation) ? `Why: ${compact(f.explanation, 260)}` : "",
+        firstText(f.fix) ? `Fix: ${compact(f.fix, 240)}` : ""
+      ].filter(Boolean).join(" — ")).join("\n")
+    });
+  }
+
+  const attacks = asArray(parsed.attack_tree);
+  if (attacks.length) {
+    sections.push({
+      title: "Opponent attacks",
+      body: attacks.slice(0, 4).map((t, i) => [
+        `${i + 1}. ${compact(firstText(t.attack, "Attack"), 300)}`,
+        firstText(t.targets) ? `Targets: ${compact(t.targets, 180)}` : "",
+        firstText(t.response) ? `Response: ${compact(t.response, 260)}` : ""
+      ].filter(Boolean).join(" — ")).join("\n")
+    });
+  }
+
+  const rhet = parsed.rhetorical_analysis || {};
+  const strongSent = (rhet.strongest_sentence || {});
+  const weakSent = (rhet.weakest_sentence || {});
+  if (firstText(strongSent.quote) || firstText(weakSent.quote)) {
+    sections.push({
+      title: "Standout sentences",
+      body: [
+        firstText(strongSent.quote) ? `Strongest: ${compact(strongSent.quote, 260)}${firstText(strongSent.why) ? ` — ${compact(strongSent.why, 200)}` : ""}` : "",
+        firstText(weakSent.quote) ? `Weakest: ${compact(weakSent.quote, 260)}${firstText(weakSent.why) ? ` — ${compact(weakSent.why, 200)}` : ""}` : "",
+        firstText(weakSent.fix) ? `Rewrite: ${compact(weakSent.fix, 280)}` : ""
+      ].filter(Boolean).join("\n")
     });
   }
 
@@ -330,9 +384,12 @@ function buildEvidenceContext(sourceData) {
   const claims = asArr(sourceData && sourceData.claims).slice(0, 5);
   if (!claims.length) return "";
   return claims.map((c, i) => {
+    const status = sourceStatusLabel(c.support_status);
+    const supported = c.support_status === "likely_supported";
     const top = asArr(c.sources).find((s) => s.url);
-    const src = top ? ` (top result: ${firstNonEmpty(top.site_name, top.title, top.url)})` : "";
-    return `${i + 1}. "${clip(firstNonEmpty(c.claim, c.text, "claim"), 160)}" — web check: ${sourceStatusLabel(c.support_status)}${src}`;
+    const src = supported && top ? ` Real source found: ${firstNonEmpty(top.site_name, top.title)} (${top.url}).` : "";
+    const note = !supported && firstNonEmpty(c.verification_note) ? ` Note: ${clip(c.verification_note, 160)}` : "";
+    return `${i + 1}. "${clip(firstNonEmpty(c.claim, c.text, "claim"), 150)}" — web check: ${status}.${src}${note}`;
   }).join("\n");
 }
 
@@ -358,7 +415,7 @@ export async function handleAnalyze(req, res) {
   // Cap output so the audit reliably finishes within the function timeout.
   // The model is fast on bounded output but will run for minutes if left unbounded.
   const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
-  const maxTokens = depth === "surface" ? 2200 : depth === "extreme" ? 5000 : 3500;
+  const maxTokens = depth === "surface" ? 2800 : depth === "extreme" ? 6000 : 4200;
   const citationStyle = req.body?.preferences?.citationStyle;
 
   // STEP 1 — Check the draft's factual claims against the live web BEFORE grading,

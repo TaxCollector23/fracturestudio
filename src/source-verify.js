@@ -1,11 +1,11 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
-const CLAIM_LIMIT = 5;
+const CLAIM_LIMIT = 4;
 const RESULTS_PER_CLAIM = 3;
 const RESEARCH_RESULT_LIMIT = 5;
-const SEARCH_TIMEOUT_MS = 4500;
-const PAGE_TIMEOUT_MS = 4000;
+const SEARCH_TIMEOUT_MS = 3500;
+const PAGE_TIMEOUT_MS = 3000;
 const PAGE_MAX_BYTES = 350000;
 const MAX_REDIRECTS = 3;
 const VERIFY_DEADLINE_MS = 50000;
