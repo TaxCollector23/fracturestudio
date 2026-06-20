@@ -1,53 +1,53 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Professional interface layer. Loaded after legacy page styles. */
+/* Professional interface layer — redesign-for-rangan design language (zinc / monochrome). */
 :root,
 [data-theme="dark"] {
-  --bg: #080a0d;
-  --bg-2: #0d1015;
-  --surface: #12161c;
-  --surface-2: #191e26;
-  --surface-3: #222933;
-  --border: rgba(232, 237, 244, .12);
-  --border-2: rgba(232, 237, 244, .25);
-  --text: #f5f7fa;
-  --text-1: #f5f7fa;
-  --text-2: #b6bec9;
-  --text-3: #828c99;
-  --accent: #3276ff;
-  --accent-2: #73a2ff;
-  --accent-3: #205fe0;
-  --success: #80a8d8;
-  --warning: #a8b5c5;
-  --danger: #d06f77;
-  --sans: "Geist", system-ui, sans-serif;
-  --serif: "Geist", system-ui, sans-serif;
-  --mono: "Geist", system-ui, sans-serif;
-  --radius: 4px;
-  --shadow: 0 14px 40px rgba(0, 0, 0, .24);
+  --bg: #09090b;          /* zinc-950 */
+  --bg-2: #0c0c0e;
+  --surface: #0c0c0e;
+  --surface-2: #18181b;   /* zinc-900 */
+  --surface-3: #27272a;   /* zinc-800 */
+  --border: rgba(255, 255, 255, .09);
+  --border-2: rgba(255, 255, 255, .18);
+  --text: #fafafa;        /* zinc-50 */
+  --text-1: #fafafa;
+  --text-2: #a1a1aa;      /* zinc-400 */
+  --text-3: #52525b;      /* zinc-600 */
+  --accent: #fafafa;      /* monochrome: primary action is near-white on black */
+  --accent-2: #e4e4e7;    /* zinc-200 */
+  --accent-3: #d4d4d8;    /* zinc-300 */
+  --success: #22c55e;     /* green-500 live dot */
+  --warning: #a1a1aa;
+  --danger: #ef4444;
+  --sans: "Inter", system-ui, sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius: 3px;
+  --shadow: 0 14px 40px rgba(0, 0, 0, .45);
   --glow: none;
 }
 
 [data-theme="light"] {
-  /* Pure white base, black as primary accent, dark blue as secondary accent. No grays. */
+  /* Monochrome light: white base, black ink and accent (matches the zinc identity). */
   --bg: #ffffff;
-  --bg-2: #ffffff;
+  --bg-2: #fafafa;
   --surface: #ffffff;
-  --surface-2: #ffffff;
-  --surface-3: #ffffff;
-  --border: rgba(0, 0, 0, .16);
-  --border-2: rgba(0, 0, 0, .42);
-  --text: #000000;
-  --text-1: #000000;
-  --text-2: #000000;
-  --text-3: #000000;
-  --accent: #000000;
-  --accent-2: #11307a;
-  --accent-3: #0a2360;
-  --success: #11307a;
-  --warning: #000000;
-  --danger: #a3151d;
-  --shadow: 0 12px 30px rgba(0, 0, 0, .10);
+  --surface-2: #f4f4f5;
+  --surface-3: #e4e4e7;
+  --border: rgba(0, 0, 0, .12);
+  --border-2: rgba(0, 0, 0, .30);
+  --text: #09090b;
+  --text-1: #09090b;
+  --text-2: #3f3f46;
+  --text-3: #71717a;
+  --accent: #09090b;
+  --accent-2: #18181b;
+  --accent-3: #000000;
+  --success: #16a34a;
+  --warning: #71717a;
+  --danger: #dc2626;
+  --shadow: 0 12px 30px rgba(0, 0, 0, .08);
   --glow: none;
 }
 
@@ -159,12 +159,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border: 1px solid var(--accent);
   border-radius: 3px;
   box-shadow: none;
-  color: #ffffff;
+  color: var(--bg);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 8px 13px;
 }
-.nav-cta:hover { background: var(--accent-3); transform: none; }
+.nav-cta:hover { background: #ffffff; transform: none; }
+[data-theme="light"] .nav-cta:hover { background: #18181b; }
 .nav-cta--secondary { background: transparent; border-color: var(--border-2); color: var(--text); }
 .nav-gear { align-items: center; display: inline-flex; font-size: 12px; padding: 0 10px; text-decoration: none; }
 .nav-gear svg { display: block; fill: currentColor; height: 16px; width: 16px; }
@@ -179,47 +180,49 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 700;
   letter-spacing: .01em;
 }
+/* Primary = solid near-white button with dark text (redesign signature). */
 .btn-primary {
   background: var(--accent) !important;
   border: 1px solid var(--accent) !important;
-  color: #ffffff !important;
-  font-family: var(--sans) !important;
-  font-weight: 700 !important;
-  letter-spacing: .005em !important;
-  transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease !important;
-}
-.btn-primary:hover { background: var(--accent-3) !important; border-color: var(--accent-3) !important; transform: translateY(-1px) !important; box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 28%, transparent) !important; }
-.btn-primary[aria-busy="true"], .btn-sm[aria-busy="true"] { cursor: progress; opacity: .72; }
-.btn-secondary, .btn-sm {
-  background: transparent !important;
-  border: 1px solid color-mix(in srgb, var(--accent-2) 55%, transparent) !important;
-  color: var(--text) !important;
+  color: var(--bg) !important;
   font-family: var(--sans) !important;
   font-weight: 600 !important;
+  letter-spacing: .005em !important;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease !important;
+}
+.btn-primary:hover { background: #ffffff !important; border-color: #ffffff !important; transform: translateY(-1px) !important; }
+.btn-primary[aria-busy="true"], .btn-sm[aria-busy="true"] { cursor: progress; opacity: .72; }
+/* Secondary = quiet zinc outline. */
+.btn-secondary, .btn-sm {
+  background: transparent !important;
+  border: 1px solid var(--border-2) !important;
+  color: var(--text-2) !important;
+  font-family: var(--sans) !important;
+  font-weight: 500 !important;
   letter-spacing: .005em !important;
   text-decoration: none !important;
   transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease !important;
 }
 .btn-secondary:hover, .btn-sm:hover {
-  background: color-mix(in srgb, var(--accent-2) 10%, transparent) !important;
-  border-color: var(--accent-2) !important;
+  background: var(--surface-2) !important;
+  border-color: var(--text-3) !important;
   color: var(--text) !important;
   transform: translateY(-1px) !important;
 }
 .controls .btn-sm, .json-toolbar .btn-sm {
   background: transparent !important;
-  border-color: color-mix(in srgb, var(--accent-2) 55%, transparent) !important;
-  color: var(--text) !important;
+  border-color: var(--border-2) !important;
+  color: var(--text-2) !important;
 }
 .controls .btn-sm:hover, .json-toolbar .btn-sm:hover {
-  background: color-mix(in srgb, var(--accent-2) 12%, transparent) !important;
-  border-color: var(--accent-2) !important;
+  background: var(--surface-2) !important;
+  border-color: var(--text-3) !important;
   color: var(--text) !important;
 }
 input, textarea, select, .admin-field {
   background: var(--bg-2) !important;
   border: 1px solid var(--border) !important;
-  border-radius: 6px !important;
+  border-radius: var(--radius) !important;
   color: var(--text) !important;
   box-shadow: none !important;
 }
@@ -248,7 +251,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent) !importa
   margin: 26px 0;
   -webkit-text-fill-color: currentColor;
 }
-.hero-title em { color: var(--accent-2); font-style: normal; -webkit-text-fill-color: currentColor; }
+/* Hero statement is all white (per request); second line stays serif-italic for elegance. */
+.hero-title em { color: var(--text); font-style: italic; -webkit-text-fill-color: currentColor; }
 .hero-sub { color: var(--text-2); font-size: 19px; line-height: 1.7; margin: 0; max-width: 700px; }
 .hero-actions { justify-content: flex-start; margin-top: 34px; }
 .hero-score-preview {
@@ -596,7 +600,7 @@ textarea#essayInput { font-size: 17px; line-height: 1.7; min-height: 560px; padd
   border-radius: 2px !important;
   box-shadow: none !important;
 }
-.mission-visual [style*="linear-gradient"], .mission-visual [style*="rgba(108,99,255"] {
+.mission-visual [style*="linear-gradient"], .mission-visual [style*="rgba(255,255,255"] {
   background: var(--bg-2) !important;
   border-color: var(--border) !important;
   border-radius: 5px !important;
