@@ -422,6 +422,23 @@ export function normalizeAudit(audit, essay) {
     if (keys.some((k) => !legacy.includes(k))) {
       const leanBreakdown = {};
       for (const k of keys) leanBreakdown[k] = clampInt(input.score_breakdown[k], 0, 0, 25);
+      // Keep the four /25 dimensions consistent with the overall score: if they
+      // don't sum to it (the model often fills them carelessly), rescale.
+      if (keys.length === 4 && Number.isFinite(normalized.overall_score)) {
+        const sum = keys.reduce((t, k) => t + leanBreakdown[k], 0);
+        if (sum !== normalized.overall_score) {
+          const scale = sum > 0 ? normalized.overall_score / sum : 0;
+          let running = 0;
+          keys.forEach((k, i) => {
+            if (i < keys.length - 1) {
+              leanBreakdown[k] = Math.max(0, Math.min(25, Math.round((sum > 0 ? leanBreakdown[k] : normalized.overall_score / 4) * (sum > 0 ? scale : 1))));
+              running += leanBreakdown[k];
+            } else {
+              leanBreakdown[k] = Math.max(0, Math.min(25, normalized.overall_score - running));
+            }
+          });
+        }
+      }
       normalized.score_breakdown = leanBreakdown;
       if (input.score_explanations && typeof input.score_explanations === "object") {
         normalized.score_explanations = input.score_explanations;
