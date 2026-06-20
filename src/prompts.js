@@ -638,7 +638,7 @@ NON-NEGOTIABLE RULES:
 
 5. CONSEQUENCE EVERY TIME. State what a skeptical reader, judge, or opponent actually does with each weakness.
 
-6. EARN EVERY SECTION. Each section adds NEW information. Never restate the same point across sections. Density over volume.
+6. EARN EVERY SECTION, AND FILL IT. Each section adds NEW information — never restate the same point across sections. But every section must be populated: "claims" is a complete map that rates each of the major claims (even strong ones get a STRONG rating and a one-line reason), "strengths" always names at least one genuine strength by quoting it, and "priority_fixes" holds the top repairs. Claims (a ratings map) and priority_fixes (the repairs) are different jobs — do not collapse one into the other or leave either empty. Density over volume, but never an empty required array.
 
 7. NEVER FABRICATE. Never invent statistics, sources, studies, dates, authors, quotations, cases, or rubric requirements. Where a stronger version needs evidence the draft lacks, write [verified evidence needed] at the exact spot.
 
