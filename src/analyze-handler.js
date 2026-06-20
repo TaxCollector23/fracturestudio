@@ -148,40 +148,55 @@ function compact(value, max = 520) {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + "…" : text;
 }
 
+function prettyDimension(key) {
+  return String(key || "")
+    .replace(/_/g, " ")
+    .replace(/\band\b/g, "&")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function readableAuditSections(audit) {
   const parsed = audit && typeof audit === "object" ? audit : {};
-  const scores = parsed.score_breakdown || {};
-  const thesis = (parsed.argument_strength || {}).thesis || {};
+  const scores = parsed.score_breakdown && typeof parsed.score_breakdown === "object" ? parsed.score_breakdown : {};
+  const thesis = parsed.thesis || {};
   const collapse = parsed.collapse_point || {};
-  const fixes = asArray(parsed.priority_fixes).slice(0, 5);
-  const attacks = asArray(parsed.attack_tree).slice(0, 4);
-  const claims = asArray((parsed.argument_strength || {}).claims).slice(0, 4);
+  const counter = parsed.counterargument || {};
+  const fixes = asArray(parsed.priority_fixes);
+  const claims = asArray(parsed.claims);
+  const strengths = asArray(parsed.strengths);
 
   const sections = [
     {
       title: "Verdict",
       body: [
         typeof parsed.overall_score === "number" ? `Overall score: ${parsed.overall_score}/100 — ${scoreLabel(parsed.overall_score)}.` : scoreLabel(parsed.overall_score) + ".",
-        firstText(parsed.verdict, "Fracture found the main pressure points and built a revision path.")
-      ].filter(Boolean).join("\n")
-    },
-    {
-      title: "Score breakdown",
-      body: [
-        `Argument strength: ${scores.argument_strength ?? "—"}/25`,
-        `Assumption safety: ${scores.assumption_audit ?? "—"}/25`,
-        `Logic: ${scores.logic ?? "—"}/25`,
-        `Rhetoric: ${scores.rhetoric ?? "—"}/25`
-      ].join("\n")
-    },
-    {
-      title: "Thesis check",
-      body: [
-        firstText(thesis.quote, "No clear thesis was detected."),
-        firstText(thesis.assessment, "The thesis needs to make a clear claim that the rest of the argument can prove.")
+        firstText(parsed.verdict, "Fracture analyzed the writing and built a revision path."),
+        firstText(parsed.coaching_note) ? `Where to start: ${compact(parsed.coaching_note, 600)}` : ""
       ].filter(Boolean).join("\n")
     }
   ];
+
+  const scoreLines = Object.keys(scores).map((key) => `${prettyDimension(key)}: ${scores[key] ?? "—"}/25`);
+  if (scoreLines.length) {
+    sections.push({ title: "Score breakdown", body: scoreLines.join("\n") });
+  }
+
+  sections.push({
+    title: "Thesis check",
+    body: [
+      firstText(thesis.quote, "No single thesis sentence was detected — the central claim may be implied rather than stated."),
+      firstText(thesis.assessment)
+    ].filter(Boolean).join("\n")
+  });
+
+  if (strengths.length) {
+    sections.push({
+      title: "What works",
+      body: strengths.slice(0, 3).map((s, i) =>
+        `${i + 1}. ${compact(firstText(s.quote, "Strength"), 320)}${firstText(s.why) ? ` — ${compact(s.why, 280)}` : ""}`
+      ).join("\n")
+    });
+  }
 
   fixes.forEach((fix, index) => {
     sections.push({
@@ -191,25 +206,27 @@ function readableAuditSections(audit) {
         fix.quote ? `Text: ${compact(fix.quote)}` : "",
         firstText(fix.why_it_matters) ? `Why it matters: ${compact(fix.why_it_matters)}` : "",
         firstText(fix.exact_fix) ? `Exact fix: ${compact(fix.exact_fix)}` : "",
-        firstText(fix.rewrite) ? `Possible rewrite: ${compact(fix.rewrite)}` : ""
+        firstText(fix.rewrite) ? `Rewrite: ${compact(fix.rewrite)}` : ""
       ].filter(Boolean).join("\n")
     });
   });
 
-  sections.push({
-    title: "Collapse point",
-    body: [
-      firstText(collapse.quote, "No single collapse point was isolated."),
-      firstText(collapse.why_it_collapses) ? `Why it collapses: ${compact(collapse.why_it_collapses)}` : "",
-      firstText(collapse.strongest_attack, collapse.opponent_attack) ? `Opponent attack: ${compact(firstText(collapse.strongest_attack, collapse.opponent_attack))}` : "",
-      firstText(collapse.strongest_defense, collapse.reinforcement) ? `Best repair: ${compact(firstText(collapse.strongest_defense, collapse.reinforcement))}` : ""
-    ].filter(Boolean).join("\n")
-  });
+  if (firstText(collapse.quote)) {
+    sections.push({
+      title: "Collapse point",
+      body: [
+        firstText(collapse.quote),
+        firstText(collapse.why_it_collapses) ? `Why it matters most: ${compact(collapse.why_it_collapses)}` : "",
+        firstText(collapse.strongest_attack) ? `Strongest attack: ${compact(collapse.strongest_attack)}` : "",
+        firstText(collapse.strongest_defense) ? `Best defense: ${compact(collapse.strongest_defense)}` : ""
+      ].filter(Boolean).join("\n")
+    });
+  }
 
   if (claims.length) {
     sections.push({
       title: "Key claims",
-      body: claims.map((claim, index) => {
+      body: claims.slice(0, 7).map((claim, index) => {
         return [
           `${index + 1}. ${compact(firstText(claim.quote, "Claim"), 360)}`,
           firstText(claim.rating) ? `Rating: ${claim.rating}` : "",
@@ -220,24 +237,21 @@ function readableAuditSections(audit) {
     });
   }
 
-  if (attacks.length) {
+  if (firstText(counter.strongest_objection)) {
     sections.push({
-      title: "Opponent pressure",
-      body: attacks.map((attack, index) => {
-        return [
-          `${index + 1}. ${compact(firstText(attack.attack, attack.why_dangerous, "Opponent attack"), 360)}`,
-          firstText(attack.response) ? `Response: ${compact(attack.response)}` : "",
-          firstText(attack.crossfire_question) ? `Question: ${compact(attack.crossfire_question)}` : ""
-        ].filter(Boolean).join(" — ");
-      }).join("\n")
+      title: "Strongest counterargument",
+      body: [
+        compact(counter.strongest_objection, 480),
+        firstText(counter.how_to_answer) ? `How to answer: ${compact(counter.how_to_answer)}` : ""
+      ].filter(Boolean).join("\n")
     });
   }
 
   sections.push({
     title: "Revision path",
     body: fixes.length
-      ? fixes.slice(0, 4).map((fix, index) => `${index + 1}. ${compact(firstText(fix.exact_fix, fix.problem, "Repair this issue."), 520)}`).join("\n")
-      : "Start by clarifying the thesis, then add one direct warrant and one credible source for the main claim."
+      ? fixes.slice(0, 5).map((fix, index) => `${index + 1}. ${compact(firstText(fix.exact_fix, fix.problem, "Repair this issue."), 520)}`).join("\n")
+      : "This draft is in strong shape — focus on the refinements noted above rather than structural repairs."
   });
 
   return sections.filter((section) => firstText(section.body));
@@ -326,7 +340,7 @@ export async function handleAnalyze(req, res) {
   // Cap output so the audit reliably finishes within the function timeout.
   // The model is fast on bounded output but will run for minutes if left unbounded.
   const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
-  const maxTokens = depth === "surface" ? 2600 : depth === "extreme" ? 7000 : 4500;
+  const maxTokens = depth === "surface" ? 2200 : depth === "extreme" ? 5000 : 3500;
 
   let upstream;
   try {

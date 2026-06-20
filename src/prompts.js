@@ -596,78 +596,18 @@ function getDepthInstruction(depth) {
   switch (depth) {
     case 'surface':
       return `
-DEPTH LEVEL: SURFACE — Quick Clarity Check
-
-You are a sharp, experienced writing coach doing a fast pre-submission pass. Your job is to identify the THREE most important problems and give the writer something they can act on in the next 20 minutes.
-
-SCOPE:
-- Identify exactly 3 priority_fixes — no more, no less
-- For each: one crisp problem label, one quoted sentence that shows the problem, one concrete repair sentence the writer can use immediately
-- Write a 3-sentence verdict: what the piece does right, what the single biggest problem is, and the one thing to fix first
-- Give an overall_score and a simple score_breakdown (4–5 dimensions, no sub-components)
-- Skip: assumption audit, attack trees, rebuttal prep, extra arguments, impact weighing, dependency analysis, source quality deep-dives
-
-TONE AND STYLE:
-- Encouraging but precise — like a teacher leaving a margin note before a submission deadline
-- No bullet lists inside explanations — just clean, direct sentences
-- Each fix explanation must be two sentences maximum
-- Do NOT pad. The user wants a fast, useful read, not a full forensic report.
-
-OUTPUT CONSTRAINT:
-Surface depth means LESS output, not less quality. Fewer things to fix, each fix more actionable and easier to understand. A perfect Surface report makes the writer immediately confident about what to do next.`;
+DEPTH LEVEL: SURFACE — Quick Clarity Check. A fast, high-signal pre-submission pass.
+Fill the schema but keep it tight: up to 3 claims, up to 3 priority_fixes (the highest-impact only), 1-2 strengths, a 3-4 sentence verdict, a 2-sentence coaching_note. If the piece is strong, say so and keep priority_fixes to only what genuinely matters — do not pad to hit a count. Each field one or two sentences. No filler.`;
 
     case 'extreme':
       return `
-DEPTH LEVEL: EXTREME — Forensic Tournament Audit
-
-You are a senior forensic debate coach and academic editor preparing someone for a state or national championship — or helping them turn a draft into genuinely exceptional work. Leave nothing unchecked.
-
-SCOPE — ALL OF THE FOLLOWING ARE REQUIRED:
-- Score every dimension with ruthless calibration. No grade inflation. No charity for weak reasoning. But ruthless is not stingy — genuinely excellent work still earns 90s or a 100, and you must not invent flaws to avoid a high score.
-- Thesis: test it against 3 adversarial readings. Show exactly how each reading attacks the thesis, and how to make the thesis survive all three.
-- Claims: analyze EVERY claim — quote, rating, evidence used, warrant quality, missing warrant, impact, exact opponent attack, exact fix, and a complete rewrite
-- Logical fallacies: name every fallacy, quote the exact passage, explain the reasoning failure mechanism (not just the label), write the corrected version
-- Assumption audit: surface 4–6 hidden assumptions. For each: what collapses if the reader rejects it, and the exact sentence to defend or qualify it
-- Attack tree: generate 5–7 distinct opponent attacks ordered by competitive damage. For each: the exact attack language an opponent would deliver, why it's dangerous to this specific argument, and the exact rebuttal to give
-- Extra arguments: identify 3–5 strong arguments the writer is completely missing. For each: why it would materially strengthen the case, where to integrate it, and what to search for
-- Impact weighing: magnitude, probability, timeframe, and reversibility analysis. Write the exact language to add for impact comparison
-- Rebuttal prep: strongest, easiest, and sneakiest attacks with exact response language the writer can say out loud
-- Rhetorical analysis: opening hook, logical flow, persuasion assessment, strongest sentence, weakest sentence with full rewrite
-- Dependent claims: identify which claims collapse if one assumption fails — show the chain
-- priority_fixes: as many as the draft requires, ordered by competitive damage, each with full problem, quote, why_it_matters, exact_fix, and complete rewrite
-
-TONE AND STYLE:
-- Brutally direct. No softening. Write as if the writer is walking into a tournament in 48 hours and needs to know every crack in their case.
-- Every suggested fix must be language the writer can actually say or write — not a description of what to do
-- Quote the exact text for every weakness. Never make a diagnosis without the evidence from the text.
-- Where evidence is missing: write [verified evidence needed] — never invent statistics, studies, or sources
-
-OUTPUT CONSTRAINT:
-Extreme depth means MAXIMUM useful analysis. This report should be comprehensive enough that a writer who follows every priority_fix would have a materially stronger piece that survives adversarial scrutiny.`;
+DEPTH LEVEL: EXTREME — Forensic Audit. The deepest read, but still a COMPLETE JSON object.
+Fill the schema thoroughly: analyze up to 7 of the most important claims, up to 7 priority_fixes ordered by impact, 2-3 strengths, a 6-8 sentence verdict, a 3-4 sentence coaching_note, and the most pressure-tested collapse_point and counterargument you can build. Quote exact text for every point and explain the reasoning mechanism, not just a label. Be thorough but concise per field so the whole JSON finishes — a complete forensic report beats an unfinished one. Ruthless calibration is not stingy: genuinely excellent work still earns the 90s or 100.`;
 
     default: // medium
       return `
-DEPTH LEVEL: MEDIUM — Serious Preparation Report
-
-You are a debate coach and skilled writing teacher helping someone prepare for an important class assignment, regional competition, or serious submission. Give them a complete, clear picture of what works and what doesn't — with specific repairs they can execute.
-
-SCOPE:
-- Full score_breakdown with a 1–2 sentence explanation for each dimension score
-- Thesis check: is it clear, arguable, and supported by the body? Suggest a stronger version if needed.
-- Claims: analyze 3–5 major claims — quote each, rate it (STRONG/MODERATE/WEAK), diagnose the main issue, and give a concrete one-sentence fix
-- Logical fallacies: flag every clear fallacy with a quote, a brief explanation, and a fix
-- Assumption audit: surface 2–3 important hidden assumptions with brief diagnosis and defense suggestion
-- Rebuttal readiness: identify the strongest opponent attack on this argument and write the exact response language
-- Rhetorical analysis: assess opening strength, flow, and persuasion — flag the weakest sentence with a fix
-- priority_fixes: 4–6 items covering the highest-impact repairs. Each needs: problem label, quoted text, why it matters to a reader or judge, exact fix, and a rewrite
-
-TONE AND STYLE:
-- Direct and technical but clear — like a good coach who respects the writer's ability to handle honest feedback
-- Each fix should give the writer something to do, not just something to know
-- Where evidence is missing: write [verified evidence needed] — never invent statistics or sources
-
-OUTPUT CONSTRAINT:
-Medium depth means FULL COVERAGE without deep-drilling every minor issue. A perfect Medium report makes the writer feel seen, informed, and ready to revise — not overwhelmed and not under-served.`;
+DEPTH LEVEL: MEDIUM — Serious Report. A complete, clear picture with specific repairs.
+Fill the schema fully: 3-5 of the most important claims, 4-6 priority_fixes, 1-2 strengths, a 5-6 sentence verdict, a 2-3 sentence coaching_note, a real collapse_point, and the strongest counterargument with how to answer it. Each field tight and specific. If the piece is strong, keep priority_fixes to only what genuinely matters rather than padding to a count.`;
   }
 }
 
@@ -964,16 +904,64 @@ Format: polished plain text. No markdown syntax, tables, emojis, asterisks, or h
 
 // ─── Schema selector ──────────────────────────────────────────────────────────
 
-function getSchemaForMode(mode) {
-  switch (mode) {
-    case 'speech': return SPEECH_SCHEMA;
-    case 'essay': return ESSAY_SCHEMA;
-    case 'college-essay': return COLLEGE_ESSAY_SCHEMA;
-    case 'research-paper': return RESEARCH_PAPER_SCHEMA;
-    case 'rubric': return RUBRIC_SCHEMA;
-    case 'model-un': return MODEL_UN_SCHEMA;
-    default: return ARGUMENT_SCHEMA; // argument, debate-case, policy, not-chosen
+// One lean, unified schema for every mode. Small enough that the model returns a
+// COMPLETE valid JSON object fast (the old per-mode schemas were so large the
+// model timed out before finishing). The mode system prompt still shapes the
+// substance; this just keeps the output bounded and the renderer in sync.
+const LEAN_SCHEMA = `{
+  "overall_score": 0,
+  "score_breakdown": {
+    "thesis_and_claim": 0,
+    "reasoning_and_logic": 0,
+    "evidence_and_support": 0,
+    "structure_and_clarity": 0
+  },
+  "score_explanations": {
+    "thesis_and_claim": "one sentence on the central claim's clarity and strength",
+    "reasoning_and_logic": "one sentence on how well the reasoning holds",
+    "evidence_and_support": "one sentence on whether load-bearing claims are supported",
+    "structure_and_clarity": "one sentence on organization and clarity"
+  },
+  "verdict": "5-8 sentences: how the piece works as a whole, its real strength, what breaks first if anything, and why it earned exactly this score",
+  "coaching_note": "2-4 sentences: the single highest-leverage revision first, then the next moves",
+  "thesis": {
+    "quote": "exact thesis or central claim verbatim, or empty string if there is none",
+    "assessment": "2 sentences: is it clear, arguable, and actually proven by the body?"
+  },
+  "strengths": [
+    { "quote": "exact strong sentence verbatim", "why": "what specifically makes it work" }
+  ],
+  "claims": [
+    {
+      "quote": "exact claim verbatim",
+      "rating": "STRONG or MODERATE or WEAK",
+      "diagnosis": "the precise reasoning strength or the exact flaw — name the mechanism",
+      "fix": "one concrete repair, or empty string if the claim is already strong"
+    }
+  ],
+  "collapse_point": {
+    "quote": "the single load-bearing sentence the argument most depends on",
+    "why_it_collapses": "what breaks across the piece if this point fails",
+    "strongest_attack": "the most damaging fair objection to this point",
+    "strongest_defense": "the best available repair or defense"
+  },
+  "priority_fixes": [
+    {
+      "quote": "exact text to fix",
+      "problem": "the precise problem, not a vague label",
+      "why_it_matters": "what a skeptical reader, judge, or grader does with this",
+      "exact_fix": "one concrete edit action",
+      "rewrite": "a finished replacement sentence the writer can paste in"
+    }
+  ],
+  "counterargument": {
+    "strongest_objection": "the strongest fair opposing view the piece does not fully answer",
+    "how_to_answer": "exact rebuttal language, or note if the piece already handles it well"
   }
+}`;
+
+function getSchemaForMode(_mode) {
+  return LEAN_SCHEMA;
 }
 
 function getSystemForMode(mode) {
