@@ -386,6 +386,49 @@ export function normalizeAudit(audit, essay) {
     ];
   }
 
+  // ── Preserve the model's lean-schema output ──────────────────────────────
+  // The block above rebuilds the legacy schema for backward compatibility, but
+  // the current engine + readable report use the lean schema. Overlay the
+  // model's real fields so they reach the renderer instead of being discarded.
+  if (input.thesis && typeof input.thesis === "object") {
+    normalized.thesis = {
+      quote: sourceQuoteOr(input.thesis.quote, text, ""),
+      assessment: stringOr(input.thesis.assessment, "")
+    };
+  }
+  normalized.strengths = ensureArray(input.strengths)
+    .map((s) => ({ quote: stringOr(s?.quote, ""), why: stringOr(s?.why, "") }))
+    .filter((s) => s.quote || s.why);
+  const leanClaims = ensureArray(input.claims)
+    .map((c) => ({
+      quote: sourceQuoteOr(c?.quote, text, ""),
+      rating: normalizeRating(c?.rating),
+      diagnosis: stringOr(c?.diagnosis, ""),
+      fix: stringOr(c?.fix, "")
+    }))
+    .filter((c) => c.quote);
+  if (leanClaims.length) normalized.claims = leanClaims;
+  if (input.counterargument && typeof input.counterargument === "object") {
+    normalized.counterargument = {
+      strongest_objection: stringOr(input.counterargument.strongest_objection, ""),
+      how_to_answer: stringOr(input.counterargument.how_to_answer, "")
+    };
+  }
+  // Keep the model's own score_breakdown + explanations when it used lean keys
+  // (anything other than the four legacy dimensions), clamped to 0-25.
+  if (input.score_breakdown && typeof input.score_breakdown === "object") {
+    const keys = Object.keys(input.score_breakdown);
+    const legacy = ["argument_strength", "assumption_audit", "logic", "rhetoric"];
+    if (keys.some((k) => !legacy.includes(k))) {
+      const leanBreakdown = {};
+      for (const k of keys) leanBreakdown[k] = clampInt(input.score_breakdown[k], 0, 0, 25);
+      normalized.score_breakdown = leanBreakdown;
+      if (input.score_explanations && typeof input.score_explanations === "object") {
+        normalized.score_explanations = input.score_explanations;
+      }
+    }
+  }
+
   scrubUnsupportedGeneratedNumbers(normalized, text);
   return normalized;
 }
