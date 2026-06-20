@@ -980,7 +980,7 @@ function getSystemForMode(mode) {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-export function buildAuditMessages(essay, preferences) {
+export function buildAuditMessages(essay, preferences, evidenceContext = "") {
   const mode = String((preferences && preferences.analysisFormat) || 'argument').toLowerCase();
   const depth = String((preferences && preferences.depthLevel) || 'medium').toLowerCase();
 
@@ -988,9 +988,18 @@ export function buildAuditMessages(essay, preferences) {
   const depthInstruction = getDepthInstruction(depth);
   const schema = getSchemaForMode(mode);
 
+  const evidenceBlock = evidenceContext && evidenceContext.trim()
+    ? `LIVE WEB EVIDENCE CHECK (already run on this draft's factual claims BEFORE you grade):
+${evidenceContext.trim()}
+
+Use this to grade honestly. If a load-bearing factual claim came back "not found" or "needs review," its evidence is NOT verified — say so, dock the evidence_and_support score accordingly, and do not treat the claim as proven. If a claim is "likely supported" by a real source, give it credit and do not demand evidence it already has. Never invent a source the check did not return.
+
+`
+    : "";
+
   const userPrompt = `${depthInstruction}
 
-Analyze the following writing and return ONLY a valid JSON object matching this exact schema. No markdown, no preamble, no text outside the JSON.
+${evidenceBlock}Analyze the following writing and return ONLY a valid JSON object matching this exact schema. No markdown, no preamble, no text outside the JSON.
 
 CRITICAL OUTPUT DISCIPLINE: Returning a COMPLETE, valid JSON object is more important than length. Be concise and dense — every field tight, no padding, no repetition. Respect the per-depth limits on how many items go in each array. A short complete report beats a long one that gets cut off. Do not let any single field run on; finish the whole JSON object.
 

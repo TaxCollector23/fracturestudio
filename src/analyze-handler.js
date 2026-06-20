@@ -275,14 +275,20 @@ async function finish(res, audit, recovered = false, options = {}) {
   writeProgress(res, recovered ? 91 : 90, recovered ? "Recovered a stable report" : "Turning JSON into the readable report");
   await streamReadableAudit(res, audit);
 
-  // Wire in the citation/source engine: search public pages for the draft's
-  // factual claims, attach the report to the audit, and stream readable sections.
+  // Attach the citation/source report. The web search already ran BEFORE grading
+  // (so the model graded against real evidence); reuse that result here instead of
+  // searching again. Only search now as a fallback if it wasn't pre-computed.
   let finalAudit = audit;
   if (options.essay && !isTooThinForAudit(options.essay)) {
     try {
-      writeProgress(res, 93, "Finding sources, data checks, and citations");
       const citationStyle = String(options.citationStyle || "mla").toLowerCase() === "apa" ? "apa" : "mla";
-      const sourceData = await verifySources({ essay: options.essay, audit, citationStyle });
+      let sourceData = options.sourceData;
+      if (!sourceData) {
+        writeProgress(res, 93, "Finding sources, data checks, and citations");
+        sourceData = await verifySources({ essay: options.essay, audit, citationStyle });
+      } else {
+        writeProgress(res, 93, "Attaching the source and citation findings");
+      }
       finalAudit = { ...audit, citation_style: citationStyle, source_verification_report: sourceData };
       const sourceSections = readableSourceSections(sourceData);
       for (const section of sourceSections) {
@@ -318,6 +324,18 @@ function nextProgressFromLength(length) {
   };
 }
 
+// Compact summary of the live web check, injected into the grading prompt so the
+// model scores evidence based on what is actually verifiable.
+function buildEvidenceContext(sourceData) {
+  const claims = asArr(sourceData && sourceData.claims).slice(0, 5);
+  if (!claims.length) return "";
+  return claims.map((c, i) => {
+    const top = asArr(c.sources).find((s) => s.url);
+    const src = top ? ` (top result: ${firstNonEmpty(top.site_name, top.title, top.url)})` : "";
+    return `${i + 1}. "${clip(firstNonEmpty(c.claim, c.text, "claim"), 160)}" — web check: ${sourceStatusLabel(c.support_status)}${src}`;
+  }).join("\n");
+}
+
 export async function handleAnalyze(req, res) {
   if (req.method && req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
 
@@ -341,19 +359,34 @@ export async function handleAnalyze(req, res) {
   // The model is fast on bounded output but will run for minutes if left unbounded.
   const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
   const maxTokens = depth === "surface" ? 2200 : depth === "extreme" ? 5000 : 3500;
+  const citationStyle = req.body?.preferences?.citationStyle;
 
+  // STEP 1 — Check the draft's factual claims against the live web BEFORE grading,
+  // so the model scores evidence based on what is actually real. The result is
+  // reused for the citation sections so we never search twice.
+  let sourceData = null;
+  let evidenceContext = "";
+  try {
+    writeProgress(res, 12, "Checking the draft's claims against the live web");
+    sourceData = await verifySources({ essay, citationStyle: String(citationStyle || "mla").toLowerCase() === "apa" ? "apa" : "mla" });
+    evidenceContext = buildEvidenceContext(sourceData);
+  } catch (_) {
+    sourceData = null;
+  }
+
+  // STEP 2 — Grade, with the live evidence findings in the prompt.
   let upstream;
   try {
-    writeProgress(res, 10, "Connecting to Fracture AI");
+    writeProgress(res, 22, "Grading against the verified evidence");
     upstream = await openRouterStream({
       model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
-      messages: buildAuditMessages(essay, req.body?.preferences),
+      messages: buildAuditMessages(essay, req.body?.preferences, evidenceContext),
       maxTokens,
       temperature: 0.4,
       referer: "https://fracturestudio.vercel.app"
     });
   } catch (err) {
-    return await finish(res, buildServiceFallbackAudit(essay, `Failed to reach OpenRouter: ${err?.message || String(err)}`), true);
+    return await finish(res, buildServiceFallbackAudit(essay, `Failed to reach OpenRouter: ${err?.message || String(err)}`), true, { essay, citationStyle, sourceData });
   }
 
   writeProgress(res, 18, "Reading the live model stream");
@@ -369,11 +402,11 @@ export async function handleAnalyze(req, res) {
       }
     });
   } catch (err) {
-    return await finish(res, buildServiceFallbackAudit(essay, err?.message || String(err)), true);
+    return await finish(res, buildServiceFallbackAudit(essay, err?.message || String(err)), true, { essay, citationStyle, sourceData });
   }
 
   writeProgress(res, 86, "Validating the report structure");
   const { audit, recovered } = prepareAuditFromModelText(rawText, essay);
   writeProgress(res, recovered ? 91 : 90, recovered ? "Repairing a malformed model response" : "Report structure verified");
-  return await finish(res, audit, recovered, { essay, citationStyle: req.body?.preferences?.citationStyle });
+  return await finish(res, audit, recovered, { essay, citationStyle, sourceData });
 }

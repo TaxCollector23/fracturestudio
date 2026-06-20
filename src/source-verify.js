@@ -1,7 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
-const CLAIM_LIMIT = 6;
+const CLAIM_LIMIT = 5;
 const RESULTS_PER_CLAIM = 3;
 const RESEARCH_RESULT_LIMIT = 5;
 const SEARCH_TIMEOUT_MS = 4500;
@@ -67,15 +67,17 @@ export async function verifySources(input = {}) {
     };
   }
 
-  const claims = [];
   const citedSources = new Map();
   const deadline = Date.now() + VERIFY_DEADLINE_MS;
 
-  for (const claim of extractedClaims) {
-    const result = Date.now() < deadline - 1500
-      ? await verifyClaim(claim, citationStyle)
-      : finalizeClaim(claim, [], "needs_review", "The source-review time limit was reached. Check this claim manually or run Verify Sources again.", citationStyle);
-    claims.push(result);
+  // Verify all claims in parallel — much faster than the old sequential loop.
+  const claims = await Promise.all(extractedClaims.map((claim) =>
+    verifyClaim(claim, citationStyle).catch((err) =>
+      finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`, citationStyle)
+    )
+  ));
+
+  for (const result of claims) {
     const bestSource = result.sources.find((source) => source.match_score >= 0.72 && source.url);
     if (result.support_status === "likely_supported" && bibliographyReady(result, bestSource) && !citedSources.has(bestSource.url)) {
       citedSources.set(bestSource.url, bestSource);
@@ -129,9 +131,8 @@ async function buildResearchSuggestions({ essay, audit, citationStyle, deadline 
     }
   ];
 
-  const suggestions = [];
-  for (const lead of leads) {
-    if (Date.now() > deadline - 3500) break;
+  // Run the top leads' searches in parallel for speed (was a sequential loop).
+  const suggestions = await Promise.all(leads.slice(0, 4).map(async (lead) => {
     try {
       const search = await searchOpenWeb(lead.query);
       const links = (search.results || []).slice(0, RESEARCH_RESULT_LIMIT).map((result) => {
@@ -152,23 +153,11 @@ async function buildResearchSuggestions({ essay, audit, citationStyle, deadline 
           citation: buildCitationEntry(source, citationStyle)
         };
       });
-      suggestions.push({
-        label: lead.label,
-        title: lead.title,
-        explanation: lead.explanation,
-        search_query: lead.query,
-        links
-      });
+      return { label: lead.label, title: lead.title, explanation: lead.explanation, search_query: lead.query, links };
     } catch (err) {
-      suggestions.push({
-        label: lead.label,
-        title: lead.title,
-        explanation: `${lead.explanation} Search could not complete: ${err?.message || String(err)}`,
-        search_query: lead.query,
-        links: []
-      });
+      return { label: lead.label, title: lead.title, explanation: `${lead.explanation} Search could not complete: ${err?.message || String(err)}`, search_query: lead.query, links: [] };
     }
-  }
+  }));
 
   return suggestions;
 }
