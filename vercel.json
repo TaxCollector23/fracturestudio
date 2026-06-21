@@ -1,74 +1,7 @@
 {
-  "buildCommand": "node -e \"console.log('No build step needed for Fracture Studio static app')\"",
-  "outputDirectory": "public",
+  "buildCommand": "cd app && npm install && npm run build",
+  "outputDirectory": "app/dist",
   "rewrites": [
-    {
-      "source": "/studio",
-      "destination": "/studio.html"
-    },
-    {
-      "source": "/studio/case",
-      "destination": "/studio.html"
-    },
-    {
-      "source": "/about",
-      "destination": "/about.html"
-    },
-    {
-      "source": "/mission",
-      "destination": "/about.html"
-    },
-    {
-      "source": "/methods",
-      "destination": "/about.html"
-    },
-    {
-      "source": "/docs",
-      "destination": "https://fracturestudio.mintlify.app"
-    },
-    {
-      "source": "/blog",
-      "destination": "/blog.html"
-    },
-    {
-      "source": "/credits",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/contact",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/onboarding",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/past-work",
-      "destination": "/past-work.html"
-    },
-    {
-      "source": "/rebuttals",
-      "destination": "/rebuttals.html"
-    },
-    {
-      "source": "/settings",
-      "destination": "/settings.html"
-    },
-    {
-      "source": "/login",
-      "destination": "/settings.html"
-    },
-    {
-      "source": "/auth/callback",
-      "destination": "/auth-callback.html"
-    },
-    {
-      "source": "/admin",
-      "destination": "/admin.html"
-    },
-    {
-      "source": "/studio/(.*)",
-      "destination": "/$1"
-    }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
