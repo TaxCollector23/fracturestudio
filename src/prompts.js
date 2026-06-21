@@ -606,8 +606,10 @@ Fill the schema thoroughly: up to 6 of the most important claims (each with warr
 
     default: // medium
       return `
-DEPTH LEVEL: MEDIUM — Serious Report. A complete, clear picture with specific repairs.
-Fill the schema fully but tightly: 3-5 of the most important claims (with warrant and missing_warrant), 4-6 priority_fixes, 1-2 strengths, 2-3 assumption_audit items, the clear logical_fallacies (often 0-2), up to 3 attack_tree items, rhetorical_analysis, a real collapse_point, and the strongest counterargument with how to answer it. Each field tight and specific. If the piece is strong, keep priority_fixes to only what genuinely matters rather than padding to a count.`;
+DEPTH LEVEL: MEDIUM — Serious Report. A complete picture with specific repairs, kept lean so the whole JSON finishes fast.
+Fill every section but spend your words where they matter most. Concentrate depth on the verdict, the top claims, and the priority_fixes — make those genuinely sharp and specific. Keep the rest to one or two tight sentences each.
+Counts: 3-4 of the most important claims (with warrant and missing_warrant), 4-5 priority_fixes ordered by leverage (the first must be the single highest-impact change), 1-2 strengths, 2 assumption_audit items, only clearly real logical_fallacies (often 0-2), 2 attack_tree items, a brief rhetorical_analysis, a real collapse_point, and the strongest counterargument with how to answer it.
+Every point must quote exact text and name the precise reasoning move — no generic filler, no restating the draft. If the piece is strong, keep priority_fixes to only what genuinely matters rather than padding to a count.`;
   }
 }
 

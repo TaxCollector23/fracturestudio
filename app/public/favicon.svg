@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <rect width="64" height="64" rx="15" fill="#fafafa"/>
-  <text x="33" y="47" text-anchor="middle"
-        font-family="'Snell Roundhand','Brush Script MT','Apple Chancery','Segoe Script',Georgia,serif"
-        font-style="italic" font-weight="700" font-size="52" fill="#09090b">f</text>
+  <text x="32" y="46" text-anchor="middle"
+        font-family="Georgia,'Times New Roman',serif"
+        font-style="italic" font-weight="700" font-size="42" fill="#09090b">f</text>
 </svg>

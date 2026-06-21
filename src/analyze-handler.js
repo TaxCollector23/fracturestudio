@@ -415,7 +415,8 @@ export async function handleAnalyze(req, res) {
   // Cap output so the audit reliably finishes within the function timeout.
   // The model is fast on bounded output but will run for minutes if left unbounded.
   const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
-  const maxTokens = depth === "surface" ? 2800 : depth === "extreme" ? 6000 : 4200;
+  // Tuned so a medium audit completes around ~85s on the free model while staying rich.
+  const maxTokens = depth === "surface" ? 2200 : depth === "extreme" ? 5200 : 3400;
   const citationStyle = req.body?.preferences?.citationStyle;
 
   // STEP 1 — Check the draft's factual claims against the live web BEFORE grading,
