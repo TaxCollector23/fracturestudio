@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { FolderOpen, Loader2 } from "lucide-react";
 import { useAuth } from "../lib/useAuth.jsx";
 import { listProjects } from "../lib/firebase.js";
+import { FORMATS } from "../lib/prefs.js";
+
+const modeLabel = (id) => FORMATS.find((f) => f.id === id)?.label || "Argument / Debate";
 
 export default function PastWork() {
   const { user, ready } = useAuth();
@@ -37,13 +40,12 @@ export default function PastWork() {
       {user && items && items.length > 0 && (
         <div className="grid md:grid-cols-3 gap-4">
           {items.map((it) => (
-            <button key={it.id} onClick={() => setActive(it)} className="card card-hover p-5 text-left">
+            <button key={it.id} onClick={() => setActive(it)} className="card card-hover p-5 text-left flex flex-col h-44">
               <div className="flex items-center justify-between mb-3">
-                <span className="label-mono">{it.mode || "argument"}</span>
+                <span className="text-sm muted">{modeLabel(it.mode)}</span>
                 {it.score != null && <span className="font-serif text-2xl">{it.score}</span>}
               </div>
-              <h3 className="font-serif text-lg line-clamp-2 mb-2">{it.title || "Untitled"}</h3>
-              <p className="faint text-xs line-clamp-3">{(it.draft || "").slice(0, 160)}</p>
+              <h3 className="font-serif text-lg leading-snug line-clamp-3">{it.title || "Untitled draft"}</h3>
             </button>
           ))}
         </div>

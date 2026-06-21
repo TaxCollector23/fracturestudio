@@ -24,7 +24,7 @@ export default function Nav() {
         <div className="w-7 h-7 rounded-sm bg-zinc-950 dark:bg-zinc-100 flex items-center justify-center
                         text-zinc-50 dark:text-zinc-950 font-serif italic font-bold text-lg">f</div>
         <div className="leading-none">
-          <div className="font-serif italic text-lg tracking-wide">Fracture Studio</div>
+          <div className="font-serif text-lg tracking-wide">Fracture Studio</div>
           <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">Argument Engine</div>
         </div>
       </Link>

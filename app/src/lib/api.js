@@ -54,6 +54,23 @@ export function streamText(kind, body, handlers = {}, signal) {
   }, signal);
 }
 
+// Ask the engine for a short, plain title summarizing a draft (for Past Work cards).
+export async function summarizeTitle(draft) {
+  let text = "";
+  try {
+    await streamText("chat", {
+      message: "Write a clear, specific title of at most 8 words that says what this draft is about. Output ONLY the title — no quotes, no label, no trailing period, nothing else.",
+      draft
+    }, { onDelta: (d) => { text += d; } });
+  } catch (_) { return ""; }
+  // Clean up: first line only, strip any auto-appended evidence note / quotes / trailing punctuation.
+  text = (text.split("\n").find((l) => l.trim()) || "")
+    .replace(/evidence note[:.].*/i, "")
+    .replace(/^["'“”]+|["'“”.]+$/g, "")
+    .trim();
+  return text.slice(0, 70);
+}
+
 export async function verifySources({ essay, audit, citation_style }) {
   const res = await fetch("/api/verify-sources", {
     method: "POST",

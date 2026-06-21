@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Download, Save, MessageSquare, Send, Loader2 } from "lucide-react";
-import { analyze, streamText, exportPdf } from "../lib/api.js";
+import { analyze, streamText, exportPdf, summarizeTitle } from "../lib/api.js";
 import { loadPrefs, savePrefs, FORMATS, DEPTHS } from "../lib/prefs.js";
 import { useAuth } from "../lib/useAuth.jsx";
 import { saveProject } from "../lib/firebase.js";
@@ -57,12 +57,16 @@ export default function Studio() {
     }
   }
 
+  const [saving, setSaving] = useState(false);
   async function save() {
-    if (!audit) return;
+    if (!audit || saving) return;
     if (!user) { navigate("/auth"); return; }
+    setSaving(true);
     try {
+      const summary = await summarizeTitle(essay).catch(() => "");
+      const title = summary || (audit.thesis?.quote || "").slice(0, 70) || essay.trim().slice(0, 60) || "Untitled draft";
       await saveProject(user.id, {
-        title: essay.trim().slice(0, 60) || "Untitled draft",
+        title,
         draft: essay,
         audit,
         score: audit.overall_score ?? null,
@@ -70,6 +74,7 @@ export default function Studio() {
       });
       setSaved(true);
     } catch (e) { setError("Could not save: " + (e?.message || "")); }
+    finally { setSaving(false); }
   }
 
   async function sendChat() {
@@ -159,7 +164,7 @@ export default function Studio() {
               <div className="text-right">
                 <div className="font-serif text-2xl italic">{scoreLabel(score)}</div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={save} className="btn-ghost py-2 px-3 text-xs"><Save size={13} /> {saved ? "Saved" : "Save"}</button>
+                  <button onClick={save} disabled={saving} className="btn-ghost py-2 px-3 text-xs"><Save size={13} /> {saving ? "Saving…" : saved ? "Saved" : "Save"}</button>
                   <button onClick={() => exportPdf({ audit, sources: audit?.source_verification_report, draft: essay, citation_style: prefs.citationStyle })} className="btn-ghost py-2 px-3 text-xs"><Download size={13} /> PDF</button>
                 </div>
               </div>
