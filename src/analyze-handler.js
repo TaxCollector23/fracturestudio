@@ -416,7 +416,7 @@ export async function handleAnalyze(req, res) {
   // The model is fast on bounded output but will run for minutes if left unbounded.
   const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
   // Tuned so a medium audit completes around ~85s on the free model while staying rich.
-  const maxTokens = depth === "surface" ? 2200 : depth === "extreme" ? 5200 : 3400;
+  const maxTokens = depth === "surface" ? 2600 : depth === "extreme" ? 6500 : 4800;
   const citationStyle = req.body?.preferences?.citationStyle;
 
   // STEP 1 — Check the draft's factual claims against the live web BEFORE grading,
@@ -440,7 +440,7 @@ export async function handleAnalyze(req, res) {
       model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
       messages: buildAuditMessages(essay, req.body?.preferences, evidenceContext),
       maxTokens,
-      temperature: 0.4,
+      temperature: 0.55,
       referer: "https://fracturestudio.vercel.app"
     });
   } catch (err) {
