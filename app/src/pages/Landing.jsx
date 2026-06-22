@@ -65,7 +65,7 @@ export default function Landing() {
   return (
     <div className="overflow-hidden">
       {/* Hero */}
-      <section className="relative pt-24 pb-40 px-6 flex flex-col items-center text-center">
+      <section className="relative pt-20 pb-24 px-6 flex flex-col items-center text-center">
         <div className="absolute inset-0 text-zinc-300 dark:text-zinc-800 bg-grid opacity-[0.06] pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white dark:to-zinc-950 pointer-events-none" />
         <div className="relative z-10 max-w-5xl mx-auto flex flex-col items-center">
@@ -78,7 +78,7 @@ export default function Landing() {
             <span className="italic font-normal text-zinc-500 dark:text-zinc-600">Strengthen every conclusion.</span>
           </motion.h1>
           <motion.p {...up(0.2)} className="text-lg muted max-w-2xl mb-10 leading-relaxed">
-            An elite workspace for debaters, writers, and Model UN delegates. Fracture Studio uses adversarial AI to dismantle your logic before your opponents can.
+            Adversarial AI that dismantles your logic before your opponents can.
           </motion.p>
           <motion.div {...up(0.3)} className="flex flex-wrap gap-3 justify-center">
             <Link to="/studio" className="btn-solid">Start Drafting <ArrowRight size={16} /></Link>

@@ -21,8 +21,7 @@ export default function Nav() {
     <nav className="fixed top-0 inset-x-0 z-50 h-16 px-5 md:px-10 flex items-center justify-between
                     border-b border-zinc-200 bg-white/80 dark:border-zinc-900 dark:bg-zinc-950/80 backdrop-blur-xl">
       <Link to="/" className="flex items-center gap-3">
-        <div className="w-7 h-7 rounded-sm bg-zinc-950 dark:bg-zinc-100 flex items-center justify-center
-                        text-zinc-50 dark:text-zinc-950 font-serif italic font-bold text-lg">f</div>
+        <img src="/favicon.svg" alt="Fracture Studio" className="w-8 h-8 rounded-[6px]" />
         <div className="leading-none">
           <div className="font-serif text-lg tracking-wide">Fracture Studio</div>
           <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">Argument Engine</div>

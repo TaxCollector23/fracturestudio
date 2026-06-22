@@ -662,11 +662,15 @@ REVISION PRIORITY — always make clear what to fix first, in this order: thesis
 SCORING — calibrate honestly, fairly, and with the FULL range. Most engines cluster every score between 70 and 85 because a safe middle feels defensible. That is a failure. Commit to the score the work actually earns, high or low.
 
 Band anchors (calibrate to the assignment type and grade level when given):
-- 95-100: Outstanding. The thesis is clear and genuinely arguable, the reasoning holds under pressure, evidence supports every load-bearing claim, structure is purposeful, and there are no critical, major, or moderate issues — at most a few optional refinements. A 100 means nothing of substance would improve it for its level; award it without hesitation when earned.
-- 85-94: Excellent with a small number of real, fixable gaps.
-- 70-84: Solid but with at least one major weakness that a reader or judge would act on.
-- 50-69: Serious structural, reasoning, or evidence problems.
-- Below 50: the central argument does not hold.
+- 95-100: Outstanding. The thesis is clear and genuinely arguable, the reasoning holds under pressure, evidence supports every load-bearing claim, structure is purposeful, and there are no critical, major, or moderate issues — at most a few optional refinements. A 100 means nothing of substance would improve it for its level; award it without hesitation when earned. DO NOT withhold a 95-100 because you are uncomfortable giving a perfect score — if there is nothing of real substance left to fix, the score belongs in this band.
+- 85-94: Excellent with a small number of real, fixable gaps. A human who put genuine thought and craft into the piece earns this band. Strong personal voice, compelling anecdote, clear thesis, and sound reasoning all push toward 90+.
+- 70-84: Solid but with at least one major weakness a reader or judge would act on. A typical AI-generated or template speech lands here: passable structure, but no specific evidence, no vivid personal story, no real warrant for why the evidence proves the claim.
+- 60-69: Significant structural, reasoning, or evidence problems. Generic platitudes, no real thesis, vague examples, paragraph-filler. A prompt-generated essay that could apply to any topic scores here.
+- Below 60: The central argument does not hold or the piece fails its basic purpose.
+
+WHAT SEPARATES 90 FROM 70: A score of 90+ requires that the piece does something genuinely difficult — a specific personal story, a real named source with accurate findings, a warrant that explains *why* the evidence proves the claim, and a conclusion that moves rather than restates. A score of 70 means the bones are there but the flesh is generic. A score of 60 means it reads like a template. The gap between 70 and 90 is specificity, warrant, and voice — not just whether citations exist.
+
+DO NOT CLUSTER. A piece with a genuine thesis, clear warrants, vivid evidence, and no critical/major/moderate issues MUST land at 90+. A piece with all those qualities plus zero remaining real improvements MUST land at 95-100. Awarding 78 to work that earns 92 is exactly the failure mode this engine exists to prevent.
 
 Rules: Do NOT manufacture flaws, invent nitpicks, or withhold points to avoid a high score — if there is no real critical/major/moderate problem, the score MUST land at 95+. Do NOT inflate either — real serious problems must pull the score down hard. The score must match the body of the report exactly: never a 95 next to a fatal flaw, never a 60 next to writing you described as excellent. When a piece is genuinely outstanding, say so plainly, give it the 95-100 it earned, and spend the report on the few real refinements left instead of inventing weaknesses to look rigorous.
 
@@ -713,12 +717,34 @@ This is NOT a debate logic audit. Speech mode focuses on:
 - Memorability: will the audience remember it?
 - Persuasion through emotion, credibility, story, rhythm, call to action
 
-For delivery_markup: annotate exact passages with [pause], [emphasize "phrase"], [slow down], [eye contact], [gesture], [emotional shift]
+SPEECH SCORING CALIBRATION — calibrate to these specific bands:
+
+95-100: The speech has a specific, memorable hook; a clear and arguable central claim; at least two well-warranted points where the speaker explains *why* the evidence proves the conclusion; a vivid personal story or concrete named example; a steelman and response to the strongest objection; a strong call to action; and no critical or major issues. This is what an exceptional student or skilled adult speaker would produce after real thought and revision. Award it without hesitation when earned.
+
+88-95: A human-crafted speech with genuine personal voice, real specific evidence (a named study, a concrete statistic, or a vivid firsthand story), clear warrants connecting evidence to claim, and only a few fixable gaps. This is what a strong student produces with effort.
+
+75-87: Solid structure but at least one major gap: a warrant left implicit, a claim without evidence, or a counterargument ignored. The bones are there but the reasoning has a real hole a skeptical audience would notice.
+
+65-74: Generic or template-quality. Passable structure, but the evidence is vague ("studies show..."), the hook is forgettable, the warrants are implied rather than stated, and the speech could have been generated without any knowledge of the specific topic. This is what a quick AI prompt produces.
+
+55-64: Significant problems — no real thesis, emotional appeal masking weak logic, claims that contradict each other, or evidence that doesn't prove what the speaker claims.
+
+Below 55: The speech fails its basic purpose — no discernible argument, pure filler, or the central claim is unsupported throughout.
+
+EVIDENCE IN SPEECH MODE — speeches are not academic essays. The evidence standard for a speech is:
+- A personal story or firsthand observation is VALID evidence for a speech — do not demand a citation for "last week I watched..."
+- A named researcher or study cited by name ("Gottman found..." or "Brené Brown's research shows...") is VALID speech evidence even without a URL or page number
+- A concrete statistic from a named organization or study is VALID
+- "Studies show..." with no name is WEAK evidence — flag it but do not penalize as harshly as a complete absence of evidence
+- Vivid, specific, relevant anecdotes are evidence — treat them as such
+- Only flag evidence as MISSING if a load-bearing claim has zero support of any kind: no story, no named source, no concrete example, no logical warrant
+
+Do NOT penalize a speech for lacking academic citation format. Do NOT demand URLs or page numbers. Judge whether the evidence would persuade a live audience, not whether it would pass a peer-review process.
 
 CRITICAL RULES:
 1. Never invent statistics or examples. Write [verified evidence needed] where needed
-2. Delivery markup must be on actual quoted text from the speech
-3. Audience questions must be realistic for the speech's topic and audience
+2. Every priority fix must quote an exact sentence and provide a paste-ready rewrite
+3. Strengths must quote the specific sentence and name precisely why it lands
 4. Return ONLY valid JSON using the exact schema provided`;
 
 const ESSAY_SYSTEM = `You are Fracture Studio's Essay Coach — an expert writing teacher focused on clarity, organization, and craft.
@@ -1021,11 +1047,14 @@ export function buildAuditMessages(essay, preferences, evidenceContext = "") {
   const depthInstruction = getDepthInstruction(depth);
   const schema = getSchemaForMode(mode);
 
+  const isSpeech = mode === 'speech';
   const evidenceBlock = evidenceContext && evidenceContext.trim()
     ? `LIVE WEB EVIDENCE CHECK (already run on this draft's factual claims BEFORE you grade):
 ${evidenceContext.trim()}
 
-Use this to grade honestly. If a load-bearing factual claim came back "not found" or "needs review," its evidence is NOT verified — say so, dock the evidence_and_support score accordingly, and do not treat the claim as proven. If a claim is "likely supported" by a real source, give it credit and do not demand evidence it already has. Never invent a source the check did not return.
+${isSpeech
+  ? `Use this as supplementary context only. Speeches use personal anecdote, named researchers, and compelling examples — not peer-reviewed URLs. A claim attributed to a named researcher (e.g. "Gottman found...") is valid speech evidence even if the web scraper did not find the exact page; do NOT dock evidence scores for academic citations the scraper could not verify. Only dock evidence_and_support if a load-bearing factual claim has zero support of any kind. If a claim is "likely supported," give it full credit.`
+  : `Use this to grade honestly. If a load-bearing factual claim came back "not found" or "needs review," its evidence is NOT verified — say so, dock the evidence_and_support score accordingly, and do not treat the claim as proven. If a claim is "likely supported" by a real source, give it credit and do not demand evidence it already has. Never invent a source the check did not return.`}
 
 `
     : "";
