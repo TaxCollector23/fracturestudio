@@ -487,7 +487,6 @@ export function normalizeAudit(audit, essay) {
     }
   }
 
-  scrubUnsupportedGeneratedNumbers(normalized, text);
   return normalized;
 }
 
@@ -773,33 +772,6 @@ function sourceQuoteOr(value, sourceText, fallback) {
   return stringOr(fallback, source);
 }
 
-function scrubUnsupportedGeneratedNumbers(audit, essay) {
-  const allowed = new Set((String(essay || "").match(/\d+(?:[.,]\d+)?/g) || []).map((value) => value.replace(",", ".")));
-  const scrub = (value) => String(value || "").replace(/\d+(?:[.,]\d+)?/g, (match) => (
-    allowed.has(match.replace(",", ".")) ? match : "[verified evidence needed]"
-  ));
-  const scrubFields = (item, fields) => fields.forEach((field) => {
-    if (typeof item?.[field] === "string") item[field] = scrub(item[field]);
-  });
-
-  scrubFields(audit, ["verdict", "coaching_note"]);
-  ensureArray(audit.priority_fixes).forEach((item) => scrubFields(item, ["problem", "why_it_matters", "exact_fix", "rewrite"]));
-  scrubFields(audit.collapse_point, ["why_it_collapses", "strongest_attack", "strongest_defense", "opponent_attack", "reinforcement"]);
-  ensureArray(audit.argument_dependency_graph?.links).forEach((item) => scrubFields(item, ["from", "to", "risk"]));
-  scrubFields(audit.argument_strength?.thesis, ["assessment"]);
-  ensureArray(audit.argument_strength?.claims).forEach((item) => scrubFields(item, ["diagnosis", "opponent_exploit", "fix"]));
-  ensureArray(audit.assumption_audit).forEach((item) => scrubFields(item, ["assumption", "if_changed", "justification", "vulnerability", "defense"]));
-  ensureArray(audit.logical_fallacies).forEach((item) => scrubFields(item, ["name", "explanation", "fix"]));
-  ensureArray(audit.counter_arguments).forEach((item) => scrubFields(item, ["steelman", "targets", "damage", "suggested_rebuttal", "preparation"]));
-  ensureArray(audit.attack_tree).forEach((item) => scrubFields(item, ["attack", "targets", "why_dangerous", "response", "crossfire_question"]));
-  ensureArray(audit.truth_audit).forEach((item) => scrubFields(item, ["why_check", "verification_step"]));
-  ensureArray(audit.alternative_solutions_test).forEach((item) => scrubFields(item, ["alternative", "why_it_competes", "what_writer_must_prove", "response"]));
-  scrubFields(audit.rhetorical_analysis, ["opening_hook", "logical_flow", "persuasion_assessment", "clarity_assessment"]);
-  scrubFields(audit.rhetorical_analysis?.world_changing_views, ["idea", "reader_risk", "make_reasonable"]);
-  scrubFields(audit.rhetorical_analysis?.strongest_sentence, ["why"]);
-  scrubFields(audit.rhetorical_analysis?.weakest_sentence, ["why", "fix"]);
-  ensureArray(audit.rewrite_suggestions).forEach((item) => scrubFields(item, ["rewrite", "improvement"]));
-}
 
 function clampInt(value, fallback, min, max) {
   const number = typeof value === "number" ? value : Number.parseInt(value, 10);
