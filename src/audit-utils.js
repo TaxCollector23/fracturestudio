@@ -455,6 +455,11 @@ export function normalizeAudit(audit, essay) {
       }
     };
   }
+  // Pass through mode_analysis (impact_weighing, stock_issues, monroe_sequence, etc.)
+  if (input.mode_analysis && typeof input.mode_analysis === 'object') {
+    normalized.mode_analysis = input.mode_analysis;
+  }
+
   // Keep the model's own score_breakdown + explanations when it used lean keys
   // (anything other than the four legacy dimensions), clamped to 0-25.
   if (input.score_breakdown && typeof input.score_breakdown === "object") {

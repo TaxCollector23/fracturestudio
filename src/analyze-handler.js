@@ -301,6 +301,95 @@ function readableAuditSections(audit) {
     });
   }
 
+  // Mode-specific deep analysis sections
+  const modeAnalysis = parsed.mode_analysis || {};
+
+  // Argument/debate: impact weighing + stock issues
+  const iw = modeAnalysis.impact_weighing || {};
+  if (firstText(iw.magnitude) || firstText(iw.probability) || firstText(iw.verdict)) {
+    sections.push({
+      title: "Impact analysis",
+      body: [
+        firstText(iw.magnitude) ? `Magnitude: ${compact(iw.magnitude)}` : "",
+        firstText(iw.probability) ? `Probability: ${compact(iw.probability)}` : "",
+        firstText(iw.timeframe) ? `Timeframe: ${compact(iw.timeframe)}` : "",
+        firstText(iw.reversibility) ? `Reversibility: ${compact(iw.reversibility)}` : "",
+        firstText(iw.uniqueness) ? `Uniqueness: ${compact(iw.uniqueness)}` : "",
+        firstText(iw.verdict) ? `Verdict: ${compact(iw.verdict)}` : ""
+      ].filter(Boolean).join("\n")
+    });
+  }
+
+  const si = modeAnalysis.stock_issues || {};
+  if (firstText(si.significance) || firstText(si.inherency) || firstText(si.solvency)) {
+    sections.push({
+      title: "Stock issues",
+      body: [
+        firstText(si.significance) ? `Significance: ${compact(si.significance)}` : "",
+        firstText(si.inherency) ? `Inherency: ${compact(si.inherency)}` : "",
+        firstText(si.solvency) ? `Solvency: ${compact(si.solvency)}` : "",
+        firstText(si.weakest_issue) ? `Weakest issue: ${compact(si.weakest_issue)}` : ""
+      ].filter(Boolean).join("\n")
+    });
+  }
+
+  const ba = modeAnalysis.burden_analysis || {};
+  if (firstText(ba.burden_of_proof) || firstText(ba.dropped_burdens)) {
+    sections.push({
+      title: "Burden of proof",
+      body: [
+        firstText(ba.burden_of_proof) ? `Must prove: ${compact(ba.burden_of_proof)}` : "",
+        typeof ba.burden_met === "boolean" ? `Burden met: ${ba.burden_met ? "Yes" : "Not yet"}` : "",
+        firstText(ba.dropped_burdens) ? `Dropped burdens: ${compact(ba.dropped_burdens)}` : ""
+      ].filter(Boolean).join("\n")
+    });
+  }
+
+  // Speech: Monroe's Motivated Sequence
+  const monroe = modeAnalysis.monroe_sequence || {};
+  const monroeSteps = ["attention", "need", "satisfaction", "visualization", "action"];
+  const monroeLabels = { attention: "Attention", need: "Need", satisfaction: "Satisfaction", visualization: "Visualization", action: "Action" };
+  const monroeLines = monroeSteps.map((step) => {
+    const s = monroe[step] || {};
+    if (!s.note && !s.quote) return "";
+    const grade = firstText(s.grade) ? ` [${s.grade}]` : "";
+    const present = s.present === false ? " — MISSING" : "";
+    const quote = firstText(s.quote) ? ` "${compact(s.quote, 120)}"` : "";
+    const note = firstText(s.note) ? ` — ${compact(s.note, 200)}` : "";
+    return `${monroeLabels[step]}${grade}${present}${quote}${note}`;
+  }).filter(Boolean);
+  if (monroeLines.length) {
+    sections.push({ title: "Monroe's Motivated Sequence", body: monroeLines.join("\n") });
+  }
+
+  // Speech: Aristotle's three proofs
+  const appeals = modeAnalysis.rhetorical_appeals || {};
+  const appealLines = ["ethos", "pathos", "logos"].map((proof) => {
+    const a = appeals[proof] || {};
+    if (!a.quote && !a.mechanism) return "";
+    const grade = firstText(a.grade) ? ` [${a.grade}]` : "";
+    const quote = firstText(a.quote) ? ` "${compact(a.quote, 120)}"` : "";
+    const mech = firstText(a.mechanism) ? ` — ${compact(a.mechanism, 200)}` : "";
+    return `${proof.charAt(0).toUpperCase() + proof.slice(1)}${grade}${quote}${mech}`;
+  }).filter(Boolean);
+  if (appealLines.length) {
+    const missing = firstText(appeals.one_sentence_to_add) ? `\nAdd: ${compact(appeals.one_sentence_to_add)}` : "";
+    sections.push({ title: "Aristotle's three proofs", body: appealLines.join("\n") + missing });
+  }
+
+  // Speech: rhetorical devices
+  const devices = asArray(modeAnalysis.rhetorical_devices);
+  if (devices.length) {
+    sections.push({
+      title: "Rhetorical devices",
+      body: devices.slice(0, 5).map((d, i) => {
+        const quote = firstText(d.quote) ? ` "${compact(d.quote, 120)}"` : "";
+        const note = firstText(d.note) ? ` — ${compact(d.note, 200)}` : "";
+        return `${i + 1}. ${firstText(d.device, "Device")}${quote}${note}`;
+      }).join("\n")
+    });
+  }
+
   sections.push({
     title: "Revision path",
     body: fixes.length
