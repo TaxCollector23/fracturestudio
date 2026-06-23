@@ -1044,7 +1044,11 @@ export async function handleAnalyze(req, res) {
   // The model is fast on bounded output but will run for minutes if left unbounded.
   const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
   // Tuned so a medium audit completes around ~85s on the free model while staying rich.
-  const maxTokens = depth === "surface" ? 2600 : depth === "extreme" ? 6500 : 4800;
+  // Speech schema is compact (~1200 tokens). Cap tightly to cut off argument-field bloat
+  // that the model appends despite schema discipline instructions.
+  const maxTokens = mode === "speech"
+    ? (depth === "surface" ? 1200 : 1800)
+    : (depth === "surface" ? 2600 : depth === "extreme" ? 6500 : 4800);
   const citationStyle = req.body?.preferences?.citationStyle;
   const mode = String(req.body?.preferences?.analysisFormat || "argument").toLowerCase();
 
