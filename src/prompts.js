@@ -636,7 +636,7 @@ WHAT TO INCLUDE — ALL OF THE FOLLOWING ARE REQUIRED:
 - mode_analysis: FULLY POPULATED — all impact dimensions, all stock issues, complete rebuttal_prep, extra_arguments the writer is missing
 - priority_fixes: as many as required by the draft, ordered by competitive damage
 
-SPEECH MODE CONCISENESS (when analyzing a speech): The combined JSON output must finish under 1500 tokens. Limit arrays strictly: delivery_markup max 2 items, structure_analysis.paragraph_map max 5 items, audience_questions max 2 items, rhetorical_devices max 3 items. Every string field: 1-2 tight sentences max. Finishing the JSON completely beats exhaustive field content.
+SPEECH MODE CONCISENESS (when analyzing a speech): The combined JSON output must finish under 1200 tokens. Limit arrays strictly: strengths max 2 items, structural_gaps max 3 items, rhetorical_devices max 2 items, priority_fixes max 2 items. Every string field: 1-2 tight sentences max. Finishing the JSON completely beats exhaustive field content.
 
 TONE: Brutally direct. No softening. Every fix must be language the writer can say or write — not a description of what to do. Never invent statistics or sources — write [verified evidence needed].`;
 
@@ -1272,7 +1272,7 @@ function getModeAnalysisSchema(mode, depth) {
       "attention": { "present": true, "quote": "exact opening line verbatim", "grade": "A or B or C or D or F", "note": "what works or fails and one specific improvement" },
       "need": { "present": true, "quote": "where problem is established verbatim", "urgency": "high or medium or low", "personal_to_audience": true, "note": "assessment" },
       "satisfaction": { "present": true, "quote": "where solution is presented verbatim", "is_specific": true, "note": "assessment" },
-      "visualization": { "present": true, "quote": "exact visualization passage verbatim", "has_negative_future": true, "has_positive_future": true, "vividness": "A or B or C or D — how sensory and specific the future image is", "note": "what works or what would make it more visceral", "suggested_addition": "one sentence that would sharpen the visualization if vividness is C or lower" },
+      "visualization": { "present": true, "quote": "exact visualization passage verbatim", "vividness": "A or B or C or D", "note": "what works or what one specific sensory detail would sharpen it" },
       "action": { "present": true, "quote": "exact call to action verbatim", "is_specific": true, "is_achievable": true, "note": "assessment + one specific improvement" }
     },
     "rhetorical_appeals": {
@@ -1429,53 +1429,25 @@ function buildSpeechSchema(depth) {
     "assessment": "2 sentences on what works or fails about this hook",
     "stronger_hook": "write a better opening hook in the speaker's voice"
   },
-  "delivery_markup": [
-    {
-      "original_text": "exact passage verbatim",
-      "annotated": "same passage with [pause], [emphasize 'phrase'], [slow down], [eye contact], [gesture], [emotional shift] added inline",
-      "note": "why this delivery choice helps this specific moment"
-    }
-  ],
   "structure_analysis": {
     "detected_structure": "what structure the speech currently has",
-    "recommended_structure": "Hook → Problem → Stakes → Main Points → Example → Solution → Call to Action",
-    "structural_gaps": ["what is missing or out of order"],
-    "paragraph_map": [
-      { "paragraph": 1, "job": "what it does", "assessment": "good or needs work", "fix": "specific improvement" }
-    ]
+    "structural_gaps": ["what Monroe step is missing or out of order — empty array if none"]
   },
-  "delivery_risks": [
-    {
-      "quote": "exact passage that will be hard to deliver",
-      "risk": "why this is hard to say well — too long, tangled syntax, awkward rhythm",
-      "fix": "rewritten version for spoken delivery"
-    }
-  ],
   "memorability_check": {
-    "has_memorable_moment": false,
-    "memorable_elements_found": ["what memorable elements already exist"],
-    "missing_elements": ["story, statistic, repeated phrase, image, or emotional moment that would help"],
-    "suggested_memorable_line": "write one memorable line for this specific speech"
+    "has_memorable_moment": true,
+    "memorable_elements_found": ["story", "statistic", "repeated phrase", "image", "emotional moment"],
+    "suggested_memorable_line": "write one memorable line if anything is missing — empty string if already strong"
   },
-  "audience_questions": [
-    { "type": "confused or skeptical or hostile or practical", "question": "question the audience would realistically ask", "how_to_preempt": "add this sentence before the conclusion" }
-  ],
   "call_to_action": {
     "present": false,
     "current": "quote the ending verbatim",
     "is_specific": false,
     "is_achievable": false,
-    "assessment": "is it clear and actionable — would the audience know the exact next step?",
-    "stronger_ending": "write a stronger, more specific call to action"
+    "assessment": "is it clear and actionable",
+    "stronger_ending": "write a stronger, more specific call to action if needed"
   },
   "priority_fixes": [
-    {
-      "quote": "exact text to fix verbatim from the draft",
-      "problem": "name the precise problem — missing Monroe step, weak ethos, no call to action, untested logic",
-      "why_it_matters": "what the audience does when they encounter this — the specific consequence",
-      "exact_fix": "one concrete edit action",
-      "rewrite": "finished replacement sentence or passage the speaker can use"
-    }
+    { "problem": "name the precise problem — missing Monroe step, weak ethos, vague CTA", "quote": "exact text", "rewrite": "finished replacement the speaker can use" }
   ]${modeAnalysis}}`;
 }
 
