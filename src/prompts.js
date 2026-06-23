@@ -1143,52 +1143,68 @@ Format: polished plain text. No markdown syntax, tables, emojis, asterisks, or h
 function getModeScoreBreakdown(mode) {
   switch (mode) {
     case 'speech':
-      return `"ethos_and_credibility": 0, "pathos_and_engagement": 0, "logos_and_structure": 0, "memorability_and_delivery": 0`;
+      return `"audience_clarity": 0, "hook_strength": 0, "structure": 0, "delivery_readiness": 0, "persuasion": 0, "memorability": 0, "call_to_action_strength": 0`;
     case 'essay':
-      return `"thesis_precision": 0, "evidence_integration": 0, "structural_coherence": 0, "depth_of_analysis": 0`;
+      return `"main_point_clarity": 0, "organization": 0, "paragraph_structure": 0, "evidence_integration": 0, "flow": 0, "depth_of_analysis": 0, "conclusion_strength": 0`;
     case 'college-essay':
-      return `"thesis_sophistication": 0, "analytical_depth": 0, "counterargument_quality": 0, "academic_voice": 0`;
+      return `"thesis_precision": 0, "paragraph_architecture": 0, "evidence_analysis_balance": 0, "counterargument_quality": 0, "academic_tone": 0, "close_reading_depth": 0, "conclusion_strength": 0`;
     case 'research-paper':
-      return `"research_question_clarity": 0, "claim_evidence_alignment": 0, "methodology_soundness": 0, "conclusion_integrity": 0`;
+      return `"research_question_clarity": 0, "thesis_alignment": 0, "section_architecture": 0, "source_quality": 0, "citation_coverage": 0, "evidence_fit": 0, "conclusion_integrity": 0`;
     case 'model-un':
-      return `"country_position_accuracy": 0, "resolution_quality": 0, "diplomatic_argument": 0, "committee_preparedness": 0`;
+      return `"policy_accuracy": 0, "writing_clarity": 0, "diplomatic_tone": 0, "solution_realism": 0, "source_strength": 0`;
     default: // argument + rubric
-      return `"claim_and_warrant": 0, "evidence_and_impact": 0, "rebuttal_readiness": 0, "logical_structure": 0`;
+      return `"claim_clarity": 0, "evidence_strength": 0, "warrant_strength": 0, "rebuttal_readiness": 0, "logical_consistency": 0, "impact_weighing": 0, "source_strength": 0`;
   }
 }
 
 function getModeScoreExplanations(mode) {
   switch (mode) {
     case 'speech':
-      return `"ethos_and_credibility": "one sentence: does the speaker establish authority, personal stake, and trustworthiness?",
-    "pathos_and_engagement": "one sentence: does the speech make the audience feel something specific and genuine?",
-    "logos_and_structure": "one sentence: is evidence specific and warranted, and is Monroe's Motivated Sequence clearly present?",
-    "memorability_and_delivery": "one sentence: will the audience remember this speech — hook quality, rhetorical devices, call to action specificity?"`;
+      return `"audience_clarity": "one sentence: does the audience know the main message and why it matters to them personally?",
+    "hook_strength": "one sentence: does the opening grab attention immediately — not a definition, not 'today I will talk about'?",
+    "structure": "one sentence: does the speech follow a clear progression (Monroe, problem-solution, or another coherent arc)?",
+    "delivery_readiness": "one sentence: can this be spoken aloud — is it free of hard-to-say constructions, tangled sentences, or written-not-spoken phrasing?",
+    "persuasion": "one sentence: does the speech actually move someone — does it establish credibility, create emotional stakes, and make a logical case?",
+    "memorability": "one sentence: will the audience remember one specific moment — a story, a line, a statistic, a device?",
+    "call_to_action_strength": "one sentence: does the speech end with a specific achievable action, or does it trail off into vague inspiration?"`;
     case 'essay':
-      return `"thesis_precision": "one sentence: is the thesis specific, arguable, and actually proven by the body?",
-    "evidence_integration": "one sentence: is every piece of evidence introduced, quoted, then explained — never dropped in without analysis?",
-    "structural_coherence": "one sentence: does each paragraph have one clear job, is the order logical, and do transitions work?",
-    "depth_of_analysis": "one sentence: does the essay analyze rather than summarize, and engage real counterarguments?"`;
+      return `"main_point_clarity": "one sentence: is there a specific, arguable central claim that the entire essay defends?",
+    "organization": "one sentence: does the order of paragraphs follow a logical sequence that builds the argument?",
+    "paragraph_structure": "one sentence: does every paragraph have one clear job stated in its topic sentence?",
+    "evidence_integration": "one sentence: is every piece of evidence introduced, quoted, and then explained — never dropped in without analysis?",
+    "flow": "one sentence: do transitions guide the reader forward, or does the essay jump between ideas without connecting them?",
+    "depth_of_analysis": "one sentence: does the writing analyze and explain, or does it mostly summarize and describe?",
+    "conclusion_strength": "one sentence: does the conclusion make a final move — say something beyond restating the intro?"`;
     case 'college-essay':
-      return `"thesis_sophistication": "one sentence: is the thesis specific, arguable, and genuinely non-obvious — something an expert would dispute?",
-    "analytical_depth": "one sentence: does the analysis explain what specific words and phrases DO, not just what they mean?",
-    "counterargument_quality": "one sentence: is the counterargument a real objection, fairly represented, and convincingly rebutted?",
-    "academic_voice": "one sentence: does the writing use precise active verbs, no casual language, and no absolute claims?"`;
+      return `"thesis_precision": "one sentence: is the thesis specific, arguable, and sophisticated — something a careful reader might genuinely dispute?",
+    "paragraph_architecture": "one sentence: does every paragraph have one clear job connected to the thesis, with no paragraph doing two jobs?",
+    "evidence_analysis_balance": "one sentence: does analysis dominate over summary — does the writer explain what evidence does, not just what it says?",
+    "counterargument_quality": "one sentence: is the counterargument a real objection, fairly represented and convincingly rebutted — not a strawman?",
+    "academic_tone": "one sentence: does the writing use precise active verbs, no casual language, and no absolute claims like 'always' or 'obviously'?",
+    "close_reading_depth": "one sentence: does the analysis engage specific words and phrases — what they do — rather than just summarizing plot or argument?",
+    "conclusion_strength": "one sentence: does the conclusion explain why the argument matters beyond restating it — does it earn its final sentence?"`;
     case 'research-paper':
       return `"research_question_clarity": "one sentence: is the research question specific, answerable, and genuinely novel?",
-    "claim_evidence_alignment": "one sentence: is every major claim mapped to a citation, with no overclaiming beyond what sources prove?",
-    "methodology_soundness": "one sentence: does the evidence fit the claim — correlation vs causation, sample size vs scope of conclusions?",
-    "conclusion_integrity": "one sentence: does the conclusion stay within what the evidence proves, with limitations acknowledged?"`;
+    "thesis_alignment": "one sentence: does the thesis directly answer the research question, and does the conclusion match what the evidence proved?",
+    "section_architecture": "one sentence: are all required sections present, in the right order, and neither too thin nor redundant?",
+    "source_quality": "one sentence: are sources scholarly, credible, and appropriate to the claims they support — not news articles for empirical claims?",
+    "citation_coverage": "one sentence: is every major factual claim mapped to a citation, with no sentences that make factual assertions without support?",
+    "evidence_fit": "one sentence: does the evidence type match the claim — no correlation cited as causation, no single case generalized to all?",
+    "conclusion_integrity": "one sentence: does the conclusion stay within what the evidence actually proves — no overclaiming, no new claims?"`;
     case 'model-un':
-      return `"country_position_accuracy": "one sentence: does the position reflect the country's real foreign policy and past voting record?",
-    "resolution_quality": "one sentence: are clauses in authentic UN operative format, specific, and realistically implementable?",
-    "diplomatic_argument": "one sentence: is the argument well-warranted and framed in diplomatically appropriate language?",
-    "committee_preparedness": "one sentence: is the delegate ready for hostile questions, bloc negotiations, and likely amendments?"`;
+      return `"policy_accuracy": "one sentence: does the position reflect what this country actually believes and has voted for in the UN?",
+    "writing_clarity": "one sentence: is the position paper or speech clear, well-organized, and logically argued?",
+    "diplomatic_tone": "one sentence: does the language sound like a diplomat speaking for a government, not a student writing an essay?",
+    "solution_realism": "one sentence: are the proposed solutions specific, implementable, and compatible with this country's interests?",
+    "source_strength": "one sentence: are factual claims supported by credible sources — UN documents, WHO/World Bank data, or government publications?"`;
     default: // argument
-      return `"claim_and_warrant": "one sentence: is the claim specific and arguable, and is the warrant explicit — does it explain WHY the evidence proves the claim?",
-    "evidence_and_impact": "one sentence: is evidence specific and named, and is impact weighed across magnitude, probability, and timeframe?",
-    "rebuttal_readiness": "one sentence: does the argument meet its burden of proof and anticipate the strongest opposing attack with a 4-step response?",
-    "logical_structure": "one sentence: is the logical chain airtight — no scope creep, no dropped assumptions, no strength mismatches?"`;
+      return `"claim_clarity": "one sentence: is the main claim specific, arguable, and clearly stated — not vague or too broad?",
+    "evidence_strength": "one sentence: is evidence specific and named — an actual study, statistic, or source — or vague ('studies show', 'experts say')?",
+    "warrant_strength": "one sentence: is the logical bridge between evidence and claim explicit — does the writer explain WHY the evidence proves the claim rather than just presenting both?",
+    "rebuttal_readiness": "one sentence: does the argument anticipate and answer the strongest opposing attack with a complete 4-step refutation?",
+    "logical_consistency": "one sentence: is the reasoning chain airtight — no scope creep, no dropped assumptions, no fallacies, no evidence proving a narrower claim than stated?",
+    "impact_weighing": "one sentence: does the argument address magnitude, probability, and timeframe of the impact — and compare them against alternatives?",
+    "source_strength": "one sentence: are sources credible, specific, and recent — not vague, unnamed, or cited incorrectly?"`;
   }
 }
 
@@ -1378,8 +1394,508 @@ function buildLeanSchema(mode, depth) {
   }${getModeAnalysisSchema(mode, depth)}}`;
 }
 
+function buildSpeechSchema(depth) {
+  const modeAnalysis = getModeAnalysisSchema('speech', depth);
+  const surface = depth === 'surface';
+  return `{
+  "overall_score": 0,
+  "score_breakdown": {
+    ${getModeScoreBreakdown('speech')}
+  },
+  "score_explanations": {
+    ${getModeScoreExplanations('speech')}
+  },
+  "verdict": "${surface ? "3 sentences: what the speech does right, its biggest problem, the one thing to fix first" : "6-9 sentences on whether the speech achieves its purpose — what works, what fails first, and why the score is exactly what it is"}",
+  "coaching_note": "${surface ? "2 sentences: the single most impactful repair, stated as a concrete action" : "3-5 practical sentences: highest-leverage repair first, then next moves in order"}",
+  "strengths": [
+    { "quote": "exact strong sentence verbatim", "why": "the specific Monroe step, Aristotelian proof, or rhetorical device that makes this land" }
+  ],
+  "audience_clarity": {
+    "main_message_obvious": true,
+    "context_sufficient": true,
+    "confusing_terms": ["any term the audience may not understand"],
+    "audience_knows_why_it_matters": true,
+    "level_assessment": "too advanced, appropriate, or too basic for the likely audience",
+    "fixes": ["specific fix to improve audience clarity"]
+  },
+  "hook_analysis": {
+    "current_hook": "quote the actual opening line verbatim",
+    "rating": "STRONG or MODERATE or WEAK",
+    "grabs_attention": true,
+    "is_relevant": true,
+    "creates_curiosity": true,
+    "assessment": "2 sentences on what works or fails about this hook",
+    "stronger_hook": "write a better opening hook in the speaker's voice"
+  },
+  "delivery_markup": [
+    {
+      "original_text": "exact passage verbatim",
+      "annotated": "same passage with [pause], [emphasize 'phrase'], [slow down], [eye contact], [gesture], [emotional shift] added inline",
+      "note": "why this delivery choice helps this specific moment"
+    }
+  ],
+  "structure_analysis": {
+    "detected_structure": "what structure the speech currently has",
+    "recommended_structure": "Hook → Problem → Stakes → Main Points → Example → Solution → Call to Action",
+    "structural_gaps": ["what is missing or out of order"],
+    "paragraph_map": [
+      { "paragraph": 1, "job": "what it does", "assessment": "good or needs work", "fix": "specific improvement" }
+    ]
+  },
+  "delivery_risks": [
+    {
+      "quote": "exact passage that will be hard to deliver",
+      "risk": "why this is hard to say well — too long, tangled syntax, awkward rhythm",
+      "fix": "rewritten version for spoken delivery"
+    }
+  ],
+  "memorability_check": {
+    "has_memorable_moment": false,
+    "memorable_elements_found": ["what memorable elements already exist"],
+    "missing_elements": ["story, statistic, repeated phrase, image, or emotional moment that would help"],
+    "suggested_memorable_line": "write one memorable line for this specific speech"
+  },
+  "audience_questions": [
+    { "type": "confused or skeptical or hostile or practical", "question": "question the audience would realistically ask", "how_to_preempt": "add this sentence before the conclusion" }
+  ],
+  "call_to_action": {
+    "present": false,
+    "current": "quote the ending verbatim",
+    "is_specific": false,
+    "is_achievable": false,
+    "assessment": "is it clear and actionable — would the audience know the exact next step?",
+    "stronger_ending": "write a stronger, more specific call to action"
+  },
+  "priority_fixes": [
+    {
+      "quote": "exact text to fix verbatim from the draft",
+      "problem": "name the precise problem — missing Monroe step, weak ethos, no call to action, untested logic",
+      "why_it_matters": "what the audience does when they encounter this — the specific consequence",
+      "exact_fix": "one concrete edit action",
+      "rewrite": "finished replacement sentence or passage the speaker can use"
+    }
+  ]${modeAnalysis}}`;
+}
+
+function buildEssaySchema(depth) {
+  const modeAnalysis = getModeAnalysisSchema('essay', depth);
+  const surface = depth === 'surface';
+  return `{
+  "overall_score": 0,
+  "score_breakdown": {
+    ${getModeScoreBreakdown('essay')}
+  },
+  "score_explanations": {
+    ${getModeScoreExplanations('essay')}
+  },
+  "verdict": "${surface ? "3 sentences: what the essay does right, its biggest problem, the one thing to fix first" : "6-9 sentences on writing quality, organization, and what fails first under scrutiny"}",
+  "coaching_note": "${surface ? "2 sentences: the single highest-leverage revision" : "3-5 sentences: repairs in priority order, each stated as a concrete action"}",
+  "strengths": [
+    { "quote": "exact strong sentence verbatim", "why": "the specific technique that makes this sentence work" }
+  ],
+  "main_point_check": {
+    "central_idea": "what is the essay actually arguing",
+    "is_clear_early": true,
+    "every_paragraph_connects": true,
+    "too_broad": false,
+    "too_vague": false,
+    "assessment": "2 sentences on thesis quality",
+    "stronger_thesis": "write a more specific, arguable version of the thesis"
+  },
+  "paragraph_map": [
+    {
+      "number": 1,
+      "job": "Introduction or Body or Conclusion",
+      "has_clear_job": true,
+      "topic_sentence": "quote the topic sentence verbatim",
+      "topic_sentence_assessment": "clear or vague or missing or not-connected-to-thesis",
+      "assessment": "does this paragraph do its job — 1-2 sentences",
+      "doing_too_much": false,
+      "should_move": false,
+      "fix": "specific improvement if needed"
+    }
+  ],
+  "evidence_integration": [
+    {
+      "quote": "the evidence or quotation used verbatim",
+      "is_introduced": true,
+      "is_explained": true,
+      "is_connected_to_point": true,
+      "just_dropped_in": false,
+      "fix": "how to integrate it properly — the specific sentence to add"
+    }
+  ],
+  "flow_and_transitions": {
+    "assessment": "overall flow quality — 1-2 sentences",
+    "abrupt_jumps": ["describe each place where the essay jumps without connecting"],
+    "repeated_transitions": ["list repeated transition words or phrases"],
+    "fixes": ["specific reordering or transition fix for each jump"]
+  },
+  "redundancy_check": {
+    "repeated_ideas": ["describe ideas that appear in multiple paragraphs"],
+    "filler_sentences": ["quote sentences that add no new information"],
+    "thesis_restated_too_often": false
+  },
+  "quote_analysis": [
+    {
+      "quote": "the quoted text verbatim",
+      "is_introduced": true,
+      "is_formatted_correctly": true,
+      "is_explained_after": true,
+      "is_too_long": false,
+      "supports_the_point": true,
+      "fix": "specific improvement if explanation is missing or the quote is too long"
+    }
+  ],
+  "grammar_style": {
+    "grammar_errors": ["describe each error with its type — comma splice, fragment, pronoun agreement, etc."],
+    "sentence_variety": "assessment of sentence length and structure variety",
+    "word_choice": "assessment of word precision and appropriateness",
+    "passive_voice_issues": ["quote sentences where passive voice weakens the claim"],
+    "repetitive_phrasing": ["list repeated words or phrases that should be varied"],
+    "casual_language": ["quote overly informal lines that undermine the essay's register"]
+  },
+  "conclusion_strength": {
+    "restates_without_copying": true,
+    "explains_why_it_matters": true,
+    "no_new_evidence": true,
+    "strong_final_thought": true,
+    "assessment": "2 sentences on conclusion quality",
+    "stronger_conclusion": "write a stronger closing sentence or passage"
+  },
+  "priority_fixes": [
+    {
+      "quote": "exact text to fix verbatim",
+      "problem": "name the precise problem — dropped quote, paragraph doing two jobs, missing topic sentence, etc.",
+      "why_it_matters": "what a teacher or reader notices when they encounter this",
+      "exact_fix": "one concrete edit action",
+      "rewrite": "finished replacement sentence or passage"
+    }
+  ]${modeAnalysis}}`;
+}
+
+function buildCollegeEssaySchema(depth) {
+  const modeAnalysis = getModeAnalysisSchema('college-essay', depth);
+  const surface = depth === 'surface';
+  return `{
+  "overall_score": 0,
+  "score_breakdown": {
+    ${getModeScoreBreakdown('college-essay')}
+  },
+  "score_explanations": {
+    ${getModeScoreExplanations('college-essay')}
+  },
+  "verdict": "${surface ? "3 sentences: what the essay earns academically, its main weakness under professor scrutiny, the one fix" : "7-9 sentences: what the essay does well academically, what fails under professor scrutiny, why the score is exactly what it is"}",
+  "coaching_note": "${surface ? "2 sentences: the single highest-leverage academic repair" : "3-5 sentences: repairs in priority order, each stated as a concrete academic action"}",
+  "strengths": [
+    { "quote": "exact strong sentence verbatim", "why": "the specific analytical technique or academic move that makes this effective" }
+  ],
+  "thesis_pressure_test": {
+    "quote": "exact thesis sentence verbatim",
+    "is_specific": true,
+    "is_arguable": true,
+    "is_too_obvious": false,
+    "is_too_broad": false,
+    "does_essay_prove_it": true,
+    "matches_body_paragraphs": true,
+    "assessment": "2-3 sentences from a professor's perspective",
+    "stronger_thesis": "write a more precise, arguable, sophisticated thesis"
+  },
+  "paragraph_architecture": [
+    {
+      "number": 1,
+      "job": "Introduction or thesis setup",
+      "has_clear_job": true,
+      "topic_sentence": "quote verbatim",
+      "connected_to_thesis": true,
+      "doing_two_jobs": false,
+      "needs_more_analysis": false,
+      "fix": "specific improvement"
+    }
+  ],
+  "evidence_analysis_balance": {
+    "too_much_summary": false,
+    "evidence_without_analysis": ["quote passages that drop evidence without word-level explanation"],
+    "analysis_ratio": "Evidence: strong / Analysis: thin — or the correct assessment",
+    "fix": "specific sentence to add analysis after the dropped evidence"
+  },
+  "close_reading_audit": [
+    {
+      "quote": "the quoted text being analyzed verbatim",
+      "analyzes_specific_words": false,
+      "just_summarizes": true,
+      "supports_thesis": true,
+      "feedback": "what a professor would say in the margin — specifically what deeper analysis would argue about this passage"
+    }
+  ],
+  "counterargument_quality": {
+    "has_counterargument": false,
+    "is_real_and_strong": false,
+    "is_fairly_represented": false,
+    "is_response_convincing": false,
+    "feels_pasted_in": true,
+    "assessment": "2 sentences from a professor's perspective",
+    "better_counterargument": "write a real, strong counterargument the essay is not engaging",
+    "stronger_rebuttal": "write the rebuttal that counterargument deserves"
+  },
+  "academic_voice_coach": [
+    {
+      "quote": "exact text with voice problem verbatim",
+      "issue": "too casual or too absolute or too vague or too wordy",
+      "problem": "why this fails academically — the specific register violation",
+      "suggestion": "the precise revision direction — a specific verb or phrase to use instead"
+    }
+  ],
+  "professor_lens": {
+    "margin_comments": ["what a professor would write in the margin at 2-3 specific spots"],
+    "end_comment": "realistic professor-style end comment: 3-5 sentences, direct and substantive"
+  },
+  "conclusion_check": {
+    "restates_without_copying": true,
+    "explains_significance": true,
+    "no_new_evidence": true,
+    "strong_final_thought": true,
+    "assessment": "2 sentences on conclusion quality",
+    "stronger_closing": "write a stronger academic conclusion"
+  },
+  "priority_fixes": [
+    {
+      "quote": "exact text to fix verbatim",
+      "problem": "name the precise academic problem — summary-as-analysis, weak counterargument, casual voice, thesis too broad",
+      "why_it_matters": "what a professor notices and how it affects the grade",
+      "exact_fix": "one concrete academic action",
+      "rewrite": "finished replacement sentence or passage at the right academic register"
+    }
+  ]${modeAnalysis}}`;
+}
+
+function buildResearchPaperSchema(depth) {
+  const surface = depth === 'surface';
+  return `{
+  "overall_score": 0,
+  "score_breakdown": {
+    ${getModeScoreBreakdown('research-paper')}
+  },
+  "score_explanations": {
+    ${getModeScoreExplanations('research-paper')}
+  },
+  "verdict": "${surface ? "3 sentences: what the paper does right, its main structural or citation problem, the one fix" : "7-9 sentences on research paper quality, structural soundness, and citation integrity"}",
+  "coaching_note": "${surface ? "2 sentences: the highest-leverage repair" : "3-5 sentences: repairs in priority order, each stated as a concrete action"}",
+  "strengths": [
+    { "quote": "exact strong sentence verbatim", "why": "what this does well academically" }
+  ],
+  "research_question_audit": {
+    "detected_question": "what research question is being answered",
+    "is_clear": true,
+    "is_answerable": true,
+    "too_broad": false,
+    "too_narrow": false,
+    "paper_answers_it": true,
+    "assessment": "2 sentences",
+    "narrower_question": "suggest a more focused research question if needed"
+  },
+  "research_alignment_map": {
+    "research_question": "the detected question",
+    "thesis_answers_question": true,
+    "sections_support_thesis": true,
+    "conclusion_matches_evidence": true,
+    "intro_promises_kept": true,
+    "drift_points": ["where the paper drifts from its research question"]
+  },
+  "section_architecture": [
+    { "section": "Introduction", "present": true, "assessment": "quality assessment", "fix": "specific improvement" },
+    { "section": "Literature Review", "present": false, "assessment": "quality or reason it is missing", "fix": "what to add" },
+    { "section": "Methodology", "present": false, "assessment": "quality or reason it is missing", "fix": "what to add" },
+    { "section": "Argument", "present": true, "assessment": "quality assessment", "fix": "specific improvement" },
+    { "section": "Counterargument", "present": false, "assessment": "quality or reason it is missing", "fix": "what to add" },
+    { "section": "Conclusion", "present": true, "assessment": "quality assessment", "fix": "specific improvement" }
+  ],
+  "citation_coverage_map": [
+    {
+      "claim": "major factual claim in the paper",
+      "citation_present": true,
+      "source_strength": "STRONG or USABLE or WEAK",
+      "problem": "what is wrong with the citation or coverage",
+      "fix": "how to repair it"
+    }
+  ],
+  "missing_citation_flags": [
+    {
+      "sentence": "exact sentence that makes a factual claim without a citation",
+      "why": "why it needs one — statistics, empirical claim, another author's idea",
+      "needed_source": "what kind of source to find"
+    }
+  ],
+  "source_quality_ladder": [
+    {
+      "source": "source name or description as cited",
+      "type": "scholarly or government or news or blog or unclear",
+      "rating": "STRONG or USABLE or WEAK or NEEDS_REPLACEMENT",
+      "problem": "if weak, why",
+      "replacement": "what to look for instead"
+    }
+  ],
+  "evidence_fit_test": [
+    {
+      "claim": "the claim being made",
+      "evidence_type": "what evidence is offered",
+      "fit": "GOOD or POOR",
+      "problem": "is it correlation cited as causation, single case generalized broadly, outdated study for current claim, etc.",
+      "fix": "how to align the evidence type to the claim"
+    }
+  ],
+  "literature_review_audit": {
+    "summarizes_only": true,
+    "compares_sources": false,
+    "groups_by_theme": false,
+    "shows_disagreement": false,
+    "identifies_research_gap": false,
+    "positions_student_in_conversation": false,
+    "assessment": "2 sentences",
+    "fix": "how to strengthen the literature review from summary to synthesis"
+  },
+  "conclusion_overclaim_check": {
+    "matches_evidence": true,
+    "introduces_new_claims": false,
+    "exaggerates": false,
+    "answers_research_question": true,
+    "explains_significance": true,
+    "assessment": "2 sentences"
+  },
+  "priority_fixes": [
+    {
+      "quote": "exact text to fix verbatim",
+      "problem": "name the precise problem — missing citation, source too weak, conclusion overclaims evidence, research question unanswered",
+      "why_it_matters": "how this affects the paper's credibility or grade",
+      "exact_fix": "one concrete action",
+      "rewrite": "finished replacement sentence or passage"
+    }
+  ]}`;
+}
+
+function buildRubricSchema() {
+  return `{
+  "rubric_total_possible": 0,
+  "score_earned": 0,
+  "percentage": "0%",
+  "letter_grade": "B",
+  "verdict": "3-5 sentences: what the rubric reveals about this piece — where points were earned and where they were lost",
+  "criterion_scores": [
+    {
+      "criterion": "Thesis",
+      "score_earned": 0,
+      "score_possible": 0,
+      "reason": "why this score was given based on the rubric language — not your own standard, the rubric's",
+      "evidence_from_text": "quote the passage that earned or lost points",
+      "what_is_missing": "specifically what the rubric requires that is not present",
+      "how_to_improve": "exact action to earn more points on this criterion"
+    }
+  ],
+  "teacher_comment": "Write a realistic teacher-style end comment — 3-5 sentences, direct and specific, as a teacher would actually write it",
+  "point_recovery_plan": [
+    {
+      "action": "specific action to take",
+      "points_possible": 0,
+      "how_to_do_it": "concrete steps to earn those points"
+    }
+  ],
+  "fastest_improvements": ["the single action that recovers the most points", "second action", "third action"],
+  "note": "This grade is based only on the pasted rubric. Fracture's normal scoring does not apply here."}`;
+}
+
+function buildModelUnSchema(depth) {
+  const surface = depth === 'surface';
+  return `{
+  "overall_score": 0,
+  "score_breakdown": {
+    ${getModeScoreBreakdown('model-un')}
+  },
+  "score_explanations": {
+    ${getModeScoreExplanations('model-un')}
+  },
+  "verdict": "${surface ? "3 sentences: what the delegate does right, the biggest positioning or writing problem, the one fix" : "6-9 sentences on delegate readiness, position paper quality, and conference preparation"}",
+  "coaching_note": "${surface ? "2 sentences: the highest-leverage repair" : "3-5 sentences: repairs in priority order"}",
+  "delegate_brief": {
+    "country": "detected country",
+    "committee": "detected committee",
+    "topic": "detected topic",
+    "country_stance": "what this country actually believes on this topic based on real foreign policy",
+    "national_interests": ["interest 1 — specific to this country's actual priorities", "interest 2"],
+    "red_lines": ["what this country would never support — based on real foreign policy"],
+    "likely_allies": ["country and brief reason"],
+    "likely_opponents": ["country and brief reason"],
+    "past_un_actions": "what this country has actually done or voted on this topic in the UN",
+    "useful_facts": ["specific fact the delegate can cite in committee", "another useful fact"]
+  },
+  "writing_audit": {
+    "explains_the_issue": true,
+    "matches_country_position": true,
+    "includes_past_un_action": true,
+    "includes_country_policy": true,
+    "proposes_realistic_solutions": true,
+    "too_generic": false,
+    "sounds_like_country_not_student": true,
+    "missing_sources": true,
+    "assessment": "2-3 sentences"
+  },
+  "strategy_map": {
+    "best_caucus_topics": [
+      { "topic": "moderated caucus topic the delegate should push for", "why_it_helps": "how this topic benefits the country's position", "opening_line": "exact opening sentence to use", "countries_supporting": ["country"], "countries_opposing": ["country"] }
+    ],
+    "bloc_strategy": "which bloc to join and exactly why — name the countries",
+    "negotiation_approach": "how to negotiate in unmoderated caucus — who to talk to first and what to offer",
+    "countries_to_talk_to_first": ["country — one sentence on why and what to say"],
+    "what_to_avoid_saying": ["specific phrase or position the country would never say"],
+    "compromise_to_offer": "a realistic compromise this country could make while protecting core interests"
+  },
+  "resolution_clauses": [
+    {
+      "solution": "detected or proposed solution",
+      "operative_clause": "Calls upon member states to...",
+      "is_realistic": true,
+      "too_vague": false,
+      "sovereignty_concern": false,
+      "needs_funding": true,
+      "assessment": "2 sentences on whether this clause would pass and why"
+    }
+  ],
+  "speech_coach": {
+    "delivery_notes": "where to pause, emphasize, make eye contact — specific to this speech",
+    "questions_delegates_will_ask": ["realistic question from a skeptical delegate — with answer"],
+    "responses_to_attacks": ["likely attack from an opposing delegation → exact response"],
+    "fit_to_time": "assessment of speech length vs the typical time allotment"
+  },
+  "source_pack": [
+    { "claim": "claim in the paper that needs a source", "source_type": "UN document or WHO or World Bank or government report", "search_terms": "what to search for to find it" }
+  ],
+  "policy_accuracy_check": {
+    "realistic_for_country": true,
+    "foreign_policy_consistent": true,
+    "economic_interest_aligned": true,
+    "past_voting_consistent": true,
+    "red_flags": ["anything the country would never say or support — quote the problematic line"]
+  },
+  "priority_fixes": [
+    {
+      "quote": "exact text to fix verbatim",
+      "problem": "name the precise problem — wrong country position, non-UN-style clause, generic language, missing sources",
+      "why_it_matters": "how this affects the delegate's score or committee performance",
+      "exact_fix": "one concrete action",
+      "rewrite": "finished replacement sentence or clause"
+    }
+  ]}`;
+}
+
 function getSchemaForMode(mode, depth) {
-  return buildLeanSchema(mode, depth);
+  switch (mode) {
+    case 'speech': return buildSpeechSchema(depth);
+    case 'essay': return buildEssaySchema(depth);
+    case 'college-essay': return buildCollegeEssaySchema(depth);
+    case 'research-paper': return buildResearchPaperSchema(depth);
+    case 'rubric': return buildRubricSchema();
+    case 'model-un': return buildModelUnSchema(depth);
+    default: return buildLeanSchema(mode, depth); // argument
+  }
 }
 
 function getSystemForMode(mode) {

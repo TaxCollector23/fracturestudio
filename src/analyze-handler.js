@@ -155,16 +155,14 @@ function prettyDimension(key) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function readableAuditSections(audit) {
+function readableAuditSections(audit, mode) {
   const parsed = audit && typeof audit === "object" ? audit : {};
+  const m = String(mode || "argument").toLowerCase();
   const scores = parsed.score_breakdown && typeof parsed.score_breakdown === "object" ? parsed.score_breakdown : {};
-  const thesis = parsed.thesis || {};
-  const collapse = parsed.collapse_point || {};
-  const counter = parsed.counterargument || {};
   const fixes = asArray(parsed.priority_fixes);
-  const claims = asArray(parsed.claims);
   const strengths = asArray(parsed.strengths);
 
+  // ── Shared opener ──────────────────────────────────────────────────────────
   const sections = [
     {
       title: "Verdict",
@@ -176,18 +174,10 @@ function readableAuditSections(audit) {
     }
   ];
 
-  const scoreLines = Object.keys(scores).map((key) => `${prettyDimension(key)}: ${scores[key] ?? "—"}/25`);
+  const scoreLines = Object.keys(scores).map((key) => `${prettyDimension(key)}: ${scores[key] ?? "—"}`);
   if (scoreLines.length) {
     sections.push({ title: "Score breakdown", body: scoreLines.join("\n") });
   }
-
-  sections.push({
-    title: "Thesis check",
-    body: [
-      firstText(thesis.quote, "No single thesis sentence was detected — the central claim may be implied rather than stated."),
-      firstText(thesis.assessment)
-    ].filter(Boolean).join("\n")
-  });
 
   if (strengths.length) {
     sections.push({
@@ -211,233 +201,739 @@ function readableAuditSections(audit) {
     });
   });
 
-  if (firstText(collapse.quote)) {
+  // ── Mode-specific sections ─────────────────────────────────────────────────
+  if (m === 'speech') {
+    const hook = parsed.hook_analysis || {};
+    if (firstText(hook.current_hook) || firstText(hook.assessment)) {
+      sections.push({
+        title: "Hook analysis",
+        body: [
+          firstText(hook.current_hook) ? `Current hook [${firstText(hook.rating, "?")}]: "${compact(hook.current_hook, 200)}"` : "",
+          firstText(hook.assessment) ? compact(hook.assessment) : "",
+          firstText(hook.stronger_hook) ? `Stronger hook: ${compact(hook.stronger_hook)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const ac = parsed.audience_clarity || {};
+    if (typeof ac.main_message_obvious === "boolean" || firstText(ac.level_assessment)) {
+      const confusing = asArray(ac.confusing_terms);
+      const fixes_ac = asArray(ac.fixes);
+      sections.push({
+        title: "Audience clarity",
+        body: [
+          `Main message clear: ${ac.main_message_obvious ? "Yes" : "No"} — Audience knows why it matters: ${ac.audience_knows_why_it_matters ? "Yes" : "No"}`,
+          firstText(ac.level_assessment) ? `Level: ${compact(ac.level_assessment)}` : "",
+          confusing.length ? `Confusing terms: ${confusing.join(", ")}` : "",
+          fixes_ac.length ? `Fix: ${fixes_ac.slice(0, 2).map(compact).join(" | ")}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const dm = asArray(parsed.delivery_markup);
+    if (dm.length) {
+      sections.push({
+        title: "Delivery markup",
+        body: dm.slice(0, 3).map((d, i) => {
+          return [
+            `${i + 1}. Original: "${compact(firstText(d.original_text), 160)}"`,
+            firstText(d.annotated) ? `   Annotated: ${compact(d.annotated)}` : "",
+            firstText(d.note) ? `   Note: ${compact(d.note, 200)}` : ""
+          ].filter(Boolean).join("\n");
+        }).join("\n\n")
+      });
+    }
+
+    const dr = asArray(parsed.delivery_risks);
+    if (dr.length) {
+      sections.push({
+        title: "Delivery risks",
+        body: dr.slice(0, 3).map((d, i) => [
+          `${i + 1}. "${compact(firstText(d.quote), 180)}"`,
+          firstText(d.risk) ? `   Risk: ${compact(d.risk, 200)}` : "",
+          firstText(d.fix) ? `   Fix: ${compact(d.fix)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const mc = parsed.memorability_check || {};
+    if (firstText(mc.suggested_memorable_line) || asArray(mc.missing_elements).length) {
+      sections.push({
+        title: "Memorability check",
+        body: [
+          `Has memorable moment: ${mc.has_memorable_moment ? "Yes" : "No"}`,
+          asArray(mc.memorable_elements_found).length ? `Found: ${asArray(mc.memorable_elements_found).join(", ")}` : "",
+          asArray(mc.missing_elements).length ? `Missing: ${asArray(mc.missing_elements).join(", ")}` : "",
+          firstText(mc.suggested_memorable_line) ? `Suggested line: ${compact(mc.suggested_memorable_line)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const cta = parsed.call_to_action || {};
+    if (firstText(cta.current) || firstText(cta.stronger_ending)) {
+      sections.push({
+        title: "Call to action",
+        body: [
+          `Present: ${cta.present ? "Yes" : "No"} — Specific: ${cta.is_specific ? "Yes" : "No"} — Achievable: ${cta.is_achievable ? "Yes" : "No"}`,
+          firstText(cta.current) ? `Current ending: "${compact(cta.current, 200)}"` : "",
+          firstText(cta.assessment) ? compact(cta.assessment) : "",
+          firstText(cta.stronger_ending) ? `Stronger: ${compact(cta.stronger_ending)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const aq = asArray(parsed.audience_questions);
+    if (aq.length) {
+      sections.push({
+        title: "Audience questions to preempt",
+        body: aq.slice(0, 4).map((q, i) => [
+          `${i + 1}. [${firstText(q.type, "?")}] ${compact(firstText(q.question), 280)}`,
+          firstText(q.how_to_preempt) ? `   Preempt: ${compact(q.how_to_preempt)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    // Monroe + Aristotle from mode_analysis
+    const modeAnalysis = parsed.mode_analysis || {};
+    const monroe = modeAnalysis.monroe_sequence || {};
+    const monroeSteps = ["attention", "need", "satisfaction", "visualization", "action"];
+    const monroeLabels = { attention: "Attention", need: "Need", satisfaction: "Satisfaction", visualization: "Visualization", action: "Action" };
+    const monroeLines = monroeSteps.map((step) => {
+      const s = monroe[step] || {};
+      if (!s.note && !s.quote) return "";
+      const grade = firstText(s.grade) ? ` [${s.grade}]` : "";
+      const present = s.present === false ? " — MISSING" : "";
+      const quote = firstText(s.quote) ? ` "${compact(s.quote, 120)}"` : "";
+      const note = firstText(s.note) ? ` — ${compact(s.note, 200)}` : "";
+      return `${monroeLabels[step]}${grade}${present}${quote}${note}`;
+    }).filter(Boolean);
+    if (monroeLines.length) {
+      sections.push({ title: "Monroe's Motivated Sequence", body: monroeLines.join("\n") });
+    }
+
+    const appeals = modeAnalysis.rhetorical_appeals || {};
+    const appealLines = ["ethos", "pathos", "logos"].map((proof) => {
+      const a = appeals[proof] || {};
+      if (!a.quote && !a.mechanism) return "";
+      const grade = firstText(a.grade) ? ` [${a.grade}]` : "";
+      const quote = firstText(a.quote) ? ` "${compact(a.quote, 120)}"` : "";
+      const mech = firstText(a.mechanism) ? ` — ${compact(a.mechanism, 200)}` : "";
+      return `${proof.charAt(0).toUpperCase() + proof.slice(1)}${grade}${quote}${mech}`;
+    }).filter(Boolean);
+    if (appealLines.length) {
+      const addLine = firstText(appeals.one_sentence_to_add) ? `\nAdd: ${compact(appeals.one_sentence_to_add)}` : "";
+      sections.push({ title: "Aristotle's three proofs", body: appealLines.join("\n") + addLine });
+    }
+
+    const devices = asArray(modeAnalysis.rhetorical_devices);
+    if (devices.length) {
+      sections.push({
+        title: "Rhetorical devices",
+        body: devices.slice(0, 5).map((d, i) => {
+          const quote = firstText(d.quote) ? ` "${compact(d.quote, 120)}"` : "";
+          const note = firstText(d.note) ? ` — ${compact(d.note, 200)}` : "";
+          return `${i + 1}. ${firstText(d.device, "Device")}${quote}${note}`;
+        }).join("\n")
+      });
+    }
+
+  } else if (m === 'essay') {
+    const mpc = parsed.main_point_check || {};
+    if (firstText(mpc.central_idea) || firstText(mpc.assessment)) {
+      sections.push({
+        title: "Main point check",
+        body: [
+          firstText(mpc.central_idea) ? `Central idea: ${compact(mpc.central_idea)}` : "",
+          `Clear early: ${mpc.is_clear_early ? "Yes" : "No"} — Every paragraph connects: ${mpc.every_paragraph_connects ? "Yes" : "No"}`,
+          firstText(mpc.assessment) ? compact(mpc.assessment) : "",
+          firstText(mpc.stronger_thesis) ? `Stronger thesis: ${compact(mpc.stronger_thesis)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const paragraphs = asArray(parsed.paragraph_map);
+    if (paragraphs.length) {
+      sections.push({
+        title: "Paragraph map",
+        body: paragraphs.slice(0, 8).map((p) => {
+          const num = p.number || "?";
+          const job = firstText(p.job, "?");
+          const ts = firstText(p.topic_sentence);
+          const assess = firstText(p.assessment);
+          const fix = firstText(p.fix);
+          const flags = [
+            p.doing_too_much ? "doing two jobs" : "",
+            p.should_move ? "should move" : ""
+          ].filter(Boolean).join(", ");
+          return [
+            `¶${num} [${job}]${flags ? ` ⚠ ${flags}` : ""}`,
+            ts ? `  Topic sentence: "${compact(ts, 160)}"` : "",
+            firstText(p.topic_sentence_assessment) ? `  Assessment: ${p.topic_sentence_assessment}` : "",
+            assess ? `  ${compact(assess, 200)}` : "",
+            fix ? `  Fix: ${compact(fix)}` : ""
+          ].filter(Boolean).join("\n");
+        }).join("\n\n")
+      });
+    }
+
+    const evInt = asArray(parsed.evidence_integration);
+    const droppedEvidence = evInt.filter((e) => e.just_dropped_in || !e.is_explained);
+    if (droppedEvidence.length) {
+      sections.push({
+        title: "Evidence integration problems",
+        body: droppedEvidence.slice(0, 4).map((e, i) => [
+          `${i + 1}. "${compact(firstText(e.quote), 200)}"`,
+          `   Introduced: ${e.is_introduced ? "Yes" : "No"} — Explained: ${e.is_explained ? "Yes" : "No"} — Connected: ${e.is_connected_to_point ? "Yes" : "No"}`,
+          firstText(e.fix) ? `   Fix: ${compact(e.fix)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const flow = parsed.flow_and_transitions || {};
+    const jumps = asArray(flow.abrupt_jumps);
+    if (firstText(flow.assessment) || jumps.length) {
+      sections.push({
+        title: "Flow & transitions",
+        body: [
+          firstText(flow.assessment) ? compact(flow.assessment) : "",
+          jumps.length ? `Abrupt jumps: ${jumps.slice(0, 3).map(compact).join(" | ")}` : "",
+          asArray(flow.fixes).length ? `Fixes: ${asArray(flow.fixes).slice(0, 2).map(compact).join(" | ")}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const red = parsed.redundancy_check || {};
+    const repeated = asArray(red.repeated_ideas);
+    const filler = asArray(red.filler_sentences);
+    if (repeated.length || filler.length) {
+      sections.push({
+        title: "Redundancy",
+        body: [
+          repeated.length ? `Repeated ideas: ${repeated.slice(0, 2).map(compact).join(" | ")}` : "",
+          filler.length ? `Filler: ${filler.slice(0, 2).map((f) => `"${compact(f, 120)}"`).join(" | ")}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const gs = parsed.grammar_style || {};
+    const grammarIssues = [
+      ...asArray(gs.grammar_errors).slice(0, 2),
+      ...asArray(gs.passive_voice_issues).slice(0, 1),
+      ...asArray(gs.casual_language).slice(0, 1)
+    ].filter(Boolean);
+    if (grammarIssues.length || firstText(gs.word_choice)) {
+      sections.push({
+        title: "Grammar & style",
+        body: [
+          grammarIssues.length ? grammarIssues.slice(0, 3).map((g, i) => `${i + 1}. ${compact(String(g), 200)}`).join("\n") : "",
+          firstText(gs.word_choice) ? `Word choice: ${compact(gs.word_choice)}` : "",
+          firstText(gs.sentence_variety) ? `Sentence variety: ${compact(gs.sentence_variety)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const conc = parsed.conclusion_strength || {};
+    if (firstText(conc.assessment) || firstText(conc.stronger_conclusion)) {
+      sections.push({
+        title: "Conclusion",
+        body: [
+          firstText(conc.assessment) ? compact(conc.assessment) : "",
+          firstText(conc.stronger_conclusion) ? `Stronger ending: ${compact(conc.stronger_conclusion)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    // Essay mode_analysis
+    const ea = (parsed.mode_analysis || {});
+    const evMap = asArray(ea.evidence_integration_map);
+    if (evMap.length) {
+      sections.push({
+        title: "Evidence integration map",
+        body: evMap.slice(0, 4).map((e, i) => [
+          `${i + 1}. "${compact(firstText(e.quote), 160)}" — ${firstText(e.explanation_quality, "?")}`,
+          firstText(e.fix) ? `   Fix: ${compact(e.fix)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+  } else if (m === 'college-essay') {
+    const tpt = parsed.thesis_pressure_test || {};
+    if (firstText(tpt.quote) || firstText(tpt.assessment)) {
+      sections.push({
+        title: "Thesis pressure test",
+        body: [
+          firstText(tpt.quote) ? `Thesis: "${compact(tpt.quote, 280)}"` : "",
+          `Specific: ${tpt.is_specific ? "Yes" : "No"} — Arguable: ${tpt.is_arguable ? "Yes" : "No"} — Too obvious: ${tpt.is_too_obvious ? "Yes" : "No"} — Essay proves it: ${tpt.does_essay_prove_it ? "Yes" : "No"}`,
+          firstText(tpt.assessment) ? compact(tpt.assessment) : "",
+          firstText(tpt.stronger_thesis) ? `Stronger thesis: ${compact(tpt.stronger_thesis)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const pa = asArray(parsed.paragraph_architecture);
+    if (pa.length) {
+      sections.push({
+        title: "Paragraph architecture",
+        body: pa.slice(0, 6).map((p) => {
+          const flags = [
+            p.doing_two_jobs ? "doing two jobs" : "",
+            !p.connected_to_thesis ? "not connected to thesis" : "",
+            p.needs_more_analysis ? "needs more analysis" : ""
+          ].filter(Boolean).join(", ");
+          return [
+            `¶${p.number} [${firstText(p.job, "?")}]${flags ? ` ⚠ ${flags}` : ""}`,
+            firstText(p.topic_sentence) ? `  Topic: "${compact(p.topic_sentence, 140)}"` : "",
+            firstText(p.fix) ? `  Fix: ${compact(p.fix)}` : ""
+          ].filter(Boolean).join("\n");
+        }).join("\n\n")
+      });
+    }
+
+    const cra = asArray(parsed.close_reading_audit);
+    if (cra.length) {
+      sections.push({
+        title: "Close reading audit",
+        body: cra.slice(0, 3).map((c, i) => [
+          `${i + 1}. "${compact(firstText(c.quote), 180)}"`,
+          `   Analyzes specific words: ${c.analyzes_specific_words ? "Yes" : "No"} — Just summarizes: ${c.just_summarizes ? "Yes" : "No"}`,
+          firstText(c.feedback) ? `   Professor: ${compact(c.feedback)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const cq = parsed.counterargument_quality || {};
+    if (typeof cq.has_counterargument === "boolean" || firstText(cq.assessment)) {
+      sections.push({
+        title: "Counterargument quality",
+        body: [
+          `Has counterargument: ${cq.has_counterargument ? "Yes" : "No"} — Real & strong: ${cq.is_real_and_strong ? "Yes" : "No"} — Response convincing: ${cq.is_response_convincing ? "Yes" : "No"}`,
+          firstText(cq.assessment) ? compact(cq.assessment) : "",
+          firstText(cq.better_counterargument) ? `Stronger objection: ${compact(cq.better_counterargument)}` : "",
+          firstText(cq.stronger_rebuttal) ? `Stronger rebuttal: ${compact(cq.stronger_rebuttal)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const avc = asArray(parsed.academic_voice_coach);
+    if (avc.length) {
+      sections.push({
+        title: "Academic voice",
+        body: avc.slice(0, 4).map((v, i) => [
+          `${i + 1}. [${firstText(v.issue, "?")}] "${compact(firstText(v.quote), 160)}"`,
+          firstText(v.problem) ? `   Why: ${compact(v.problem, 200)}` : "",
+          firstText(v.suggestion) ? `   Fix: ${compact(v.suggestion)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const pl = parsed.professor_lens || {};
+    const mc = asArray(pl.margin_comments);
+    if (mc.length || firstText(pl.end_comment)) {
+      sections.push({
+        title: "Professor's lens",
+        body: [
+          mc.length ? mc.slice(0, 3).map((c, i) => `${i + 1}. ${compact(String(c), 260)}`).join("\n") : "",
+          firstText(pl.end_comment) ? `\nEnd comment: ${compact(pl.end_comment)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const cc = parsed.conclusion_check || {};
+    if (firstText(cc.assessment) || firstText(cc.stronger_closing)) {
+      sections.push({
+        title: "Conclusion",
+        body: [
+          firstText(cc.assessment) ? compact(cc.assessment) : "",
+          firstText(cc.stronger_closing) ? `Stronger closing: ${compact(cc.stronger_closing)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    // College-essay mode_analysis
+    const ceMA = (parsed.mode_analysis || {});
+    const crq = asArray(ceMA.close_reading_quality);
+    if (crq.length) {
+      sections.push({
+        title: "Close reading quality",
+        body: crq.slice(0, 3).map((c, i) => [
+          `${i + 1}. "${compact(firstText(c.quote), 160)}"`,
+          `   Type: ${firstText(c.analysis_type, "?")}`,
+          firstText(c.what_analysis_requires) ? `   What's needed: ${compact(c.what_analysis_requires)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+  } else if (m === 'research-paper') {
+    const rqa = parsed.research_question_audit || {};
+    if (firstText(rqa.detected_question) || firstText(rqa.assessment)) {
+      sections.push({
+        title: "Research question",
+        body: [
+          firstText(rqa.detected_question) ? `Question: ${compact(rqa.detected_question)}` : "",
+          `Clear: ${rqa.is_clear ? "Yes" : "No"} — Answerable: ${rqa.is_answerable ? "Yes" : "No"} — Paper answers it: ${rqa.paper_answers_it ? "Yes" : "No"}`,
+          firstText(rqa.assessment) ? compact(rqa.assessment) : "",
+          firstText(rqa.narrower_question) ? `Narrower version: ${compact(rqa.narrower_question)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const sa = asArray(parsed.section_architecture);
+    if (sa.length) {
+      const missing = sa.filter((s) => !s.present);
+      const present = sa.filter((s) => s.present && firstText(s.fix));
+      sections.push({
+        title: "Section architecture",
+        body: [
+          missing.length ? `Missing sections: ${missing.map((s) => s.section).join(", ")}` : "All major sections present.",
+          ...present.slice(0, 3).map((s) => `${s.section}: ${compact(firstText(s.assessment, s.fix), 200)}`)
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const ccm = asArray(parsed.citation_coverage_map);
+    const uncited = ccm.filter((c) => !c.citation_present || c.source_strength === "WEAK");
+    if (uncited.length) {
+      sections.push({
+        title: "Citation gaps",
+        body: uncited.slice(0, 5).map((c, i) => [
+          `${i + 1}. "${compact(firstText(c.claim), 180)}" — ${c.citation_present ? c.source_strength : "NOT CITED"}`,
+          firstText(c.fix) ? `   Fix: ${compact(c.fix)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const mcf = asArray(parsed.missing_citation_flags);
+    if (mcf.length) {
+      sections.push({
+        title: "Sentences needing citations",
+        body: mcf.slice(0, 5).map((f, i) => [
+          `${i + 1}. "${compact(firstText(f.sentence), 200)}"`,
+          firstText(f.why) ? `   Why: ${compact(f.why, 160)}` : "",
+          firstText(f.needed_source) ? `   Find: ${compact(f.needed_source)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const sql = asArray(parsed.source_quality_ladder);
+    const weakSources = sql.filter((s) => s.rating === "WEAK" || s.rating === "NEEDS_REPLACEMENT");
+    if (weakSources.length) {
+      sections.push({
+        title: "Weak sources",
+        body: weakSources.slice(0, 4).map((s, i) => [
+          `${i + 1}. ${compact(firstText(s.source), 160)} [${firstText(s.type, "?")}] — ${firstText(s.rating)}`,
+          firstText(s.problem) ? `   Problem: ${compact(s.problem, 200)}` : "",
+          firstText(s.replacement) ? `   Replace with: ${compact(s.replacement)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const coc = parsed.conclusion_overclaim_check || {};
+    if (typeof coc.exaggerates === "boolean" || typeof coc.introduces_new_claims === "boolean") {
+      sections.push({
+        title: "Conclusion integrity",
+        body: [
+          `Matches evidence: ${coc.matches_evidence ? "Yes" : "No"} — New claims in conclusion: ${coc.introduces_new_claims ? "Yes" : "No"} — Exaggerates: ${coc.exaggerates ? "Yes" : "No"}`,
+          firstText(coc.assessment) ? compact(coc.assessment) : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+  } else if (m === 'model-un') {
+    const db = parsed.delegate_brief || {};
+    if (firstText(db.country) || firstText(db.country_stance)) {
+      sections.push({
+        title: "Delegate brief",
+        body: [
+          firstText(db.country) ? `Country: ${compact(db.country, 80)}` : "",
+          firstText(db.committee) ? `Committee: ${compact(db.committee, 80)}` : "",
+          firstText(db.topic) ? `Topic: ${compact(db.topic, 120)}` : "",
+          firstText(db.country_stance) ? `Actual stance: ${compact(db.country_stance)}` : "",
+          asArray(db.national_interests).length ? `Interests: ${asArray(db.national_interests).slice(0, 2).join(" | ")}` : "",
+          asArray(db.red_lines).length ? `Red lines: ${asArray(db.red_lines).slice(0, 2).join(" | ")}` : "",
+          firstText(db.past_un_actions) ? `Past UN actions: ${compact(db.past_un_actions)}` : "",
+          asArray(db.useful_facts).length ? `Useful facts: ${asArray(db.useful_facts).slice(0, 2).join(" | ")}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const sm = parsed.strategy_map || {};
+    if (firstText(sm.bloc_strategy) || firstText(sm.negotiation_approach)) {
+      sections.push({
+        title: "Strategy map",
+        body: [
+          firstText(sm.bloc_strategy) ? `Bloc: ${compact(sm.bloc_strategy)}` : "",
+          firstText(sm.negotiation_approach) ? `Negotiation: ${compact(sm.negotiation_approach)}` : "",
+          asArray(sm.countries_to_talk_to_first).length ? `Talk to first: ${asArray(sm.countries_to_talk_to_first).slice(0, 2).join(" | ")}` : "",
+          firstText(sm.compromise_to_offer) ? `Compromise: ${compact(sm.compromise_to_offer)}` : "",
+          asArray(sm.what_to_avoid_saying).length ? `Avoid saying: ${asArray(sm.what_to_avoid_saying).slice(0, 2).join(" | ")}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const caucs = asArray(sm.best_caucus_topics);
+    if (caucs.length) {
+      sections.push({
+        title: "Caucus topics",
+        body: caucs.slice(0, 3).map((c, i) => [
+          `${i + 1}. ${compact(firstText(c.topic), 140)}`,
+          firstText(c.why_it_helps) ? `   Why: ${compact(c.why_it_helps, 180)}` : "",
+          firstText(c.opening_line) ? `   Opening: "${compact(c.opening_line, 180)}"` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const rc = asArray(parsed.resolution_clauses);
+    if (rc.length) {
+      sections.push({
+        title: "Resolution clauses",
+        body: rc.slice(0, 4).map((c, i) => [
+          `${i + 1}. ${compact(firstText(c.operative_clause, c.solution), 240)}`,
+          `   Realistic: ${c.is_realistic ? "Yes" : "No"} — Too vague: ${c.too_vague ? "Yes" : "No"} — Sovereignty concern: ${c.sovereignty_concern ? "Yes" : "No"}`,
+          firstText(c.assessment) ? `   ${compact(c.assessment, 200)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+    const sc = parsed.speech_coach || {};
+    if (firstText(sc.delivery_notes) || asArray(sc.questions_delegates_will_ask).length) {
+      sections.push({
+        title: "Speech coaching",
+        body: [
+          firstText(sc.delivery_notes) ? `Delivery: ${compact(sc.delivery_notes)}` : "",
+          asArray(sc.questions_delegates_will_ask).length ? `Expect: ${asArray(sc.questions_delegates_will_ask).slice(0, 2).join(" | ")}` : "",
+          asArray(sc.responses_to_attacks).length ? `Responses: ${asArray(sc.responses_to_attacks).slice(0, 2).join(" | ")}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+  } else if (m === 'rubric') {
+    const cs = asArray(parsed.criterion_scores);
+    if (cs.length) {
+      sections.push({
+        title: "Rubric scores",
+        body: [
+          `Total: ${parsed.score_earned ?? "?"}/${parsed.rubric_total_possible ?? "?"} — ${firstText(parsed.percentage)} — ${firstText(parsed.letter_grade)}`,
+          ...cs.slice(0, 8).map((c) => [
+            `${firstText(c.criterion, "Criterion")}: ${c.score_earned ?? "?"}/${c.score_possible ?? "?"}`,
+            firstText(c.reason) ? `  ${compact(c.reason, 200)}` : "",
+            firstText(c.evidence_from_text) ? `  Evidence: "${compact(c.evidence_from_text, 120)}"` : "",
+            firstText(c.how_to_improve) ? `  Fix: ${compact(c.how_to_improve)}` : ""
+          ].filter(Boolean).join("\n"))
+        ].filter(Boolean).join("\n\n")
+      });
+    }
+
+    firstText(parsed.teacher_comment) && sections.push({
+      title: "Teacher comment",
+      body: compact(parsed.teacher_comment)
+    });
+
+    const prp = asArray(parsed.point_recovery_plan);
+    if (prp.length) {
+      sections.push({
+        title: "Point recovery plan",
+        body: prp.slice(0, 5).map((p, i) => [
+          `${i + 1}. ${compact(firstText(p.action), 200)} (+${p.points_possible ?? "?"} pts)`,
+          firstText(p.how_to_do_it) ? `   ${compact(p.how_to_do_it)}` : ""
+        ].filter(Boolean).join("\n")).join("\n\n")
+      });
+    }
+
+  } else {
+    // ── Argument mode (default) ──────────────────────────────────────────────
+    const thesis = parsed.thesis || {};
     sections.push({
-      title: "Collapse point",
+      title: "Thesis check",
       body: [
-        firstText(collapse.quote),
-        firstText(collapse.why_it_collapses) ? `Why it matters most: ${compact(collapse.why_it_collapses)}` : "",
-        firstText(collapse.strongest_attack) ? `Strongest attack: ${compact(collapse.strongest_attack)}` : "",
-        firstText(collapse.strongest_defense) ? `Best defense: ${compact(collapse.strongest_defense)}` : ""
+        firstText(thesis.quote, "No single thesis sentence was detected — the central claim may be implied rather than stated."),
+        firstText(thesis.assessment)
       ].filter(Boolean).join("\n")
     });
-  }
 
-  if (claims.length) {
-    sections.push({
-      title: "Key claims",
-      body: claims.slice(0, 7).map((claim, index) => {
-        return [
+    const claims = asArray(parsed.claims);
+    if (claims.length) {
+      sections.push({
+        title: "Key claims",
+        body: claims.slice(0, 7).map((claim, index) => [
           `${index + 1}. ${compact(firstText(claim.quote, "Claim"), 360)}`,
           firstText(claim.rating) ? `Rating: ${claim.rating}` : "",
           firstText(claim.warrant) ? `Warrant: ${compact(claim.warrant, 240)}` : "",
           firstText(claim.missing_warrant) ? `Missing step: ${compact(claim.missing_warrant, 240)}` : "",
           firstText(claim.diagnosis) ? `Diagnosis: ${compact(claim.diagnosis)}` : "",
           firstText(claim.fix) ? `Repair: ${compact(claim.fix)}` : ""
-        ].filter(Boolean).join(" — ");
-      }).join("\n")
-    });
+        ].filter(Boolean).join(" — ")).join("\n")
+      });
+    }
+
+    const assumptions = asArray(parsed.assumption_audit);
+    if (assumptions.length) {
+      sections.push({
+        title: "Hidden assumptions",
+        body: assumptions.slice(0, 4).map((a, i) => [
+          `${i + 1}. ${compact(firstText(a.assumption, "Assumption"), 320)}`,
+          firstText(a.load_bearing) ? `Load-bearing: ${a.load_bearing}` : "",
+          firstText(a.if_rejected) ? `If rejected: ${compact(a.if_rejected, 240)}` : "",
+          firstText(a.how_to_defend) ? `Defend by: ${compact(a.how_to_defend, 240)}` : ""
+        ].filter(Boolean).join(" — ")).join("\n")
+      });
+    }
+
+    const fallacies = asArray(parsed.logical_fallacies);
+    if (fallacies.length) {
+      sections.push({
+        title: "Logical fallacies",
+        body: fallacies.slice(0, 5).map((f, i) => [
+          `${i + 1}. ${firstText(f.name, "Reasoning error")}`,
+          firstText(f.quote) ? `Text: ${compact(f.quote, 220)}` : "",
+          firstText(f.explanation) ? `Why: ${compact(f.explanation, 260)}` : "",
+          firstText(f.fix) ? `Fix: ${compact(f.fix, 240)}` : ""
+        ].filter(Boolean).join(" — ")).join("\n")
+      });
+    }
+
+    const collapse = parsed.collapse_point || {};
+    if (firstText(collapse.quote)) {
+      sections.push({
+        title: "Collapse point",
+        body: [
+          firstText(collapse.quote),
+          firstText(collapse.why_it_collapses) ? `Why it matters most: ${compact(collapse.why_it_collapses)}` : "",
+          firstText(collapse.strongest_attack) ? `Strongest attack: ${compact(collapse.strongest_attack)}` : "",
+          firstText(collapse.strongest_defense) ? `Best defense: ${compact(collapse.strongest_defense)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const attacks = asArray(parsed.attack_tree);
+    if (attacks.length) {
+      sections.push({
+        title: "Opponent attacks",
+        body: attacks.slice(0, 4).map((t, i) => [
+          `${i + 1}. ${compact(firstText(t.attack, "Attack"), 300)}`,
+          firstText(t.targets) ? `Targets: ${compact(t.targets, 180)}` : "",
+          firstText(t.response) ? `Response: ${compact(t.response, 260)}` : ""
+        ].filter(Boolean).join(" — ")).join("\n")
+      });
+    }
+
+    const rhet = parsed.rhetorical_analysis || {};
+    const strongSent = rhet.strongest_sentence || {};
+    const weakSent = rhet.weakest_sentence || {};
+    if (firstText(strongSent.quote) || firstText(weakSent.quote)) {
+      sections.push({
+        title: "Standout sentences",
+        body: [
+          firstText(strongSent.quote) ? `Strongest: ${compact(strongSent.quote, 260)}${firstText(strongSent.why) ? ` — ${compact(strongSent.why, 200)}` : ""}` : "",
+          firstText(weakSent.quote) ? `Weakest: ${compact(weakSent.quote, 260)}${firstText(weakSent.why) ? ` — ${compact(weakSent.why, 200)}` : ""}` : "",
+          firstText(weakSent.fix) ? `Rewrite: ${compact(weakSent.fix, 280)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const counter = parsed.counterargument || {};
+    if (firstText(counter.strongest_objection)) {
+      sections.push({
+        title: "Strongest counterargument",
+        body: [
+          compact(counter.strongest_objection, 480),
+          firstText(counter.how_to_answer) ? `How to answer: ${compact(counter.how_to_answer)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    // Argument mode_analysis sections
+    const modeAnalysis = parsed.mode_analysis || {};
+
+    const iw = modeAnalysis.impact_weighing || {};
+    if (firstText(iw.magnitude) || firstText(iw.probability) || firstText(iw.verdict)) {
+      sections.push({
+        title: "Impact analysis",
+        body: [
+          firstText(iw.magnitude) ? `Magnitude: ${compact(iw.magnitude)}` : "",
+          firstText(iw.probability) ? `Probability: ${compact(iw.probability)}` : "",
+          firstText(iw.timeframe) ? `Timeframe: ${compact(iw.timeframe)}` : "",
+          firstText(iw.reversibility) ? `Reversibility: ${compact(iw.reversibility)}` : "",
+          firstText(iw.uniqueness) ? `Uniqueness: ${compact(iw.uniqueness)}` : "",
+          firstText(iw.verdict) ? `Verdict: ${compact(iw.verdict)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const si = modeAnalysis.stock_issues || {};
+    if (firstText(si.significance) || firstText(si.inherency) || firstText(si.solvency)) {
+      sections.push({
+        title: "Stock issues",
+        body: [
+          firstText(si.significance) ? `Significance: ${compact(si.significance)}` : "",
+          firstText(si.inherency) ? `Inherency: ${compact(si.inherency)}` : "",
+          firstText(si.solvency) ? `Solvency: ${compact(si.solvency)}` : "",
+          firstText(si.weakest_issue) ? `Weakest issue: ${compact(si.weakest_issue)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const ba = modeAnalysis.burden_analysis || {};
+    if (firstText(ba.burden_of_proof) || firstText(ba.dropped_burdens)) {
+      sections.push({
+        title: "Burden of proof",
+        body: [
+          firstText(ba.burden_of_proof) ? `Must prove: ${compact(ba.burden_of_proof)}` : "",
+          typeof ba.burden_met === "boolean" ? `Burden met: ${ba.burden_met ? "Yes" : "Not yet"}` : "",
+          firstText(ba.dropped_burdens) ? `Dropped burdens: ${compact(ba.dropped_burdens)}` : ""
+        ].filter(Boolean).join("\n")
+      });
+    }
+
+    const rp = modeAnalysis.rebuttal_prep || {};
+    const rpLines = [];
+    if (rp.strongest_rebuttal && firstText(rp.strongest_rebuttal.attack)) {
+      const r = rp.strongest_rebuttal;
+      rpLines.push(`STRONGEST ATTACK: ${compact(r.attack)}`);
+      if (firstText(r.targets)) rpLines.push(`  Targets: ${compact(r.targets)}`);
+      if (firstText(r.why_dangerous)) rpLines.push(`  Danger: ${compact(r.why_dangerous)}`);
+      if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
+      if (firstText(r.evidence_to_block)) rpLines.push(`  Block with: ${compact(r.evidence_to_block)}`);
+    }
+    if (rp.easiest_rebuttal && firstText(rp.easiest_rebuttal.attack)) {
+      const r = rp.easiest_rebuttal;
+      rpLines.push(`\nEASIEST ATTACK: ${compact(r.attack)}`);
+      if (firstText(r.why_easy)) rpLines.push(`  Why easy: ${compact(r.why_easy)}`);
+      if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
+    }
+    if (rp.sneakiest_rebuttal && firstText(rp.sneakiest_rebuttal.attack)) {
+      const r = rp.sneakiest_rebuttal;
+      rpLines.push(`\nSNEAKIEST ATTACK: ${compact(r.attack)}`);
+      if (firstText(r.why_sneaky)) rpLines.push(`  Why sneaky: ${compact(r.why_sneaky)}`);
+      if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
+    }
+    if (rpLines.length) {
+      sections.push({ title: "Rebuttal prep", body: rpLines.join("\n") });
+    }
+
+    const extraArgs = asArray(modeAnalysis.extra_arguments);
+    if (extraArgs.length) {
+      sections.push({
+        title: "Arguments you're missing",
+        body: extraArgs.slice(0, 3).map((ea, i) => {
+          const parts = [`${i + 1}. ${compact(firstText(ea.argument), "Make this argument")}`];
+          if (firstText(ea.why_important)) parts.push(`   Why: ${compact(ea.why_important)}`);
+          if (firstText(ea.how_to_add)) parts.push(`   Add: ${compact(ea.how_to_add)}`);
+          if (firstText(ea.search_terms)) parts.push(`   Search: ${compact(ea.search_terms)}`);
+          return parts.join("\n");
+        }).join("\n\n")
+      });
+    }
   }
 
-  const assumptions = asArray(parsed.assumption_audit);
-  if (assumptions.length) {
+  // ── Shared footer: revision path ──────────────────────────────────────────
+  if (m !== 'rubric') {
     sections.push({
-      title: "Hidden assumptions",
-      body: assumptions.slice(0, 4).map((a, i) => [
-        `${i + 1}. ${compact(firstText(a.assumption, "Assumption"), 320)}`,
-        firstText(a.load_bearing) ? `Load-bearing: ${a.load_bearing}` : "",
-        firstText(a.if_rejected) ? `If rejected: ${compact(a.if_rejected, 240)}` : "",
-        firstText(a.how_to_defend) ? `Defend by: ${compact(a.how_to_defend, 240)}` : ""
-      ].filter(Boolean).join(" — ")).join("\n")
+      title: "Revision path",
+      body: fixes.length
+        ? fixes.slice(0, 5).map((fix, index) => `${index + 1}. ${compact(firstText(fix.exact_fix, fix.problem, "Repair this issue."), 520)}`).join("\n")
+        : "This draft is in strong shape — focus on the refinements noted above rather than structural repairs."
     });
   }
-
-  const fallacies = asArray(parsed.logical_fallacies);
-  if (fallacies.length) {
-    sections.push({
-      title: "Logical fallacies",
-      body: fallacies.slice(0, 5).map((f, i) => [
-        `${i + 1}. ${firstText(f.name, "Reasoning error")}`,
-        firstText(f.quote) ? `Text: ${compact(f.quote, 220)}` : "",
-        firstText(f.explanation) ? `Why: ${compact(f.explanation, 260)}` : "",
-        firstText(f.fix) ? `Fix: ${compact(f.fix, 240)}` : ""
-      ].filter(Boolean).join(" — ")).join("\n")
-    });
-  }
-
-  const attacks = asArray(parsed.attack_tree);
-  if (attacks.length) {
-    sections.push({
-      title: "Opponent attacks",
-      body: attacks.slice(0, 4).map((t, i) => [
-        `${i + 1}. ${compact(firstText(t.attack, "Attack"), 300)}`,
-        firstText(t.targets) ? `Targets: ${compact(t.targets, 180)}` : "",
-        firstText(t.response) ? `Response: ${compact(t.response, 260)}` : ""
-      ].filter(Boolean).join(" — ")).join("\n")
-    });
-  }
-
-  const rhet = parsed.rhetorical_analysis || {};
-  const strongSent = (rhet.strongest_sentence || {});
-  const weakSent = (rhet.weakest_sentence || {});
-  if (firstText(strongSent.quote) || firstText(weakSent.quote)) {
-    sections.push({
-      title: "Standout sentences",
-      body: [
-        firstText(strongSent.quote) ? `Strongest: ${compact(strongSent.quote, 260)}${firstText(strongSent.why) ? ` — ${compact(strongSent.why, 200)}` : ""}` : "",
-        firstText(weakSent.quote) ? `Weakest: ${compact(weakSent.quote, 260)}${firstText(weakSent.why) ? ` — ${compact(weakSent.why, 200)}` : ""}` : "",
-        firstText(weakSent.fix) ? `Rewrite: ${compact(weakSent.fix, 280)}` : ""
-      ].filter(Boolean).join("\n")
-    });
-  }
-
-  if (firstText(counter.strongest_objection)) {
-    sections.push({
-      title: "Strongest counterargument",
-      body: [
-        compact(counter.strongest_objection, 480),
-        firstText(counter.how_to_answer) ? `How to answer: ${compact(counter.how_to_answer)}` : ""
-      ].filter(Boolean).join("\n")
-    });
-  }
-
-  // Mode-specific deep analysis sections
-  const modeAnalysis = parsed.mode_analysis || {};
-
-  // Argument/debate: impact weighing + stock issues
-  const iw = modeAnalysis.impact_weighing || {};
-  if (firstText(iw.magnitude) || firstText(iw.probability) || firstText(iw.verdict)) {
-    sections.push({
-      title: "Impact analysis",
-      body: [
-        firstText(iw.magnitude) ? `Magnitude: ${compact(iw.magnitude)}` : "",
-        firstText(iw.probability) ? `Probability: ${compact(iw.probability)}` : "",
-        firstText(iw.timeframe) ? `Timeframe: ${compact(iw.timeframe)}` : "",
-        firstText(iw.reversibility) ? `Reversibility: ${compact(iw.reversibility)}` : "",
-        firstText(iw.uniqueness) ? `Uniqueness: ${compact(iw.uniqueness)}` : "",
-        firstText(iw.verdict) ? `Verdict: ${compact(iw.verdict)}` : ""
-      ].filter(Boolean).join("\n")
-    });
-  }
-
-  const si = modeAnalysis.stock_issues || {};
-  if (firstText(si.significance) || firstText(si.inherency) || firstText(si.solvency)) {
-    sections.push({
-      title: "Stock issues",
-      body: [
-        firstText(si.significance) ? `Significance: ${compact(si.significance)}` : "",
-        firstText(si.inherency) ? `Inherency: ${compact(si.inherency)}` : "",
-        firstText(si.solvency) ? `Solvency: ${compact(si.solvency)}` : "",
-        firstText(si.weakest_issue) ? `Weakest issue: ${compact(si.weakest_issue)}` : ""
-      ].filter(Boolean).join("\n")
-    });
-  }
-
-  const ba = modeAnalysis.burden_analysis || {};
-  if (firstText(ba.burden_of_proof) || firstText(ba.dropped_burdens)) {
-    sections.push({
-      title: "Burden of proof",
-      body: [
-        firstText(ba.burden_of_proof) ? `Must prove: ${compact(ba.burden_of_proof)}` : "",
-        typeof ba.burden_met === "boolean" ? `Burden met: ${ba.burden_met ? "Yes" : "Not yet"}` : "",
-        firstText(ba.dropped_burdens) ? `Dropped burdens: ${compact(ba.dropped_burdens)}` : ""
-      ].filter(Boolean).join("\n")
-    });
-  }
-
-  // Argument: rebuttal prep (strongest/easiest/sneakiest)
-  const rp = modeAnalysis.rebuttal_prep || {};
-  const rpLines = [];
-  if (rp.strongest_rebuttal && firstText(rp.strongest_rebuttal.attack)) {
-    const r = rp.strongest_rebuttal;
-    rpLines.push(`STRONGEST ATTACK: ${compact(r.attack)}`);
-    if (firstText(r.targets)) rpLines.push(`  Targets: ${compact(r.targets)}`);
-    if (firstText(r.why_dangerous)) rpLines.push(`  Danger: ${compact(r.why_dangerous)}`);
-    if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
-    if (firstText(r.evidence_to_block)) rpLines.push(`  Block with: ${compact(r.evidence_to_block)}`);
-  }
-  if (rp.easiest_rebuttal && firstText(rp.easiest_rebuttal.attack)) {
-    const r = rp.easiest_rebuttal;
-    rpLines.push(`\nEASIEST ATTACK: ${compact(r.attack)}`);
-    if (firstText(r.why_easy)) rpLines.push(`  Why easy: ${compact(r.why_easy)}`);
-    if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
-  }
-  if (rp.sneakiest_rebuttal && firstText(rp.sneakiest_rebuttal.attack)) {
-    const r = rp.sneakiest_rebuttal;
-    rpLines.push(`\nSNEAKIEST ATTACK: ${compact(r.attack)}`);
-    if (firstText(r.why_sneaky)) rpLines.push(`  Why sneaky: ${compact(r.why_sneaky)}`);
-    if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
-  }
-  if (rpLines.length) {
-    sections.push({ title: "Rebuttal prep", body: rpLines.join("\n") });
-  }
-
-  // Argument: extra arguments the writer is missing
-  const extraArgs = asArray(modeAnalysis.extra_arguments);
-  if (extraArgs.length) {
-    sections.push({
-      title: "Arguments you're missing",
-      body: extraArgs.slice(0, 3).map((ea, i) => {
-        const parts = [`${i + 1}. ${compact(firstText(ea.argument), "Make this argument")}`];
-        if (firstText(ea.why_important)) parts.push(`   Why: ${compact(ea.why_important)}`);
-        if (firstText(ea.how_to_add)) parts.push(`   Add: ${compact(ea.how_to_add)}`);
-        if (firstText(ea.search_terms)) parts.push(`   Search: ${compact(ea.search_terms)}`);
-        return parts.join("\n");
-      }).join("\n\n")
-    });
-  }
-
-  // Speech: Monroe's Motivated Sequence
-  const monroe = modeAnalysis.monroe_sequence || {};
-  const monroeSteps = ["attention", "need", "satisfaction", "visualization", "action"];
-  const monroeLabels = { attention: "Attention", need: "Need", satisfaction: "Satisfaction", visualization: "Visualization", action: "Action" };
-  const monroeLines = monroeSteps.map((step) => {
-    const s = monroe[step] || {};
-    if (!s.note && !s.quote) return "";
-    const grade = firstText(s.grade) ? ` [${s.grade}]` : "";
-    const present = s.present === false ? " — MISSING" : "";
-    const quote = firstText(s.quote) ? ` "${compact(s.quote, 120)}"` : "";
-    const note = firstText(s.note) ? ` — ${compact(s.note, 200)}` : "";
-    return `${monroeLabels[step]}${grade}${present}${quote}${note}`;
-  }).filter(Boolean);
-  if (monroeLines.length) {
-    sections.push({ title: "Monroe's Motivated Sequence", body: monroeLines.join("\n") });
-  }
-
-  // Speech: Aristotle's three proofs
-  const appeals = modeAnalysis.rhetorical_appeals || {};
-  const appealLines = ["ethos", "pathos", "logos"].map((proof) => {
-    const a = appeals[proof] || {};
-    if (!a.quote && !a.mechanism) return "";
-    const grade = firstText(a.grade) ? ` [${a.grade}]` : "";
-    const quote = firstText(a.quote) ? ` "${compact(a.quote, 120)}"` : "";
-    const mech = firstText(a.mechanism) ? ` — ${compact(a.mechanism, 200)}` : "";
-    return `${proof.charAt(0).toUpperCase() + proof.slice(1)}${grade}${quote}${mech}`;
-  }).filter(Boolean);
-  if (appealLines.length) {
-    const missing = firstText(appeals.one_sentence_to_add) ? `\nAdd: ${compact(appeals.one_sentence_to_add)}` : "";
-    sections.push({ title: "Aristotle's three proofs", body: appealLines.join("\n") + missing });
-  }
-
-  // Speech: rhetorical devices
-  const devices = asArray(modeAnalysis.rhetorical_devices);
-  if (devices.length) {
-    sections.push({
-      title: "Rhetorical devices",
-      body: devices.slice(0, 5).map((d, i) => {
-        const quote = firstText(d.quote) ? ` "${compact(d.quote, 120)}"` : "";
-        const note = firstText(d.note) ? ` — ${compact(d.note, 200)}` : "";
-        return `${i + 1}. ${firstText(d.device, "Device")}${quote}${note}`;
-      }).join("\n")
-    });
-  }
-
-  sections.push({
-    title: "Revision path",
-    body: fixes.length
-      ? fixes.slice(0, 5).map((fix, index) => `${index + 1}. ${compact(firstText(fix.exact_fix, fix.problem, "Repair this issue."), 520)}`).join("\n")
-      : "This draft is in strong shape — focus on the refinements noted above rather than structural repairs."
-  });
 
   return sections.filter((section) => firstText(section.body));
 }
@@ -446,9 +942,9 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function streamReadableAudit(res, audit) {
+async function streamReadableAudit(res, audit, mode) {
   writeSse(res, { fracture_report_start: true });
-  const sections = readableAuditSections(audit);
+  const sections = readableAuditSections(audit, mode);
   for (const section of sections) {
     writeSse(res, { fracture_report_delta: { title: section.title, body: section.body } });
     await sleep(18);
@@ -458,7 +954,7 @@ async function streamReadableAudit(res, audit) {
 
 async function finish(res, audit, recovered = false, options = {}) {
   writeProgress(res, recovered ? 91 : 90, recovered ? "Recovered a stable report" : "Turning JSON into the readable report");
-  await streamReadableAudit(res, audit);
+  await streamReadableAudit(res, audit, options.mode);
 
   // Attach the citation/source report. The web search already ran BEFORE grading
   // (so the model graded against real evidence); reuse that result here instead of
@@ -597,5 +1093,6 @@ export async function handleAnalyze(req, res) {
   writeProgress(res, 86, "Validating the report structure");
   const { audit, recovered } = prepareAuditFromModelText(rawText, essay);
   writeProgress(res, recovered ? 91 : 90, recovered ? "Repairing a malformed model response" : "Report structure verified");
-  return await finish(res, audit, recovered, { essay, citationStyle, sourceData });
+  const mode = String(req.body?.preferences?.analysisFormat || "argument").toLowerCase();
+  return await finish(res, audit, recovered, { essay, citationStyle, sourceData, mode });
 }

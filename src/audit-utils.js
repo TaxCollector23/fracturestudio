@@ -461,34 +461,48 @@ export function normalizeAudit(audit, essay) {
   }
 
   // Keep the model's own score_breakdown + explanations when it used lean keys
-  // (anything other than the four legacy dimensions), clamped to 0-25.
+  // (anything other than the four legacy dimensions). Rescale so dimensions sum to overall_score.
   if (input.score_breakdown && typeof input.score_breakdown === "object") {
     const keys = Object.keys(input.score_breakdown);
     const legacy = ["argument_strength", "assumption_audit", "logic", "rhetoric"];
     if (keys.some((k) => !legacy.includes(k))) {
-      const leanBreakdown = {};
-      for (const k of keys) leanBreakdown[k] = clampInt(input.score_breakdown[k], 0, 0, 25);
-      // Keep the four /25 dimensions consistent with the overall score: if they
-      // don't sum to it (the model often fills them carelessly), rescale.
-      if (keys.length === 4 && Number.isFinite(normalized.overall_score)) {
-        const sum = keys.reduce((t, k) => t + leanBreakdown[k], 0);
-        if (sum !== normalized.overall_score) {
-          const scale = sum > 0 ? normalized.overall_score / sum : 0;
+      const rawBreakdown = {};
+      for (const k of keys) rawBreakdown[k] = Math.max(0, Number(input.score_breakdown[k]) || 0);
+      // Rescale so dimensions sum to overall_score regardless of how many dims there are.
+      if (keys.length >= 2 && Number.isFinite(normalized.overall_score) && normalized.overall_score > 0) {
+        const sum = keys.reduce((t, k) => t + rawBreakdown[k], 0);
+        if (sum > 0 && sum !== normalized.overall_score) {
+          const scale = normalized.overall_score / sum;
           let running = 0;
           keys.forEach((k, i) => {
             if (i < keys.length - 1) {
-              leanBreakdown[k] = Math.max(0, Math.min(25, Math.round((sum > 0 ? leanBreakdown[k] : normalized.overall_score / 4) * (sum > 0 ? scale : 1))));
-              running += leanBreakdown[k];
+              rawBreakdown[k] = Math.max(0, Math.round(rawBreakdown[k] * scale));
+              running += rawBreakdown[k];
             } else {
-              leanBreakdown[k] = Math.max(0, Math.min(25, normalized.overall_score - running));
+              rawBreakdown[k] = Math.max(0, normalized.overall_score - running);
             }
           });
         }
       }
-      normalized.score_breakdown = leanBreakdown;
+      normalized.score_breakdown = rawBreakdown;
       if (input.score_explanations && typeof input.score_explanations === "object") {
         normalized.score_explanations = input.score_explanations;
       }
+    }
+  }
+
+  // Pass through all mode-specific top-level fields the model produced.
+  // This makes normalizeAudit forward-compatible with any new schema shape.
+  const legacyTopLevelKeys = new Set([
+    "overall_score", "score_breakdown", "score_explanations", "verdict", "coaching_note",
+    "priority_fixes", "collapse_point", "argument_dependency_graph", "argument_strength",
+    "assumption_audit", "logical_fallacies", "counter_arguments", "attack_tree",
+    "truth_audit", "alternative_solutions_test", "rhetorical_analysis", "rewrite_suggestions",
+    "thesis", "strengths", "claims", "counterargument", "mode_analysis"
+  ]);
+  for (const key of Object.keys(input)) {
+    if (!legacyTopLevelKeys.has(key) && input[key] !== undefined && input[key] !== null) {
+      normalized[key] = input[key];
     }
   }
 
