@@ -1145,7 +1145,7 @@ Format: polished plain text. No markdown syntax, tables, emojis, asterisks, or h
 function getModeScoreBreakdown(mode) {
   switch (mode) {
     case 'speech':
-      return `"audience_clarity": 0, "hook_strength": 0, "structure": 0, "delivery_readiness": 0, "persuasion": 0, "memorability": 0, "call_to_action_strength": 0`;
+      return `"audience_clarity": 13, "hook_strength": 13, "structure": 13, "delivery_readiness": 12, "persuasion": 13, "memorability": 12, "call_to_action_strength": 13`;
     case 'essay':
       return `"main_point_clarity": 0, "organization": 0, "paragraph_structure": 0, "evidence_integration": 0, "flow": 0, "depth_of_analysis": 0, "conclusion_strength": 0`;
     case 'college-essay':
@@ -1903,7 +1903,7 @@ ${mode === 'speech'
   ? `1. LOAD-BEARING MOMENT: What is the single sentence this speech lives or dies on? If it fails, does the audience disengage? Quote it exactly.
 2. SHARPEST WEAKNESS: What is the one thing that prevents this speech from being a 95+? Name the specific mechanism (missing Monroe step, weak Aristotelian proof, absent warrant, confusing term, no repeated rallying phrase). Quote the exact line.
 3. BEST SENTENCE: What is the most memorable, specific, or persuasive moment in the speech? Quote it exactly. This proves the speaker CAN reach the top band.
-4. HONEST SCORE: Given those three, which band does this fall in?
+4. HONEST SCORE: SCALE: score_breakdown uses 7 dimensions each scored 0-15 (NOT 0-10). Their sum must equal overall_score. Given those three, which band does this fall in?
    - All 5 Monroe steps (attention/need/satisfaction/visualization/action all present), all 3 Aristotelian proofs (ethos/pathos/logos all present), 2+ rhetorical devices, personal story, specific achievable CTA: 95-100. Personal anecdotes and named-researcher citations ARE valid evidence — do not penalize them as missing warrants.
    - Strong speech with ONE real speech-level gap (visualization is absent or vague, one Aristotelian proof is completely missing, CTA is vague): 85-94.
    - Solid structure but at least one major gap a judge would act on (missing Monroe step, no personal story): 75-84.
