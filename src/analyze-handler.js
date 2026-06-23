@@ -302,7 +302,7 @@ function readableAuditSections(audit, mode) {
       const s = monroe[step] || {};
       if (!s.note && !s.quote) return "";
       const grade = firstText(s.grade) ? ` [${s.grade}]` : "";
-      const present = s.present === false ? " — MISSING" : "";
+      const present = s.present === false ? " — MISSING" : (step === "visualization" && s.vividness ? ` [vividness: ${s.vividness}]` : "");
       const quote = firstText(s.quote) ? ` "${compact(s.quote, 120)}"` : "";
       const note = firstText(s.note) ? ` — ${compact(s.note, 200)}` : "";
       return `${monroeLabels[step]}${grade}${present}${quote}${note}`;

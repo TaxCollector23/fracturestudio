@@ -1272,7 +1272,7 @@ function getModeAnalysisSchema(mode, depth) {
       "attention": { "present": true, "quote": "exact opening line verbatim", "grade": "A or B or C or D or F", "note": "what works or fails and one specific improvement" },
       "need": { "present": true, "quote": "where problem is established verbatim", "urgency": "high or medium or low", "personal_to_audience": true, "note": "assessment" },
       "satisfaction": { "present": true, "quote": "where solution is presented verbatim", "is_specific": true, "note": "assessment" },
-      "visualization": { "present": false, "note": "assessment of what is missing", "suggested_addition": "write one specific visualization sentence for this speech" },
+      "visualization": { "present": true, "quote": "exact visualization passage verbatim", "has_negative_future": true, "has_positive_future": true, "vividness": "A or B or C or D — how sensory and specific the future image is", "note": "what works or what would make it more visceral", "suggested_addition": "one sentence that would sharpen the visualization if vividness is C or lower" },
       "action": { "present": true, "quote": "exact call to action verbatim", "is_specific": true, "is_achievable": true, "note": "assessment + one specific improvement" }
     },
     "rhetorical_appeals": {
