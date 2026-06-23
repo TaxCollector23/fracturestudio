@@ -596,20 +596,68 @@ function getDepthInstruction(depth) {
   switch (depth) {
     case 'surface':
       return `
-DEPTH LEVEL: SURFACE — Quick Clarity Check. A fast, high-signal pre-submission pass.
-Keep it tight: up to 3 claims, up to 3 priority_fixes (highest-impact only), 1-2 strengths, up to 2 assumption_audit items, only clear logical_fallacies (often none), up to 2 attack_tree items, a 3-4 sentence verdict, a 2-sentence coaching_note. Still fill rhetorical_analysis, collapse_point, and counterargument briefly. If the piece is strong, say so and do not pad to hit counts. Each field one or two sentences. No filler.`;
+DEPTH LEVEL: SURFACE — Quick Clarity Check.
+
+You are a sharp, experienced coach doing a fast pre-submission pass. The writer needs something they can act on in 20 minutes — not a forensic report.
+
+WHAT TO INCLUDE:
+- verdict: 3 sentences exactly — what the piece does right, the single biggest problem, the one thing to fix first
+- coaching_note: 2 sentences — the single repair action
+- thesis: quote + 1-sentence assessment
+- claims: exactly 3 — the most important ones only, each with quote, rating, and one-sentence fix
+- strengths: exactly 1 — quote the best sentence, name why it works
+- priority_fixes: exactly 3 — the highest-impact repairs, each with quote, problem, and paste-ready rewrite
+- collapse_point and counterargument: fill briefly — 1 sentence each field
+
+WHAT TO SKIP ENTIRELY (output empty arrays or omit):
+- assumption_audit, logical_fallacies, attack_tree: skip
+- mode_analysis (impact_weighing, stock_issues, burden_analysis, monroe_sequence, rhetorical_appeals, rhetorical_devices): skip
+- rhetorical_analysis strongest/weakest sentence: skip
+
+TONE: Encouraging but precise — like a teacher's margin note. Each fix explanation maximum 2 sentences. No padding, no bullet lists inside text fields.`;
 
     case 'extreme':
       return `
-DEPTH LEVEL: EXTREME — Forensic Audit. The deepest read, but still a COMPLETE JSON object.
-Fill the schema thoroughly: up to 6 of the most important claims (each with warrant and missing_warrant), up to 6 priority_fixes ordered by impact, 2-3 strengths, 3-4 assumption_audit items, every real logical_fallacy you can quote, up to 4 attack_tree items, full rhetorical_analysis, a pressure-tested collapse_point, and the strongest counterargument. Quote exact text for every point and explain the reasoning mechanism, not just a label. Be thorough but concise per field so the whole JSON finishes — a complete forensic report beats an unfinished one. Ruthless calibration is not stingy: genuinely excellent work still earns the 90s or 100.`;
+DEPTH LEVEL: EXTREME — Forensic Tournament Audit.
+
+You are a senior debate coach and academic editor preparing someone for a state/national championship. Leave nothing unchecked. Every field must be populated and every claim must be exact-quoted.
+
+WHAT TO INCLUDE — ALL OF THE FOLLOWING ARE REQUIRED:
+- verdict: 7-9 sentences — how the argument works as a system, what survives, what breaks first, why the score is exactly what it is
+- coaching_note: 4-5 sentences — ranked repair sequence
+- thesis: full assessment including 3 adversarial readings that could attack it
+- claims: ALL major claims (5-8) — each with quote, rating, full warrant, missing_warrant, diagnosis, and paste-ready rewrite
+- strengths: 2-3 — quote exactly, name the specific Toulmin element or rhetorical device that works
+- assumption_audit: 4-6 hidden assumptions — each with load_bearing, if_rejected, and how_to_defend
+- logical_fallacies: every real one with a quotable passage — zero if none exist, name them if they do
+- collapse_point: pressure-tested — identify which 3+ other claims depend on it
+- attack_tree: 5-7 distinct attacks ordered by competitive damage — each with exact opponent language and exact rebuttal
+- counterargument: the steelmanned version and a complete 4-step response
+- mode_analysis: FULLY POPULATED — all impact dimensions, all stock issues, complete rebuttal_prep, extra_arguments the writer is missing
+- priority_fixes: as many as required by the draft, ordered by competitive damage
+
+TONE: Brutally direct. No softening. Every fix must be language the writer can say or write — not a description of what to do. Never invent statistics or sources — write [verified evidence needed].`;
 
     default: // medium
       return `
-DEPTH LEVEL: MEDIUM — Serious Report. A complete picture with specific repairs, kept lean so the whole JSON finishes fast.
-Fill every section but spend your words where they matter most. Concentrate depth on the verdict, the top claims, and the priority_fixes — make those genuinely sharp and specific. Keep the rest to one or two tight sentences each.
-Counts: 3-4 of the most important claims (with warrant and missing_warrant), 4-5 priority_fixes ordered by leverage (the first must be the single highest-impact change), 1-2 strengths, 2 assumption_audit items, only clearly real logical_fallacies (often 0-2), 2 attack_tree items, a brief rhetorical_analysis, a real collapse_point, and the strongest counterargument with how to answer it.
-Every point must quote exact text and name the precise reasoning move — no generic filler, no restating the draft. If the piece is strong, keep priority_fixes to only what genuinely matters rather than padding to a count.`;
+DEPTH LEVEL: MEDIUM — Serious Preparation Report.
+
+You are a debate coach and skilled writing teacher helping someone prepare for an important assignment, regional competition, or serious submission. Give a complete picture with specific repairs.
+
+SCOPE AND COUNTS:
+- verdict: 5-8 sentences — commit to a specific judgment, name what breaks first
+- coaching_note: 2-4 sentences — concrete actions in priority order
+- claims: 3-5 of the most important — each with quote, rating, warrant, missing_warrant (as a complete sentence to add), and paste-ready fix
+- strengths: 1-2 — quote exactly, name the specific technique
+- assumption_audit: 2-3 — each with load_bearing level and how_to_defend sentence
+- logical_fallacies: only real, quotable ones (often 0-2) — skip the section if none
+- collapse_point: the one sentence everything depends on — full treatment
+- attack_tree: 2-3 strongest attacks — each with exact quoted target and response language
+- counterargument: steelmanned + 4-step response (Signal → Response → Support → Impact)
+- mode_analysis: include if present in schema — populate all fields
+- priority_fixes: 4-6 ordered by leverage — first fix must be the single highest-impact change
+
+Every field: quote exact text, name the precise reasoning mechanism, no generic filler. If a section has no real content, return an empty array rather than padding. A complete report beats an unfinished one.`;
   }
 }
 
@@ -1170,7 +1218,34 @@ function getModeAnalysisSchema(mode, depth) {
       "burden_of_proof": "what must this argument establish to succeed — stated as a specific testable claim",
       "burden_met": true,
       "dropped_burdens": "any major objection the writer ignores rather than answering — empty string if none"
-    }
+    },
+    "rebuttal_prep": {
+      "strongest_rebuttal": {
+        "attack": "the single most damaging attack a skilled opponent can make against this argument",
+        "targets": "which specific claim or warrant this attack destroys — quote it verbatim",
+        "why_dangerous": "how this attack cascades — name the 2-3 other claims that fall with it",
+        "how_to_answer": "the exact rebuttal language to deliver in a round — a complete sentence the writer can say",
+        "evidence_to_block": "what kind of evidence would stop this attack cold — specific, searchable"
+      },
+      "easiest_rebuttal": {
+        "attack": "the attack that requires the least sophistication to make — what anyone could throw out",
+        "why_easy": "why this is low-hanging fruit for the opponent",
+        "how_to_answer": "exact answer — a complete sentence to say"
+      },
+      "sneakiest_rebuttal": {
+        "attack": "the attack the writer almost certainly has not anticipated — something that sounds supportive before it isn't",
+        "why_sneaky": "why this is hard to see coming and why it hurts when it lands",
+        "how_to_answer": "exact answer — a complete sentence to say"
+      }
+    },
+    "extra_arguments": [
+      {
+        "argument": "a strong argument the writer is completely missing — not a variation of what's there, a genuinely different line of attack or support",
+        "why_important": "why this would materially strengthen the case — what gap it closes or what new dimension it opens",
+        "how_to_add": "exactly where in the draft to add this and how to integrate it in one or two sentences",
+        "search_terms": "3-5 specific search terms to find real evidence for this argument"
+      }
+    ]
   }`;
     case 'speech':
       return `,

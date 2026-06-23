@@ -345,6 +345,48 @@ function readableAuditSections(audit) {
     });
   }
 
+  // Argument: rebuttal prep (strongest/easiest/sneakiest)
+  const rp = modeAnalysis.rebuttal_prep || {};
+  const rpLines = [];
+  if (rp.strongest_rebuttal && firstText(rp.strongest_rebuttal.attack)) {
+    const r = rp.strongest_rebuttal;
+    rpLines.push(`STRONGEST ATTACK: ${compact(r.attack)}`);
+    if (firstText(r.targets)) rpLines.push(`  Targets: ${compact(r.targets)}`);
+    if (firstText(r.why_dangerous)) rpLines.push(`  Danger: ${compact(r.why_dangerous)}`);
+    if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
+    if (firstText(r.evidence_to_block)) rpLines.push(`  Block with: ${compact(r.evidence_to_block)}`);
+  }
+  if (rp.easiest_rebuttal && firstText(rp.easiest_rebuttal.attack)) {
+    const r = rp.easiest_rebuttal;
+    rpLines.push(`\nEASIEST ATTACK: ${compact(r.attack)}`);
+    if (firstText(r.why_easy)) rpLines.push(`  Why easy: ${compact(r.why_easy)}`);
+    if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
+  }
+  if (rp.sneakiest_rebuttal && firstText(rp.sneakiest_rebuttal.attack)) {
+    const r = rp.sneakiest_rebuttal;
+    rpLines.push(`\nSNEAKIEST ATTACK: ${compact(r.attack)}`);
+    if (firstText(r.why_sneaky)) rpLines.push(`  Why sneaky: ${compact(r.why_sneaky)}`);
+    if (firstText(r.how_to_answer)) rpLines.push(`  Answer: ${compact(r.how_to_answer)}`);
+  }
+  if (rpLines.length) {
+    sections.push({ title: "Rebuttal prep", body: rpLines.join("\n") });
+  }
+
+  // Argument: extra arguments the writer is missing
+  const extraArgs = asArray(modeAnalysis.extra_arguments);
+  if (extraArgs.length) {
+    sections.push({
+      title: "Arguments you're missing",
+      body: extraArgs.slice(0, 3).map((ea, i) => {
+        const parts = [`${i + 1}. ${compact(firstText(ea.argument), "Make this argument")}`];
+        if (firstText(ea.why_important)) parts.push(`   Why: ${compact(ea.why_important)}`);
+        if (firstText(ea.how_to_add)) parts.push(`   Add: ${compact(ea.how_to_add)}`);
+        if (firstText(ea.search_terms)) parts.push(`   Search: ${compact(ea.search_terms)}`);
+        return parts.join("\n");
+      }).join("\n\n")
+    });
+  }
+
   // Speech: Monroe's Motivated Sequence
   const monroe = modeAnalysis.monroe_sequence || {};
   const monroeSteps = ["attention", "need", "satisfaction", "visualization", "action"];

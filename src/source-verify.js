@@ -1,11 +1,11 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
-const CLAIM_LIMIT = 3;
+const CLAIM_LIMIT = 6;
 const RESULTS_PER_CLAIM = 3;
 const RESEARCH_RESULT_LIMIT = 5;
-const SEARCH_TIMEOUT_MS = 3500;
-const PAGE_TIMEOUT_MS = 3000;
+const SEARCH_TIMEOUT_MS = 4500;
+const PAGE_TIMEOUT_MS = 4000;
 const PAGE_MAX_BYTES = 350000;
 const MAX_REDIRECTS = 3;
 const VERIFY_DEADLINE_MS = 50000;
@@ -67,17 +67,19 @@ export async function verifySources(input = {}) {
     };
   }
 
+  const claims = [];
   const citedSources = new Map();
   const deadline = Date.now() + VERIFY_DEADLINE_MS;
 
-  // Verify all claims in parallel — much faster than the old sequential loop.
-  const claims = await Promise.all(extractedClaims.map((claim) =>
-    verifyClaim(claim, citationStyle).catch((err) =>
-      finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`, citationStyle)
-    )
-  ));
-
-  for (const result of claims) {
+  // Sequential with deadline guard: if earlier claims are slow, later ones
+  // gracefully degrade to "needs_review" rather than all timing out together.
+  for (const claim of extractedClaims) {
+    const result = Date.now() < deadline - 1500
+      ? await verifyClaim(claim, citationStyle).catch((err) =>
+          finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`, citationStyle)
+        )
+      : finalizeClaim(claim, [], "needs_review", "The source-review time limit was reached — check this claim manually.", citationStyle);
+    claims.push(result);
     const bestSource = result.sources.find((source) => source.match_score >= 0.72 && source.url);
     if (result.support_status === "likely_supported" && bibliographyReady(result, bestSource) && !citedSources.has(bestSource.url)) {
       citedSources.set(bestSource.url, bestSource);
@@ -131,8 +133,9 @@ async function buildResearchSuggestions({ essay, audit, citationStyle, deadline 
     }
   ];
 
-  // Run the top leads' searches in parallel for speed (was a sequential loop).
-  const suggestions = await Promise.all(leads.slice(0, 4).map(async (lead) => {
+  const suggestions = [];
+  for (const lead of leads) {
+    if (Date.now() > deadline - 3500) break;
     try {
       const search = await searchOpenWeb(lead.query);
       const links = (search.results || []).slice(0, RESEARCH_RESULT_LIMIT).map((result) => {
@@ -153,11 +156,11 @@ async function buildResearchSuggestions({ essay, audit, citationStyle, deadline 
           citation: buildCitationEntry(source, citationStyle)
         };
       });
-      return { label: lead.label, title: lead.title, explanation: lead.explanation, search_query: lead.query, links };
+      suggestions.push({ label: lead.label, title: lead.title, explanation: lead.explanation, search_query: lead.query, links });
     } catch (err) {
-      return { label: lead.label, title: lead.title, explanation: `${lead.explanation} Search could not complete: ${err?.message || String(err)}`, search_query: lead.query, links: [] };
+      suggestions.push({ label: lead.label, title: lead.title, explanation: `${lead.explanation} Search could not complete: ${err?.message || String(err)}`, search_query: lead.query, links: [] });
     }
-  }));
+  }
 
   return suggestions;
 }
@@ -201,11 +204,20 @@ export function extractClaims(essay = "", audit = null) {
 
   if (audit) {
     addAuditClaim(audit?.collapse_point?.quote, "audit.collapse_point", 2);
-    for (const claim of ensureArray(audit?.argument_strength?.claims)) {
-      addAuditClaim(claim?.quote, "audit.argument_strength.claims", 3);
+    // Support both lean schema (audit.claims) and legacy (audit.argument_strength.claims)
+    const auditClaims = ensureArray(audit?.claims).length
+      ? ensureArray(audit?.claims)
+      : ensureArray(audit?.argument_strength?.claims);
+    for (const claim of auditClaims) {
+      addAuditClaim(claim?.quote, "audit.claims", 3);
     }
     for (const fix of ensureArray(audit?.priority_fixes)) {
       addAuditClaim(fix?.quote, "audit.priority_fixes", 4);
+    }
+    // Also pull from the thesis and strengths if present
+    addAuditClaim(audit?.thesis?.quote, "audit.thesis", 2);
+    for (const s of ensureArray(audit?.strengths)) {
+      addAuditClaim(s?.quote, "audit.strengths", 5);
     }
   }
 
