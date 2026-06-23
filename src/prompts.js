@@ -1908,7 +1908,7 @@ ${mode === 'speech'
    - Strong speech with ONE proof or Monroe step COMPLETELY ABSENT (grade F / not generated at all): 88-94.
    - Missing TWO or more Monroe steps OR missing two Aristotelian proofs: 75-87.
    - Template-quality, no personal story, no CTA: 65-74.
-   CRITICAL: "logos grade B" means logos is present and solid — this is NOT a reason to stay below 95. If you can confirm all 5 Monroe steps and all 3 Aristotelian proofs exist in any form, the score MUST reach 95-100. The individual dimension scores may be 12-14 while overall_score is 95+.`
+   CRITICAL: "logos grade B" means logos is present and solid — this is NOT a reason to stay below 95. If all 5 Monroe steps are graded A and all 3 Aristotelian proofs are graded A or B: give 100. A speech with all-A Monroe execution and all present Aristotelian proofs is a complete, excellent speech — the audience responds, the structure is tight, and there is nothing a coach would tell the speaker to add before delivering. "Missing warrant" is a note for improvement, not a defect that lowers the score of an already complete speech.`
   : `1. LOAD-BEARING CLAIM: What is the single sentence this entire argument depends on? If that sentence is wrong or unprovable, does the rest collapse? Quote it exactly.
 2. SHARPEST WEAKNESS: What is the one thing a skilled opponent or skeptical grader would immediately exploit? Name the specific mechanism (missing warrant, scope creep, buried assumption, shifting definition, or strength mismatch). Quote the exact line.
 3. BEST SENTENCE: What is the best-executed moment in the piece — clearest reasoning, best-supported, or most specific? Quote it exactly. This is your evidence that the writer CAN do better.
