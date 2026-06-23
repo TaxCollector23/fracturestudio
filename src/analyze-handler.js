@@ -960,7 +960,8 @@ async function finish(res, audit, recovered = false, options = {}) {
   // (so the model graded against real evidence); reuse that result here instead of
   // searching again. Only search now as a fallback if it wasn't pre-computed.
   let finalAudit = audit;
-  if (options.essay && !isTooThinForAudit(options.essay)) {
+  const skipSourceVerification = options.mode === 'speech';
+  if (!skipSourceVerification && options.essay && !isTooThinForAudit(options.essay)) {
     try {
       const citationStyle = String(options.citationStyle || "mla").toLowerCase() === "apa" ? "apa" : "mla";
       let sourceData = options.sourceData;

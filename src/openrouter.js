@@ -20,8 +20,7 @@ export async function openRouterStream(options = {}) {
       messages: options.messages,
       stream: true,
       temperature: options.temperature,
-      max_tokens: options.maxTokens,
-      response_format: { type: "json_object" }
+      max_tokens: options.maxTokens
     })
   });
 }
