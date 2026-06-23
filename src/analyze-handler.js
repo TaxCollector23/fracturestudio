@@ -1045,18 +1045,21 @@ export async function handleAnalyze(req, res) {
   // Tuned so a medium audit completes around ~85s on the free model while staying rich.
   const maxTokens = depth === "surface" ? 2600 : depth === "extreme" ? 6500 : 4800;
   const citationStyle = req.body?.preferences?.citationStyle;
+  const mode = String(req.body?.preferences?.analysisFormat || "argument").toLowerCase();
 
-  // STEP 1 — Check the draft's factual claims against the live web BEFORE grading,
-  // so the model scores evidence based on what is actually real. The result is
-  // reused for the citation sections so we never search twice.
+  // STEP 1 — Check factual claims against the live web before grading.
+  // Skip for speech mode: personal speeches rely on anecdote and named sources, not
+  // page-verified URLs, so web check results add noise rather than signal.
   let sourceData = null;
   let evidenceContext = "";
-  try {
-    writeProgress(res, 12, "Checking the draft's claims against the live web");
-    sourceData = await verifySources({ essay, citationStyle: String(citationStyle || "mla").toLowerCase() === "apa" ? "apa" : "mla" });
-    evidenceContext = buildEvidenceContext(sourceData);
-  } catch (_) {
-    sourceData = null;
+  if (mode !== "speech") {
+    try {
+      writeProgress(res, 12, "Checking the draft's claims against the live web");
+      sourceData = await verifySources({ essay, citationStyle: String(citationStyle || "mla").toLowerCase() === "apa" ? "apa" : "mla" });
+      evidenceContext = buildEvidenceContext(sourceData);
+    } catch (_) {
+      sourceData = null;
+    }
   }
 
   // STEP 2 — Grade, with the live evidence findings in the prompt.
@@ -1067,7 +1070,7 @@ export async function handleAnalyze(req, res) {
       model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
       messages: buildAuditMessages(essay, req.body?.preferences, evidenceContext),
       maxTokens,
-      temperature: 0.55,
+      temperature: 0.1,
       referer: "https://fracturestudio.vercel.app"
     });
   } catch (err) {
@@ -1093,6 +1096,5 @@ export async function handleAnalyze(req, res) {
   writeProgress(res, 86, "Validating the report structure");
   const { audit, recovered } = prepareAuditFromModelText(rawText, essay);
   writeProgress(res, recovered ? 91 : 90, recovered ? "Repairing a malformed model response" : "Report structure verified");
-  const mode = String(req.body?.preferences?.analysisFormat || "argument").toLowerCase();
   return await finish(res, audit, recovered, { essay, citationStyle, sourceData, mode });
 }
