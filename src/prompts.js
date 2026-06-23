@@ -1162,13 +1162,13 @@ function getModeScoreBreakdown(mode) {
 function getModeScoreExplanations(mode) {
   switch (mode) {
     case 'speech':
-      return `"audience_clarity": "one sentence: does the audience know the main message and why it matters to them personally?",
-    "hook_strength": "one sentence: does the opening grab attention immediately — not a definition, not 'today I will talk about'?",
-    "structure": "one sentence: does the speech follow a clear progression (Monroe, problem-solution, or another coherent arc)?",
-    "delivery_readiness": "one sentence: can this be spoken aloud — is it free of hard-to-say constructions, tangled sentences, or written-not-spoken phrasing?",
-    "persuasion": "one sentence: does the speech actually move someone — does it establish credibility, create emotional stakes, and make a logical case?",
-    "memorability": "one sentence: will the audience remember one specific moment — a story, a line, a statistic, a device?",
-    "call_to_action_strength": "one sentence: does the speech end with a specific achievable action, or does it trail off into vague inspiration?"`;
+      return `"audience_clarity": "1 sentence",
+    "hook_strength": "1 sentence",
+    "structure": "1 sentence",
+    "delivery_readiness": "1 sentence",
+    "persuasion": "1 sentence",
+    "memorability": "1 sentence",
+    "call_to_action_strength": "1 sentence"`;
     case 'essay':
       return `"main_point_clarity": "one sentence: is there a specific, arguable central claim that the entire essay defends?",
     "organization": "one sentence: does the order of paragraphs follow a logical sequence that builds the argument?",
@@ -1269,22 +1269,20 @@ function getModeAnalysisSchema(mode, depth) {
       return `,
   "mode_analysis": {
     "monroe_sequence": {
-      "attention": { "present": true, "quote": "exact opening line verbatim", "grade": "A or B or C or D or F", "note": "what works or fails and one specific improvement" },
-      "need": { "present": true, "quote": "where problem is established verbatim", "urgency": "high or medium or low", "personal_to_audience": true, "note": "assessment" },
-      "satisfaction": { "present": true, "quote": "where solution is presented verbatim", "is_specific": true, "note": "assessment" },
-      "visualization": { "present": true, "quote": "exact visualization passage verbatim", "vividness": "A or B or C or D", "note": "what works or what one specific sensory detail would sharpen it" },
-      "action": { "present": true, "quote": "exact call to action verbatim", "is_specific": true, "is_achievable": true, "note": "assessment + one specific improvement" }
+      "attention": { "present": true, "grade": "A-F", "note": "short note" },
+      "need": { "present": true, "grade": "A-F", "urgency": "high/medium/low", "note": "short note" },
+      "satisfaction": { "present": true, "grade": "A-F", "note": "short note" },
+      "visualization": { "present": true, "vividness": "A-F", "note": "short note" },
+      "action": { "present": true, "grade": "A-F", "is_specific": true, "note": "short note" }
     },
     "rhetorical_appeals": {
-      "ethos": { "present": true, "quote": "strongest credibility moment verbatim", "mechanism": "why this builds authority", "grade": "A or B or C or D or F" },
-      "pathos": { "present": true, "quote": "most emotionally resonant line verbatim", "mechanism": "why this creates emotional connection", "grade": "A or B or C or D or F" },
-      "logos": { "present": true, "quote": "strongest logical or evidence moment verbatim", "mechanism": "why this reasoning holds", "grade": "A or B or C or D or F" },
-      "dominant_appeal": "ethos or pathos or logos",
-      "weakest_appeal": "which appeal needs the most work",
-      "one_sentence_to_add": "write one specific sentence that would strengthen the weakest appeal"
+      "ethos": { "grade": "A-F", "mechanism": "short note" },
+      "pathos": { "grade": "A-F", "mechanism": "short note" },
+      "logos": { "grade": "A-F", "mechanism": "short note" },
+      "weakest_appeal": "ethos/pathos/logos"
     },
     "rhetorical_devices": [
-      { "device": "anaphora or tricolon or antithesis or chiasmus or rhetorical question or metaphor or anecdote", "quote": "exact passage verbatim", "effective": true, "note": "why it works or falls flat and how to improve it" }
+      { "device": "name", "effective": true, "note": "short note" }
     ]
   }`;
     case 'essay':
@@ -1407,47 +1405,39 @@ function buildSpeechSchema(depth) {
   "score_explanations": {
     ${getModeScoreExplanations('speech')}
   },
-  "verdict": "${surface ? "3 sentences: what the speech does right, its biggest problem, the one thing to fix first" : "6-9 sentences on whether the speech achieves its purpose — what works, what fails first, and why the score is exactly what it is"}",
-  "coaching_note": "${surface ? "2 sentences: the single most impactful repair, stated as a concrete action" : "3-5 practical sentences: highest-leverage repair first, then next moves in order"}",
+  "verdict": "${surface ? "2 sentences: what works, what fails first" : "3 sentences: what works, biggest gap, why this score"}",
+  "coaching_note": "${surface ? "1 sentence: top repair" : "2 sentences: top repair, then next move"}",
   "strengths": [
-    { "quote": "exact strong sentence verbatim", "why": "the specific Monroe step, Aristotelian proof, or rhetorical device that makes this land" }
+    { "quote": "short quote", "why": "technique name" }
   ],
   "audience_clarity": {
     "main_message_obvious": true,
-    "context_sufficient": true,
-    "confusing_terms": ["any term the audience may not understand"],
-    "audience_knows_why_it_matters": true,
-    "level_assessment": "too advanced, appropriate, or too basic for the likely audience",
-    "fixes": ["specific fix to improve audience clarity"]
+    "level_assessment": "appropriate/too advanced/too basic",
+    "fixes": ["fix if needed"]
   },
   "hook_analysis": {
-    "current_hook": "quote the actual opening line verbatim",
-    "rating": "STRONG or MODERATE or WEAK",
-    "grabs_attention": true,
-    "is_relevant": true,
-    "creates_curiosity": true,
-    "assessment": "2 sentences on what works or fails about this hook",
-    "stronger_hook": "write a better opening hook in the speaker's voice"
+    "current_hook": "opening line quote",
+    "rating": "STRONG/MODERATE/WEAK",
+    "assessment": "1 sentence",
+    "stronger_hook": "better hook if needed"
   },
   "structure_analysis": {
-    "detected_structure": "what structure the speech currently has",
-    "structural_gaps": ["what Monroe step is missing or out of order — empty array if none"]
+    "detected_structure": "current structure name",
+    "structural_gaps": ["missing Monroe step if any"]
   },
   "memorability_check": {
     "has_memorable_moment": true,
-    "memorable_elements_found": ["story", "statistic", "repeated phrase", "image", "emotional moment"],
-    "suggested_memorable_line": "write one memorable line if anything is missing — empty string if already strong"
+    "memorable_elements_found": ["story", "refrain"],
+    "suggested_memorable_line": ""
   },
   "call_to_action": {
-    "present": false,
-    "current": "quote the ending verbatim",
-    "is_specific": false,
-    "is_achievable": false,
-    "assessment": "is it clear and actionable",
-    "stronger_ending": "write a stronger, more specific call to action if needed"
+    "present": true,
+    "current": "ending quote",
+    "is_specific": true,
+    "assessment": "1 sentence"
   },
   "priority_fixes": [
-    { "problem": "name the precise problem — missing Monroe step, weak ethos, vague CTA", "quote": "exact text", "rewrite": "finished replacement the speaker can use" }
+    { "problem": "precise problem", "rewrite": "replacement line" }
   ]${modeAnalysis}}`;
 }
 
