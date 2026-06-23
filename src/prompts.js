@@ -1405,7 +1405,7 @@ function buildSpeechSchema(depth) {
   "score_explanations": {
     ${getModeScoreExplanations('speech')}
   },
-  "verdict": "${surface ? "2 sentences: what works, what fails first" : "3 sentences: what works, biggest gap, why this score"}",
+  "verdict": "${surface ? "2 sentences: what works, what fails first — no score number" : "3 sentences: what works, biggest structural gap, one coaching priority — no score number"}",
   "coaching_note": "${surface ? "1 sentence: top repair" : "2 sentences: top repair, then next move"}",
   "strengths": [
     { "quote": "short quote", "why": "technique name" }
