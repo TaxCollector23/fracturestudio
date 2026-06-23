@@ -636,6 +636,8 @@ WHAT TO INCLUDE — ALL OF THE FOLLOWING ARE REQUIRED:
 - mode_analysis: FULLY POPULATED — all impact dimensions, all stock issues, complete rebuttal_prep, extra_arguments the writer is missing
 - priority_fixes: as many as required by the draft, ordered by competitive damage
 
+SPEECH MODE CONCISENESS (when analyzing a speech): The combined JSON output must finish under 1500 tokens. Limit arrays strictly: delivery_markup max 2 items, structure_analysis.paragraph_map max 5 items, audience_questions max 2 items, rhetorical_devices max 3 items. Every string field: 1-2 tight sentences max. Finishing the JSON completely beats exhaustive field content.
+
 TONE: Brutally direct. No softening. Every fix must be language the writer can say or write — not a description of what to do. Never invent statistics or sources — write [verified evidence needed].`;
 
     default: // medium
