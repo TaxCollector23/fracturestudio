@@ -1904,11 +1904,11 @@ ${mode === 'speech'
 2. SHARPEST WEAKNESS: What is the one thing that prevents this speech from being a 95+? Name the specific mechanism (missing Monroe step, weak Aristotelian proof, absent warrant, confusing term, no repeated rallying phrase). Quote the exact line.
 3. BEST SENTENCE: What is the most memorable, specific, or persuasive moment in the speech? Quote it exactly. This proves the speaker CAN reach the top band.
 4. HONEST SCORE: Given those three, which band does this fall in?
-   - All 5 Monroe steps, all 3 Aristotelian proofs, 2+ rhetorical devices, personal story, specific CTA, no critical/major issues: 95-100.
-   - Strong speech with one real gap (missing visualization, one weak proof, no repeated phrase): 85-94.
-   - Solid structure but at least one major gap a judge would act on: 75-84.
+   - All 5 Monroe steps (attention/need/satisfaction/visualization/action all present), all 3 Aristotelian proofs (ethos/pathos/logos all present), 2+ rhetorical devices, personal story, specific achievable CTA: 95-100. Personal anecdotes and named-researcher citations ARE valid evidence — do not penalize them as missing warrants.
+   - Strong speech with ONE real speech-level gap (visualization is absent or vague, one Aristotelian proof is completely missing, CTA is vague): 85-94.
+   - Solid structure but at least one major gap a judge would act on (missing Monroe step, no personal story): 75-84.
    - Template-quality: forgettable hook, vague evidence, no personal story: 65-74.
-   Do NOT default to 75-82 because it feels safe. A speech that hits all Monroe steps and Aristotelian proofs MUST score 88+.`
+   Do NOT default to 75-82 because it feels safe. If all Monroe steps and all 3 Aristotelian proofs are confirmed present, the score MUST be 88 or higher. If visualization is present with A or B vividness, score 92+.`
   : `1. LOAD-BEARING CLAIM: What is the single sentence this entire argument depends on? If that sentence is wrong or unprovable, does the rest collapse? Quote it exactly.
 2. SHARPEST WEAKNESS: What is the one thing a skilled opponent or skeptical grader would immediately exploit? Name the specific mechanism (missing warrant, scope creep, buried assumption, shifting definition, or strength mismatch). Quote the exact line.
 3. BEST SENTENCE: What is the best-executed moment in the piece — clearest reasoning, best-supported, or most specific? Quote it exactly. This is your evidence that the writer CAN do better.
@@ -1919,7 +1919,9 @@ ${mode === 'speech'
    - The argument doesn't hold: below 60.
    Do NOT default to 75-82 because it feels safe. The score you commit to here must match the feedback you write.`}
 
-Analyze the following writing and return ONLY a valid JSON object matching this exact schema. No markdown, no preamble, no text outside the JSON.
+${isSpeech ? `SPEECH SCHEMA DISCIPLINE: The schema below is the COMPLETE list of allowed fields. DO NOT generate any of these argument-mode fields: collapse_point, claims, argument_strength, argument_dependency_graph, counterargument, rewrite_suggestions, rhetorical_analysis, assumption_audit, logical_fallacies, truth_audit, attack_tree, counter_arguments. A speech is not an academic argument — personal anecdotes and named-researcher citations are VALID evidence; do not treat them as WEAK claims.
+
+` : ''}Analyze the following writing and return ONLY a valid JSON object matching this exact schema. No markdown, no preamble, no text outside the JSON.
 
 CRITICAL OUTPUT DISCIPLINE: Returning a COMPLETE, valid JSON object is more important than length. Be concise and dense — every field tight, no padding, no repetition. Respect the per-depth limits on how many items go in each array. A short complete report beats a long one that gets cut off. Do not let any single field run on; finish the whole JSON object.
 

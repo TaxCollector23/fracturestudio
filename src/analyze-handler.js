@@ -1095,7 +1095,7 @@ export async function handleAnalyze(req, res) {
   }
 
   writeProgress(res, 86, "Validating the report structure");
-  const { audit, recovered } = prepareAuditFromModelText(rawText, essay);
+  const { audit, recovered } = prepareAuditFromModelText(rawText, essay, mode);
   writeProgress(res, recovered ? 91 : 90, recovered ? "Repairing a malformed model response" : "Report structure verified");
   return await finish(res, audit, recovered, { essay, citationStyle, sourceData, mode });
 }

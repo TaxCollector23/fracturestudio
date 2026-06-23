@@ -105,9 +105,9 @@ export async function collectOpenRouterContent(upstreamRes, onChunk) {
   }
 }
 
-export function prepareAuditFromModelText(rawText, essay) {
+export function prepareAuditFromModelText(rawText, essay, mode) {
   try {
-    return { audit: normalizeAudit(parseJsonWithRepair(rawText), essay), recovered: false };
+    return { audit: normalizeAudit(parseJsonWithRepair(rawText), essay, mode), recovered: false };
   } catch (err) {
     return {
       audit: buildRecoveryAudit(essay, `The model returned malformed JSON, so Fracture generated a stable validated report instead. Recovery reason: ${err.message}`),
@@ -182,12 +182,35 @@ function repairJson(text) {
     .replace(/,\s*([}\]])/g, "$1");
 }
 
-export function normalizeAudit(audit, essay) {
+export function normalizeAudit(audit, essay, mode) {
   const text = String(essay || "").trim();
   const essaySentences = splitSentences(text);
   const fallbackQuote = essaySentences[0] || text || "No text entered.";
   const input = audit && typeof audit === "object" ? audit : {};
   const scoreBreakdown = input.score_breakdown && typeof input.score_breakdown === "object" ? input.score_breakdown : {};
+
+  // Speech audits use a different schema — return the model output with minimal normalization
+  if (mode === 'speech' || input.mode_analysis?.monroe_sequence) {
+    return {
+      ...input,
+      overall_score: clampInt(input.overall_score, null, 0, 100),
+      score_breakdown: input.score_breakdown || {},
+      score_explanations: input.score_explanations || {},
+      verdict: stringOr(input.verdict, ""),
+      coaching_note: stringOr(input.coaching_note, ""),
+      strengths: ensureArray(input.strengths),
+      priority_fixes: ensureArray(input.priority_fixes).map((fix) => ({
+        problem: stringOr(fix?.problem, ""),
+        rewrite: stringOr(fix?.rewrite, "")
+      })),
+      mode_analysis: input.mode_analysis || {},
+      audience_clarity: input.audience_clarity || {},
+      hook_analysis: input.hook_analysis || {},
+      structure_analysis: input.structure_analysis || {},
+      memorability_check: input.memorability_check || {},
+      call_to_action: input.call_to_action || {}
+    };
+  }
   const argumentStrength = input.argument_strength && typeof input.argument_strength === "object" ? input.argument_strength : {};
   const thesis = argumentStrength.thesis && typeof argumentStrength.thesis === "object" ? argumentStrength.thesis : {};
   const claims = ensureArray(argumentStrength.claims).map((claim) => ({
