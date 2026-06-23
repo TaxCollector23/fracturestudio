@@ -73,12 +73,12 @@ export default function Landing() {
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             Fracture Engine is live
           </motion.div>
-          <motion.h1 {...up(0.1)} className="font-serif text-5xl md:text-[7vw] leading-[0.95] tracking-tight mb-8 text-zinc-950 dark:text-white">
+          <motion.h1 {...up(0.1)} className="font-serif text-4xl md:text-6xl leading-[1.02] tracking-tight mb-6 text-zinc-950 dark:text-white">
             Stress-test every claim.<br />
             <span className="italic font-normal text-zinc-500 dark:text-zinc-600">Strengthen every conclusion.</span>
           </motion.h1>
-          <motion.p {...up(0.2)} className="text-lg muted max-w-2xl mb-10 leading-relaxed">
-            Adversarial AI that dismantles your logic before your opponents can.
+          <motion.p {...up(0.2)} className="text-base md:text-lg muted max-w-xl mb-10 leading-relaxed">
+            Paste in your speech, debate case, or essay and get a precise, professional read — a calibrated score, the exact lines that need work, and feedback you can act on immediately.
           </motion.p>
           <motion.div {...up(0.3)} className="flex flex-wrap gap-3 justify-center">
             <Link to="/studio" className="btn-solid">Start Drafting <ArrowRight size={16} /></Link>

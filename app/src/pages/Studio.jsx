@@ -45,9 +45,26 @@ export default function Studio() {
     setProgress({ progress: 4, message: "Preparing the audit" });
     let gotAudit = false;
     let gotSections = false;
+    let tokens = 0;
     try {
       await analyze({ essay, preferences: prefs }, {
-        onProgress: (p) => setProgress(p),
+        // Server milestones set the label; never let them pull the bar backwards.
+        onProgress: (p) => setProgress((prev) => ({
+          progress: Math.max(prev.progress, p.progress),
+          message: p.message || prev.message
+        })),
+        // Nudge the bar forward as tokens stream in, so it visibly moves every few
+        // tokens and the wait feels alive instead of frozen.
+        onModelDelta: () => {
+          tokens += 1;
+          if (tokens % 2 === 0) {
+            setProgress((prev) => {
+              if (prev.progress >= 88) return prev;
+              const target = Math.min(88, 22 + tokens * 0.18);
+              return { progress: Math.max(prev.progress, target), message: prev.message };
+            });
+          }
+        },
         onReportSection: (s) => { gotSections = true; setSections((prev) => [...prev, s]); },
         onAudit: (a) => { gotAudit = true; setAudit(a); }
       });
@@ -144,10 +161,19 @@ export default function Studio() {
 
           {running && (
             <div className="mt-4">
-              <div className="h-1 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                <div className="h-full bg-zinc-950 dark:bg-zinc-100 transition-all duration-500" style={{ width: `${progress.progress}%` }} />
+              <div className="h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-zinc-950 dark:bg-zinc-100 rounded-full transition-[width] duration-200 ease-out"
+                  style={{ width: `${Math.max(progress.progress, 4)}%` }}
+                />
               </div>
-              <p className="faint text-xs mt-2 font-mono">{progress.message}</p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="faint text-xs font-mono flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-950 dark:bg-zinc-100 animate-pulse" />
+                  {progress.message || "Working…"}
+                </p>
+                <span className="faint text-xs font-mono">{Math.round(progress.progress)}%</span>
+              </div>
             </div>
           )}
           {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
