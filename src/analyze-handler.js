@@ -1070,7 +1070,7 @@ export async function handleAnalyze(req, res) {
       model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
       messages: buildAuditMessages(essay, req.body?.preferences, evidenceContext),
       maxTokens,
-      temperature: 0.1,
+      temperature: 0.3,
       referer: "https://fracturestudio.vercel.app"
     });
   } catch (err) {
