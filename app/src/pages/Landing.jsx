@@ -73,7 +73,7 @@ export default function Landing() {
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             Fracture Engine is live
           </motion.div>
-          <motion.h1 {...up(0.1)} className="font-serif text-7xl md:text-[8vw] leading-[0.9] tracking-tight mb-8 text-zinc-950 dark:text-white">
+          <motion.h1 {...up(0.1)} className="font-serif text-6xl md:text-7xl leading-[0.95] tracking-tight mb-8 text-zinc-950 dark:text-white">
             Stress-test every claim.<br />
             <span className="italic font-normal text-zinc-500 dark:text-zinc-600">Strengthen every conclusion.</span>
           </motion.h1>
