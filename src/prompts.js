@@ -1935,7 +1935,17 @@ ${isSpeech
   const userPrompt = `${depthInstruction}
 
 ${evidenceBlock}BEFORE YOU FILL A SINGLE JSON FIELD — make these four commitments internally and hold them throughout:
-1. LOAD-BEARING CLAIM: What is the single sentence this entire argument depends on? If that sentence is wrong or unprovable, does the rest collapse? Quote it exactly.
+${mode === 'speech'
+  ? `1. LOAD-BEARING MOMENT: What is the single sentence this speech lives or dies on? If it fails, does the audience disengage? Quote it exactly.
+2. SHARPEST WEAKNESS: What is the one thing that prevents this speech from being a 95+? Name the specific mechanism (missing Monroe step, weak Aristotelian proof, absent warrant, confusing term, no repeated rallying phrase). Quote the exact line.
+3. BEST SENTENCE: What is the most memorable, specific, or persuasive moment in the speech? Quote it exactly. This proves the speaker CAN reach the top band.
+4. HONEST SCORE: Given those three, which band does this fall in?
+   - All 5 Monroe steps, all 3 Aristotelian proofs, 2+ rhetorical devices, personal story, specific CTA, no critical/major issues: 95-100.
+   - Strong speech with one real gap (missing visualization, one weak proof, no repeated phrase): 85-94.
+   - Solid structure but at least one major gap a judge would act on: 75-84.
+   - Template-quality: forgettable hook, vague evidence, no personal story: 65-74.
+   Do NOT default to 75-82 because it feels safe. A speech that hits all Monroe steps and Aristotelian proofs MUST score 88+.`
+  : `1. LOAD-BEARING CLAIM: What is the single sentence this entire argument depends on? If that sentence is wrong or unprovable, does the rest collapse? Quote it exactly.
 2. SHARPEST WEAKNESS: What is the one thing a skilled opponent or skeptical grader would immediately exploit? Name the specific mechanism (missing warrant, scope creep, buried assumption, shifting definition, or strength mismatch). Quote the exact line.
 3. BEST SENTENCE: What is the best-executed moment in the piece — clearest reasoning, best-supported, or most specific? Quote it exactly. This is your evidence that the writer CAN do better.
 4. HONEST SCORE: Given those three, which band does this fall in?
@@ -1943,7 +1953,7 @@ ${evidenceBlock}BEFORE YOU FILL A SINGLE JSON FIELD — make these four commitme
    - Solid work with one real gap a skeptical reader would exploit: 75-87.
    - Generic, template-quality, or vague evidence throughout: 60-74.
    - The argument doesn't hold: below 60.
-   Do NOT default to 75-82 because it feels safe. The score you commit to here must match the feedback you write.
+   Do NOT default to 75-82 because it feels safe. The score you commit to here must match the feedback you write.`}
 
 Analyze the following writing and return ONLY a valid JSON object matching this exact schema. No markdown, no preamble, no text outside the JSON.
 
