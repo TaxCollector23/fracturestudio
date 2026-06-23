@@ -1039,17 +1039,18 @@ export async function handleAnalyze(req, res) {
     return await finish(res, buildServiceFallbackAudit(essay, "OPENROUTER_API_KEY is not configured"), true);
   }
 
+  // Read mode/depth/style up front — they drive token caps and routing below.
+  const mode = String(req.body?.preferences?.analysisFormat || "argument").toLowerCase();
+  const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
+  const citationStyle = req.body?.preferences?.citationStyle;
+
   // Cap output so the audit reliably finishes within the function timeout.
   // The model is fast on bounded output but will run for minutes if left unbounded.
-  const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
-  // Tuned so a medium audit completes around ~85s on the free model while staying rich.
   // Speech schema is compact (~1200 tokens). Cap tightly to cut off argument-field bloat
   // that the model appends despite schema discipline instructions.
   const maxTokens = mode === "speech"
     ? (depth === "surface" ? 1200 : 1800)
     : (depth === "surface" ? 2600 : depth === "extreme" ? 6500 : 4800);
-  const citationStyle = req.body?.preferences?.citationStyle;
-  const mode = String(req.body?.preferences?.analysisFormat || "argument").toLowerCase();
 
   // STEP 1 — Check factual claims against the live web before grading.
   // Skip for speech mode: personal speeches rely on anecdote and named sources, not
