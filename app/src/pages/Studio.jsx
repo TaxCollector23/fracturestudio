@@ -43,12 +43,19 @@ export default function Studio() {
     if (!essay.trim() || running) return;
     setRunning(true); setError(null); setSections([]); setAudit(null); setSaved(false);
     setProgress({ progress: 4, message: "Preparing the audit" });
+    let gotAudit = false;
+    let gotSections = false;
     try {
       await analyze({ essay, preferences: prefs }, {
         onProgress: (p) => setProgress(p),
-        onReportSection: (s) => setSections((prev) => [...prev, s]),
-        onAudit: (a) => setAudit(a)
+        onReportSection: (s) => { gotSections = true; setSections((prev) => [...prev, s]); },
+        onAudit: (a) => { gotAudit = true; setAudit(a); }
       });
+      // The stream can end cleanly without ever producing a report when every free
+      // model is unavailable. Don't reset to an empty panel silently — say what happened.
+      if (!gotAudit && !gotSections) {
+        setError("The free models are overloaded right now and didn't return a report. Wait a moment and press Fracture It again.");
+      }
     } catch (e) {
       setError(e?.message || "The audit could not complete. Try again.");
     } finally {

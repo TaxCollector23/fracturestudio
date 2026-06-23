@@ -1,12 +1,11 @@
 import {
-  DEFAULT_MODEL,
   buildServiceFallbackAudit,
   buildTooThinAudit,
   isTooThinForAudit,
   prepareAuditFromModelText
 } from "./audit-utils.js";
 import { buildAuditMessages } from "./prompts.js";
-import { collectTextFromOpenRouter, openRouterStream } from "./openrouter.js";
+import { buildModelChain, collectTextFromOpenRouter, openRouterStream, shortModelName } from "./openrouter.js";
 import { verifySources } from "./source-verify.js";
 import { startSse, writeDone, writeSse } from "./sse-utils.js";
 
@@ -1067,39 +1066,82 @@ export async function handleAnalyze(req, res) {
     }
   }
 
-  // STEP 2 — Grade, with the live evidence findings in the prompt.
-  let upstream;
-  try {
-    writeProgress(res, 22, "Grading against the verified evidence");
-    upstream = await openRouterStream({
-      model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
-      messages: buildAuditMessages(essay, req.body?.preferences, evidenceContext),
-      maxTokens,
-      temperature: 0.55,
-      referer: "https://fracturestudio.vercel.app"
-    });
-  } catch (err) {
-    return await finish(res, buildServiceFallbackAudit(essay, `Failed to reach OpenRouter: ${err?.message || String(err)}`), true, { essay, citationStyle, sourceData });
+  // STEP 2 — Grade, with the live evidence findings in the prompt. Try the strongest
+  // free models in order; if one is throttled, down, or stalls, fail over to the next
+  // so the engine keeps working even when any single free model is unavailable.
+  const messages = buildAuditMessages(essay, req.body?.preferences, evidenceContext);
+  const models = buildModelChain();
+
+  let finalAudit = null;
+  let recovered = true;
+  let producedAudit = false;
+  let lastError = null;
+
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      writeProgress(
+        res,
+        22,
+        i === 0
+          ? "Grading against the verified evidence"
+          : `Backup engine: grading with ${shortModelName(model)}`
+      );
+
+      const upstream = await openRouterStream({
+        model,
+        messages,
+        maxTokens,
+        temperature: 0.55,
+        referer: "https://fracturestudio.vercel.app",
+        timeoutMs: 35000
+      });
+
+      if (!upstream.ok) {
+        const detail = await upstream.text().catch(() => "");
+        lastError = new Error(`${model}: HTTP ${upstream.status} ${detail.slice(0, 120)}`);
+        continue;
+      }
+
+      let lastProgress = 18;
+      const rawText = await collectTextFromOpenRouter(upstream, (delta, length) => {
+        writeSse(res, { fracture_model_delta: delta });
+        const next = nextProgressFromLength(length);
+        if (next.progress >= lastProgress + 4) {
+          lastProgress = next.progress;
+          writeProgress(res, next.progress, next.message);
+        }
+      }, { inactivityMs: 35000 });
+
+      if (!rawText || rawText.trim().length < 40) {
+        lastError = new Error(`${model}: empty response`);
+        continue;
+      }
+
+      const result = prepareAuditFromModelText(rawText, essay, mode);
+      finalAudit = result.audit;
+      recovered = result.recovered;
+      producedAudit = true;
+
+      // A clean parse is good enough — stop. A recovered (malformed) parse is kept as a
+      // fallback, but we keep trying better models if any remain.
+      if (!result.recovered) break;
+    } catch (err) {
+      lastError = err;
+      continue;
+    }
   }
 
-  writeProgress(res, 18, "Reading the live model stream");
-  let rawText = "";
-  let lastProgress = 18;
-  try {
-    rawText = await collectTextFromOpenRouter(upstream, (delta, length) => {
-      writeSse(res, { fracture_model_delta: delta });
-      const next = nextProgressFromLength(length);
-      if (next.progress >= lastProgress + 4) {
-        lastProgress = next.progress;
-        writeProgress(res, next.progress, next.message);
-      }
-    });
-  } catch (err) {
-    return await finish(res, buildServiceFallbackAudit(essay, err?.message || String(err)), true, { essay, citationStyle, sourceData });
+  if (!producedAudit) {
+    return await finish(
+      res,
+      buildServiceFallbackAudit(essay, `All free models were unavailable. Last error: ${lastError?.message || "unknown"}`),
+      true,
+      { essay, citationStyle, sourceData, mode }
+    );
   }
 
   writeProgress(res, 86, "Validating the report structure");
-  const { audit, recovered } = prepareAuditFromModelText(rawText, essay, mode);
   writeProgress(res, recovered ? 91 : 90, recovered ? "Repairing a malformed model response" : "Report structure verified");
-  return await finish(res, audit, recovered, { essay, citationStyle, sourceData, mode });
+  return await finish(res, finalAudit, recovered, { essay, citationStyle, sourceData, mode });
 }

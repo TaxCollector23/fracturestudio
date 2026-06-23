@@ -64,14 +64,34 @@ export function buildTooThinAudit(text) {
   }, text);
 }
 
-export async function collectOpenRouterContent(upstreamRes, onChunk) {
+export async function collectOpenRouterContent(upstreamRes, onChunk, options = {}) {
   const reader = upstreamRes.body.getReader();
   const decoder = new TextDecoder("utf-8");
+  // If a model goes silent mid-stream (no chunk for inactivityMs), abandon it so the
+  // caller can fail over to the next model instead of hanging until the function dies.
+  const inactivityMs = options.inactivityMs || 0;
   let buffer = "";
   let content = "";
 
   while (true) {
-    const { value, done } = await reader.read();
+    let result;
+    if (inactivityMs > 0) {
+      let timer;
+      const stall = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Model stream stalled — no output received.")), inactivityMs);
+      });
+      try {
+        result = await Promise.race([reader.read(), stall]);
+      } catch (err) {
+        reader.cancel().catch(() => {});
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
+    } else {
+      result = await reader.read();
+    }
+    const { value, done } = result;
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
