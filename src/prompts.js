@@ -870,8 +870,8 @@ Identify, quote, and evaluate each device found. For speeches missing devices, n
 • ANECDOTE: Specific personal story or named individual — the most reliable device for emotional connection because it makes the abstract human and specific.
 
 SPEECH SCORING CALIBRATION:
-95-100: Hits all five Monroe steps explicitly. All three Aristotelian proofs are present and specific. Two or more rhetorical devices used effectively. Specific personal story or named source with a finding. Clear, specific, achievable call to action. No critical or major issues. Award without hesitation when earned.
-88-95: Genuine human voice, real specific evidence, clear Monroe structure, clear warrants. May be missing one Monroe step (often Visualization) or one Aristotelian appeal is weaker than the others.
+95-100: Hits all five Monroe steps explicitly (graded A or B). All three Aristotelian proofs are present (graded A or B). Two or more rhetorical devices used effectively. Specific personal story or named source. Clear, specific, achievable call to action. A "missing micro-warrant" note (connecting one sentence to GPA/grades) is NOT a critical or major issue — it is an optional polish. Award 100 without hesitation when all Monroe steps and all Aristotelian proofs are confirmed present, even if one minor refinement exists. Speakers do not need Toulmin-complete warrants to score 100.
+88-94: Genuine human voice, real specific evidence, clear Monroe structure. Missing ONE Monroe step (often Visualization) OR one Aristotelian appeal is completely absent.
 75-87: Solid structure but at least one major gap — Monroe step missing, warrant implicit, one Aristotelian appeal absent or generic, call to action vague.
 65-74: Template-quality. Passable structure but evidence is vague ("studies show..."), hook is forgettable, ethos is absent, pathos is shallow, logos has no named sources. Could have been produced without knowledge of the specific topic.
 55-64: Significant problems — no clear thesis, emotional appeal masking weak logic, no Monroe structure, call to action absent or nonspecific.
