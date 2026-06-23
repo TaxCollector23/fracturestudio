@@ -1904,11 +1904,11 @@ ${mode === 'speech'
 2. SHARPEST WEAKNESS: What is the one thing that prevents this speech from being a 95+? Name the specific mechanism (missing Monroe step, weak Aristotelian proof, absent warrant, confusing term, no repeated rallying phrase). Quote the exact line.
 3. BEST SENTENCE: What is the most memorable, specific, or persuasive moment in the speech? Quote it exactly. This proves the speaker CAN reach the top band.
 4. HONEST SCORE: SCALE: score_breakdown uses 7 dimensions each scored 0-15 (NOT 0-10). Their sum must equal overall_score. Given those three, which band does this fall in?
-   - All 5 Monroe steps (attention/need/satisfaction/visualization/action all present), all 3 Aristotelian proofs (ethos/pathos/logos all present), 2+ rhetorical devices, personal story, specific achievable CTA: 95-100. Personal anecdotes and named-researcher citations ARE valid evidence — do not penalize them as missing warrants.
-   - Strong speech with ONE real speech-level gap (visualization is absent or vague, one Aristotelian proof is completely missing, CTA is vague): 85-94.
-   - Solid structure but at least one major gap a judge would act on (missing Monroe step, no personal story): 75-84.
-   - Template-quality: forgettable hook, vague evidence, no personal story: 65-74.
-   Do NOT default to 75-82 because it feels safe. If all Monroe steps and all 3 Aristotelian proofs are confirmed present, the score MUST be 88 or higher. If visualization is present with A or B vividness, score 92+.`
+   - All 5 Monroe steps present (any grade, including B), ALL 3 Aristotelian proofs present (any grade including B — grade B means present and solid, not absent), 2+ rhetorical devices identified, personal story present, specific achievable CTA present: SCORE 95-100. A grade B on an Aristotelian proof is NOT a missing proof. Personal anecdotes and named-researcher citations ARE valid speech evidence — do not call them missing warrants.
+   - Strong speech with ONE proof or Monroe step COMPLETELY ABSENT (grade F / not generated at all): 88-94.
+   - Missing TWO or more Monroe steps OR missing two Aristotelian proofs: 75-87.
+   - Template-quality, no personal story, no CTA: 65-74.
+   CRITICAL: "logos grade B" means logos is present and solid — this is NOT a reason to stay below 95. If you can confirm all 5 Monroe steps and all 3 Aristotelian proofs exist in any form, the score MUST reach 95-100. The individual dimension scores may be 12-14 while overall_score is 95+.`
   : `1. LOAD-BEARING CLAIM: What is the single sentence this entire argument depends on? If that sentence is wrong or unprovable, does the rest collapse? Quote it exactly.
 2. SHARPEST WEAKNESS: What is the one thing a skilled opponent or skeptical grader would immediately exploit? Name the specific mechanism (missing warrant, scope creep, buried assumption, shifting definition, or strength mismatch). Quote the exact line.
 3. BEST SENTENCE: What is the best-executed moment in the piece — clearest reasoning, best-supported, or most specific? Quote it exactly. This is your evidence that the writer CAN do better.
