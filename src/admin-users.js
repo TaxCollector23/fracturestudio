@@ -45,6 +45,8 @@ function dateMs(value) {
 }
 
 function getAudit(project) {
+  // Studio.jsx saves audit directly as project.audit
+  if (project?.audit && typeof project.audit === "object") return project.audit;
   const analysis = project?.analysis;
   if (!analysis || typeof analysis !== "object") return null;
   if (analysis.audit && typeof analysis.audit === "object") return analysis.audit;
@@ -54,6 +56,8 @@ function getAudit(project) {
 }
 
 function getScore(project) {
+  // Studio.jsx saves score directly as project.score
+  if (typeof project?.score === "number") return project.score;
   const audit = getAudit(project);
   return typeof audit?.overall_score === "number" ? audit.overall_score : null;
 }

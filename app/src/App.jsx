@@ -10,6 +10,7 @@ import PastWork from "./pages/PastWork.jsx";
 import Settings from "./pages/Settings.jsx";
 import About from "./pages/About.jsx";
 import Blog from "./pages/Blog.jsx";
+import Admin from "./pages/Admin.jsx";
 
 function Page({ children, bare }) {
   return (
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/settings" element={<Page><Settings /></Page>} />
           <Route path="/about" element={<Page><About /></Page>} />
           <Route path="/blog" element={<Page><Blog /></Page>} />
+          <Route path="/admin" element={<Page><Admin /></Page>} />
           <Route path="*" element={<Page><Landing /></Page>} />
         </Routes>
       </AnimatePresence>

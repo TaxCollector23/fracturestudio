@@ -9,7 +9,15 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let unsub = () => {};
-    fb.onAuthChange((u) => { setUser(u); setReady(true); })
+    fb.onAuthChange((u) => {
+      setUser(u);
+      setReady(true);
+      if (u) {
+        // Write profile to Firestore so the admin panel can see who has signed in.
+        fb.touchUserProfile(u.id, { email: u.email, name: u.name, provider: u.provider })
+          .catch(() => {});
+      }
+    })
       .then((fn) => { unsub = fn || (() => {}); })
       .catch(() => setReady(true));
     return () => unsub();

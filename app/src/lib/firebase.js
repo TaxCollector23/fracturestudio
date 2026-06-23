@@ -116,3 +116,15 @@ export async function savePreferences(userId, prefs) {
   const ref = storeMod.doc(db, "users", userId, "settings", "preferences");
   await storeMod.setDoc(ref, prefs, { merge: true });
 }
+
+// Write user profile to users/{userId} so admin can see who has signed in.
+export async function touchUserProfile(userId, { email, name, provider }) {
+  const { db, storeMod } = await getServices();
+  const ref = storeMod.doc(db, "users", userId);
+  await storeMod.setDoc(ref, {
+    email: email || "",
+    name: name || "",
+    provider: provider || "email",
+    lastSeen: storeMod.serverTimestamp()
+  }, { merge: true });
+}
