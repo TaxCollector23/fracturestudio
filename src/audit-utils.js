@@ -200,7 +200,7 @@ export function normalizeAudit(audit, essay, mode) {
       coaching_note: stringOr(input.coaching_note, ""),
       strengths: ensureArray(input.strengths),
       priority_fixes: ensureArray(input.priority_fixes).map((fix) => ({
-        problem: stringOr(fix?.problem, ""),
+        problem: stringOr(fix?.problem, fix?.exact_fix, ""),
         rewrite: stringOr(fix?.rewrite, "")
       })),
       mode_analysis: input.mode_analysis || {},

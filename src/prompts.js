@@ -1435,10 +1435,7 @@ function buildSpeechSchema(depth) {
     "current": "ending quote",
     "is_specific": true,
     "assessment": "1 sentence"
-  },
-  "priority_fixes": [
-    { "problem": "precise problem", "rewrite": "replacement line" }
-  ]${modeAnalysis}}`;
+  }${modeAnalysis}}`;
 }
 
 function buildEssaySchema(depth) {
