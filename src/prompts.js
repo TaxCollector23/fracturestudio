@@ -1898,14 +1898,15 @@ ${isSpeech
 ${evidenceBlock}BEFORE YOU FILL A SINGLE JSON FIELD — make these four commitments internally and hold them throughout:
 ${mode === 'speech'
   ? `1. LOAD-BEARING MOMENT: What is the single sentence this speech lives or dies on? If it fails, does the audience disengage? Quote it exactly.
-2. SHARPEST WEAKNESS: What is the one thing that prevents this speech from being a 95+? Name the specific mechanism (missing Monroe step, weak Aristotelian proof, absent warrant, confusing term, no repeated rallying phrase). Quote the exact line.
+2. SHARPEST WEAKNESS: Check the mode_analysis you will write. If ALL 5 Monroe steps will be graded A or B AND ALL 3 Aristotelian proofs will be graded A or B, write exactly: "ALL ELEMENTS A/B — score is 100." Only if a Monroe step or Aristotelian proof is COMPLETELY ABSENT (grade F or present:false), OR there is no personal story, OR there is no specific CTA — name that specific absent element. CRITICAL: "missing logical warrant" is NOT a valid speech weakness. Speeches use personal stories and named-researcher citations as evidence — no academic-style warrant is required.
 3. BEST SENTENCE: What is the most memorable, specific, or persuasive moment in the speech? Quote it exactly. This proves the speaker CAN reach the top band.
-4. HONEST SCORE: SCALE: score_breakdown dimensions are 0-15 each (NOT 0-10) — they are qualitative calibration, NOT the mathematical basis of overall_score. overall_score is a holistic band judgment set INDEPENDENTLY: pick the band that fits, then set overall_score to that band. Given those three, which band does this fall in?
-   - All 5 Monroe steps present (any grade, including B), ALL 3 Aristotelian proofs present (any grade including B — grade B means present and solid, not absent), 2+ rhetorical devices identified, personal story present, specific achievable CTA present: SCORE 95-100. A grade B on an Aristotelian proof is NOT a missing proof. Personal anecdotes and named-researcher citations ARE valid speech evidence — do not call them missing warrants.
-   - Strong speech with ONE proof or Monroe step COMPLETELY ABSENT (grade F / not generated at all): 88-94.
+4. HONEST SCORE: SCALE: score_breakdown dimensions are 0-15 each (NOT 0-10) — qualitative calibration only, NOT the mathematical basis of overall_score. overall_score is a holistic band judgment set INDEPENDENTLY from breakdown values.
+   - All 5 Monroe steps graded A or B, ALL 3 Aristotelian proofs graded A or B, 2+ rhetorical devices, personal story, specific achievable CTA: SCORE 100. Every structural element is present and working — this speech would succeed in the room today. "Missing logical warrant" NEVER causes a deduction from 100 in speech mode. If step 2 says "ALL ELEMENTS A/B," the score here MUST be 100.
+   - Same structure but at least one Monroe step or Aristotelian proof is grade C (present but weak): SCORE 95-99.
+   - Strong speech with ONE proof or Monroe step COMPLETELY ABSENT (grade F): 88-94.
    - Missing TWO or more Monroe steps OR missing two Aristotelian proofs: 75-87.
    - Template-quality, no personal story, no CTA: 65-74.
-   CRITICAL: "logos grade B" means logos is present and solid — this is NOT a reason to stay below 95. If you can confirm all 5 Monroe steps and all 3 Aristotelian proofs exist in any form, the score MUST reach 95-100. The individual dimension scores may be 12-14 while overall_score is 95+.`
+   Individual dimension scores may be 12-14 while overall_score is 100 — breakdown values do not cap overall_score.`
   : `1. LOAD-BEARING CLAIM: What is the single sentence this entire argument depends on? If that sentence is wrong or unprovable, does the rest collapse? Quote it exactly.
 2. SHARPEST WEAKNESS: What is the one thing a skilled opponent or skeptical grader would immediately exploit? Name the specific mechanism (missing warrant, scope creep, buried assumption, shifting definition, or strength mismatch). Quote the exact line.
 3. BEST SENTENCE: What is the best-executed moment in the piece — clearest reasoning, best-supported, or most specific? Quote it exactly. This is your evidence that the writer CAN do better.
@@ -1916,7 +1917,7 @@ ${mode === 'speech'
    - The argument doesn't hold: below 60.
    Do NOT default to 75-82 because it feels safe. The score you commit to here must match the feedback you write.`}
 
-${isSpeech ? `SPEECH SCHEMA DISCIPLINE: The schema below is the COMPLETE list of allowed fields. DO NOT generate any of these argument-mode fields: collapse_point, claims, argument_strength, argument_dependency_graph, counterargument, rewrite_suggestions, rhetorical_analysis, assumption_audit, logical_fallacies, truth_audit, attack_tree, counter_arguments. A speech is not an academic argument — personal anecdotes and named-researcher citations are VALID evidence; do not treat them as WEAK claims.
+${isSpeech ? `SPEECH SCHEMA DISCIPLINE: You are in SPEECH mode. The schema below defines EVERY field allowed in your output. DO NOT add any field not shown in the schema. The following fields are FORBIDDEN and must NOT appear anywhere in your JSON output: claims, collapse_point, argument_strength, argument_dependency_graph, counterargument, rewrite_suggestions, rhetorical_analysis, assumption_audit, logical_fallacies, truth_audit, attack_tree, counter_arguments, priority_fixes. Adding any of these fields wastes tokens, extends output beyond what the server allows, and makes the response invalid. Speech evidence (personal anecdote, named researcher, named statistic) is VALID — do not apply argument-style warrant analysis to speech content.
 
 ` : ''}Analyze the following writing and return ONLY a valid JSON object matching this exact schema. No markdown, no preamble, no text outside the JSON.
 

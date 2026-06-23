@@ -191,18 +191,26 @@ export function normalizeAudit(audit, essay, mode) {
 
   // Speech audits use a different schema — return the model output with minimal normalization
   if (mode === 'speech' || input.mode_analysis?.monroe_sequence) {
+    // Strip argument-mode fields the model sometimes appends despite schema instructions.
+    // These inflate token count and don't belong in speech output.
+    const SPEECH_FORBIDDEN = new Set([
+      'claims', 'collapse_point', 'argument_strength', 'argument_dependency_graph',
+      'counterargument', 'rewrite_suggestions', 'rhetorical_analysis', 'assumption_audit',
+      'logical_fallacies', 'truth_audit', 'attack_tree', 'counter_arguments',
+      'priority_fixes', 'thesis',
+    ]);
+    const cleaned = {};
+    for (const [k, v] of Object.entries(input)) {
+      if (!SPEECH_FORBIDDEN.has(k)) cleaned[k] = v;
+    }
     return {
-      ...input,
+      ...cleaned,
       overall_score: clampInt(input.overall_score, null, 0, 100),
       score_breakdown: input.score_breakdown || {},
       score_explanations: input.score_explanations || {},
       verdict: stringOr(input.verdict, ""),
       coaching_note: stringOr(input.coaching_note, ""),
       strengths: ensureArray(input.strengths),
-      priority_fixes: ensureArray(input.priority_fixes).map((fix) => ({
-        problem: stringOr(fix?.problem, fix?.exact_fix, ""),
-        rewrite: stringOr(fix?.rewrite, "")
-      })),
       mode_analysis: input.mode_analysis || {},
       audience_clarity: input.audience_clarity || {},
       hook_analysis: input.hook_analysis || {},
