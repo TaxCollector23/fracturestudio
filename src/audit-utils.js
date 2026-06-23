@@ -203,15 +203,39 @@ export function normalizeAudit(audit, essay, mode) {
     for (const [k, v] of Object.entries(input)) {
       if (!SPEECH_FORBIDDEN.has(k)) cleaned[k] = v;
     }
+    const modeAnalysis = input.mode_analysis || {};
+    const monroe = modeAnalysis.monroe_sequence || {};
+    const appeals = (modeAnalysis.rhetorical_appeals) || {};
+
+    // Determine if all five Monroe steps and all three Aristotelian proofs are graded A or B.
+    // If so, override overall_score to 100 — the model's warrant-based internal reasoning
+    // sometimes anchors at 94-96 despite all structural elements being fully present.
+    const isTopGrade = (g) => g === 'A' || g === 'B';
+    const allMonroe = (
+      monroe.attention?.present !== false && isTopGrade(monroe.attention?.grade) &&
+      monroe.need?.present !== false && isTopGrade(monroe.need?.grade) &&
+      monroe.satisfaction?.present !== false && isTopGrade(monroe.satisfaction?.grade) &&
+      monroe.visualization?.present !== false && isTopGrade(monroe.visualization?.vividness || monroe.visualization?.grade) &&
+      monroe.action?.present !== false && isTopGrade(monroe.action?.grade)
+    );
+    const allAristotle = (
+      isTopGrade(appeals.ethos?.grade) &&
+      isTopGrade(appeals.pathos?.grade) &&
+      isTopGrade(appeals.logos?.grade)
+    );
+
+    const modelScore = clampInt(input.overall_score, null, 0, 100);
+    const finalScore = (allMonroe && allAristotle && modelScore > 0) ? 100 : modelScore;
+
     return {
       ...cleaned,
-      overall_score: clampInt(input.overall_score, null, 0, 100),
+      overall_score: finalScore,
       score_breakdown: input.score_breakdown || {},
       score_explanations: input.score_explanations || {},
       verdict: stringOr(input.verdict, ""),
       coaching_note: stringOr(input.coaching_note, ""),
       strengths: ensureArray(input.strengths),
-      mode_analysis: input.mode_analysis || {},
+      mode_analysis: modeAnalysis,
       audience_clarity: input.audience_clarity || {},
       hook_analysis: input.hook_analysis || {},
       structure_analysis: input.structure_analysis || {},

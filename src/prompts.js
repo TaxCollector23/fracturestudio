@@ -1898,15 +1898,14 @@ ${isSpeech
 ${evidenceBlock}BEFORE YOU FILL A SINGLE JSON FIELD — make these four commitments internally and hold them throughout:
 ${mode === 'speech'
   ? `1. LOAD-BEARING MOMENT: What is the single sentence this speech lives or dies on? If it fails, does the audience disengage? Quote it exactly.
-2. SHARPEST WEAKNESS: Check the mode_analysis you will write. If ALL 5 Monroe steps will be graded A or B AND ALL 3 Aristotelian proofs will be graded A or B, write exactly: "ALL ELEMENTS A/B — score is 100." Only if a Monroe step or Aristotelian proof is COMPLETELY ABSENT (grade F or present:false), OR there is no personal story, OR there is no specific CTA — name that specific absent element. CRITICAL: "missing logical warrant" is NOT a valid speech weakness. Speeches use personal stories and named-researcher citations as evidence — no academic-style warrant is required.
+2. SHARPEST WEAKNESS: Name the one STRUCTURAL gap — a Monroe step completely absent (grade F), an Aristotelian proof completely absent (grade F), no personal story, or no specific CTA. If none of these gaps exist, write: "No structural gap." Do NOT list warrant quality — "missing warrant" is an argument concept, not a speech concept. Personal anecdote and named-researcher citations ARE the evidence; no academic-style warrant is required.
 3. BEST SENTENCE: What is the most memorable, specific, or persuasive moment in the speech? Quote it exactly. This proves the speaker CAN reach the top band.
 4. HONEST SCORE: SCALE: score_breakdown dimensions are 0-15 each (NOT 0-10) — qualitative calibration only, NOT the mathematical basis of overall_score. overall_score is a holistic band judgment set INDEPENDENTLY from breakdown values.
-   - All 5 Monroe steps graded A or B, ALL 3 Aristotelian proofs graded A or B, 2+ rhetorical devices, personal story, specific achievable CTA: SCORE 100. Every structural element is present and working — this speech would succeed in the room today. "Missing logical warrant" NEVER causes a deduction from 100 in speech mode. If step 2 says "ALL ELEMENTS A/B," the score here MUST be 100.
-   - Same structure but at least one Monroe step or Aristotelian proof is grade C (present but weak): SCORE 95-99.
-   - Strong speech with ONE proof or Monroe step COMPLETELY ABSENT (grade F): 88-94.
+   - All 5 Monroe steps present (graded A or B), ALL 3 Aristotelian proofs present (graded A or B), 2+ rhetorical devices, personal story, specific achievable CTA: SCORE 95-100. If step 2 says "No structural gap," the score MUST be in this band. "Missing warrant" is not a structural gap and does NOT justify anything below 95.
+   - Strong speech with ONE Monroe step or ONE Aristotelian proof COMPLETELY ABSENT (grade F): 88-94.
    - Missing TWO or more Monroe steps OR missing two Aristotelian proofs: 75-87.
    - Template-quality, no personal story, no CTA: 65-74.
-   Individual dimension scores may be 12-14 while overall_score is 100 — breakdown values do not cap overall_score.`
+   Individual dimension scores may be 12-14 while overall_score is 95-100 — breakdown values do not cap overall_score.`
   : `1. LOAD-BEARING CLAIM: What is the single sentence this entire argument depends on? If that sentence is wrong or unprovable, does the rest collapse? Quote it exactly.
 2. SHARPEST WEAKNESS: What is the one thing a skilled opponent or skeptical grader would immediately exploit? Name the specific mechanism (missing warrant, scope creep, buried assumption, shifting definition, or strength mismatch). Quote the exact line.
 3. BEST SENTENCE: What is the best-executed moment in the piece — clearest reasoning, best-supported, or most specific? Quote it exactly. This is your evidence that the writer CAN do better.
