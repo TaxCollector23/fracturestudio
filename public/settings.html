@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Manage your Fracture Studio account, feedback preferences, citations, and saved work." />
+  <title>Settings | Fracture Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .settings-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .settings-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .settings-card {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .account-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .account-stat {
+      border: 1px solid var(--border);
+      background: rgba(108,99,255,.07);
+      border-radius: 14px;
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .account-stat span {
+      display: block;
+      color: var(--text-3);
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      font-family: var(--mono);
+      margin-bottom: 4px;
+    }
+
+    .account-stat strong {
+      display: block;
+      overflow-wrap: anywhere;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label,
+    .toggle-row span {
+      color: var(--text-2);
+      font-size: 12px;
+      letter-spacing: .04em;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(6,6,16,.7);
+      color: var(--text);
+      padding: 11px 12px;
+      font-family: var(--sans);
+      font-size: 13px;
+      outline: none;
+    }
+
+    [data-theme="light"] .field input,
+    [data-theme="light"] .field select {
+      background: #fafafe;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: rgba(108,99,255,.45);
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(108,99,255,.05);
+    }
+
+    .toggle-row input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .settings-message {
+      min-height: 22px;
+      color: var(--accent-2);
+      font-size: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .saved-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .saved-item {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(6,6,16,.36);
+      overflow: hidden;
+    }
+
+    [data-theme="light"] .saved-item {
+      background: rgba(255,255,255,.72);
+    }
+
+    .saved-item > summary {
+      align-items: center;
+      cursor: pointer;
+      display: flex;
+      gap: 14px;
+      justify-content: space-between;
+      list-style: none;
+      padding: 13px 14px;
+    }
+
+    .saved-item > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .saved-item > summary::after {
+      color: var(--text-3);
+      content: "+";
+      flex: 0 0 auto;
+      font-family: var(--mono);
+      font-size: 16px;
+    }
+
+    .saved-item[open] > summary::after {
+      content: "-";
+    }
+
+    .saved-item strong,
+    .saved-item span {
+      display: block;
+    }
+
+    .saved-item strong {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .saved-item div > span,
+    .empty-state {
+      color: var(--text-3);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .saved-meta {
+      align-items: center;
+      display: flex;
+      flex: 0 0 auto;
+      gap: 9px;
+    }
+
+    .saved-details {
+      border-top: 1px solid var(--border);
+      display: grid;
+      gap: 15px;
+      padding: 14px;
+    }
+
+    .saved-block {
+      min-width: 0;
+    }
+
+    .saved-label {
+      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .12em;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .saved-copy {
+      color: var(--text-2);
+      font-size: 13px;
+      line-height: 1.62;
+      margin: 0;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .saved-draft {
+      background: rgba(6,6,16,.32);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-height: 180px;
+      overflow: auto;
+      padding: 11px 12px;
+    }
+
+    [data-theme="light"] .saved-draft {
+      background: rgba(245,247,250,.84);
+    }
+
+    .saved-score {
+      color: var(--accent-2);
+      font-family: var(--mono);
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .history-note {
+      background: rgba(108,99,255,.05);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-2);
+      border-radius: 8px;
+      color: var(--text-2);
+      font-size: 13px;
+      line-height: 1.55;
+      padding: 11px 12px;
+    }
+
+    .settings-link-card {
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      padding: 13px 14px;
+      text-decoration: none;
+    }
+
+    .settings-link-card:hover {
+      background: rgba(108,99,255,.06);
+      border-color: var(--border-2);
+    }
+
+    .settings-link-card strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .settings-link-card span {
+      color: var(--text-3);
+      display: block;
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .settings-link-arrow {
+      color: var(--accent-2);
+      flex: 0 0 auto;
+      font-family: var(--mono);
+      font-size: 17px;
+    }
+
+    @media (max-width: 900px) {
+      .settings-grid,
+      .field-grid,
+      .account-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .saved-meta {
+        align-items: flex-end;
+        flex-direction: column;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="professional.css" />
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-logo"><img src="favicon.svg" alt="" /></div>
+    <div>
+      <div class="nav-name">Fracture Studio</div>
+      <div class="nav-sub">ARGUMENT ANALYSIS ENGINE</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="/studio" class="nav-link">Studio</a>
+    <a href="/about" class="nav-link">About</a>
+    <button class="nav-theme" id="themeToggle"><span id="themeIcon"></span><span id="themeLabel">Dark</span></button>
+    <a href="/studio" class="nav-cta">Open Studio</a>
+    <a href="settings.html" class="nav-gear active" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.4 3.1-1.7-.7a7.4 7.4 0 0 0-.7-1.6l.7-1.7-2-2-1.7.7a7.2 7.2 0 0 0-1.6-.7L12.7 3H9.9l-.7 1.7a7.2 7.2 0 0 0-1.6.7l-1.7-.7-2 2 .7 1.7a7.4 7.4 0 0 0-.7 1.6l-1.7.7v2.8l1.7.7c.2.6.4 1.1.7 1.6l-.7 1.7 2 2 1.7-.7c.5.3 1 .6 1.6.7l.7 1.7h2.8l.7-1.7c.6-.2 1.1-.4 1.6-.7l1.7.7 2-2-.7-1.7c.3-.5.6-1 .7-1.6l1.7-.7v-2.8Z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<main class="studio-shell">
+  <header class="studio-header">
+    <div class="studio-title-block">
+      <div class="studio-title">Settings / Account</div>
+      <div class="studio-headline">Shape the feedback.<br><em style="font-family:var(--serif);font-style:italic;">Keep the work organized.</em></div>
+    </div>
+    <div class="studio-header-right">
+      <span class="tag" id="authMode">Checking auth</span>
+      <a href="/studio" class="nav-cta">Open Studio</a>
+    </div>
+  </header>
+
+  <div class="settings-grid">
+    <section class="panel">
+      <div class="settings-card">
+        <div>
+          <div class="panel-title">Account Details</div>
+          <div class="panel-sub">Sign in securely to keep drafts and report history available whenever you return.</div>
+        </div>
+
+        <div class="account-strip">
+          <div class="account-stat">
+            <span>Status</span>
+            <strong id="authStatus">Checking</strong>
+          </div>
+          <div class="account-stat">
+            <span>Email</span>
+            <strong id="accountEmail">Guest session</strong>
+          </div>
+          <div class="account-stat">
+            <span>Provider</span>
+            <strong id="accountProvider">Checking cloud account</strong>
+          </div>
+        </div>
+
+        <div class="history-note" id="accountStorageNote">
+          Guest drafts are temporary. Sign in before leaving Studio if you want to keep an argument in cloud history.
+        </div>
+
+        <div class="controls" style="justify-content:flex-start;">
+          <button class="btn-primary" id="googleSignInBtn" type="button">Continue with Google</button>
+          <button class="btn-sm" id="signOutBtn" type="button">Sign Out</button>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="nameInput">Full name for new accounts</label>
+            <input id="nameInput" type="text" placeholder="Your name" autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="emailInput">Email</label>
+            <input id="emailInput" type="email" placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="field">
+            <label for="passwordInput">Password</label>
+            <input id="passwordInput" type="password" placeholder="At least 8 characters" autocomplete="current-password" />
+          </div>
+        </div>
+        <div class="controls" style="justify-content:flex-start;">
+          <button class="btn-sm" id="emailSignInBtn" type="button">Sign In with Email</button>
+          <button class="btn-sm" id="emailCreateBtn" type="button">Create Email Account</button>
+          <button class="btn-sm" id="passwordResetBtn" type="button">Forgot Password?</button>
+        </div>
+
+        <div class="settings-message" id="settingsMessage" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <div class="settings-stack">
+      <section class="panel">
+        <div class="settings-card">
+          <div>
+            <div class="panel-title">Feedback Settings</div>
+            <div class="panel-sub">Tune how future Fracture reports should frame revision guidance.</div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="feedbackDepth">Feedback depth</label>
+              <select id="feedbackDepth">
+                <option value="concise">Concise</option>
+                <option value="balanced">Balanced</option>
+                <option value="intensive">Intensive</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="feedbackTone">Feedback tone</label>
+              <select id="feedbackTone">
+                <option value="direct">Direct</option>
+                <option value="coaching">Coaching</option>
+                <option value="academic">Academic</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="citationStyle">Citation style</label>
+              <select id="citationStyle">
+                <option value="mla">MLA</option>
+                <option value="apa">APA</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="toggle-row" for="emailUpdates">
+            <span>Email me product and feedback updates</span>
+            <input id="emailUpdates" type="checkbox" />
+          </label>
+
+          <label class="toggle-row" for="saveReports">
+            <span>Save drafts and reports after analysis</span>
+            <input id="saveReports" type="checkbox" />
+          </label>
+
+          <div class="controls">
+            <button class="btn-primary" id="savePrefsBtn" type="button">Save Settings</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="settings-card">
+          <div>
+            <div class="panel-title">Work History</div>
+            <div class="panel-sub" id="savedProjectsIntro">Sign in to review cloud-saved arguments and earlier reports.</div>
+          </div>
+
+          <div class="saved-list" id="savedProjectsList">
+            <div class="empty-state">Loading saved work...</div>
+          </div>
+
+          <div class="controls">
+            <button class="btn-sm" id="refreshProjectsBtn" type="button">Refresh</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script src="shared.js"></script>
+<script src="auth.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async function () {
+    if (!window.FractureAuth) return;
+
+    function appendText(parent, className, text) {
+      var element = document.createElement('p');
+      element.className = className;
+      element.textContent = text;
+      parent.appendChild(element);
+      return element;
+    }
+
+    function firstText() {
+      for (var index = 0; index < arguments.length; index += 1) {
+        if (typeof arguments[index] === 'string' && arguments[index].trim()) {
+          return arguments[index].trim();
+        }
+      }
+      return '';
+    }
+
+    function getAudit(project) {
+      var analysis = project && project.analysis;
+      if (!analysis || typeof analysis !== 'object') return null;
+      if (analysis.audit && typeof analysis.audit === 'object') return analysis.audit;
+      if (analysis.report && typeof analysis.report === 'object') return analysis.report;
+      return analysis;
+    }
+
+    function createSavedBlock(label, copy, extraClass) {
+      var block = document.createElement('div');
+      block.className = 'saved-block';
+      var blockLabel = document.createElement('div');
+      blockLabel.className = 'saved-label';
+      blockLabel.textContent = label;
+      block.appendChild(blockLabel);
+      appendText(block, 'saved-copy' + (extraClass ? ' ' + extraClass : ''), copy);
+      return block;
+    }
+
+    function createHistoryItem(project) {
+      var item = document.createElement('details');
+      item.className = 'saved-item history-rendered';
+
+      var summary = document.createElement('summary');
+      var titleWrap = document.createElement('div');
+      var title = document.createElement('strong');
+      var date = document.createElement('span');
+      var meta = document.createElement('div');
+      var storage = document.createElement('span');
+      var timestamp = project.updated || project.updated_at;
+
+      title.textContent = project.title || 'Untitled argument';
+      date.textContent = timestamp ? new Date(timestamp).toLocaleString() : 'Saved in this browser';
+      titleWrap.appendChild(title);
+      titleWrap.appendChild(date);
+
+      meta.className = 'saved-meta';
+      storage.className = 'tag';
+      storage.textContent = project.mode === 'cloud' ? 'Cloud history' : 'Browser only';
+      meta.appendChild(storage);
+      summary.appendChild(titleWrap);
+      summary.appendChild(meta);
+      item.appendChild(summary);
+
+      var details = document.createElement('div');
+      details.className = 'saved-details';
+      details.appendChild(createSavedBlock('Saved argument', firstText(project.draft, 'No argument text was saved with this item.'), 'saved-draft'));
+
+      var audit = getAudit(project);
+      var report = document.createElement('div');
+      report.className = 'saved-block';
+      var reportLabel = document.createElement('div');
+      reportLabel.className = 'saved-label';
+      reportLabel.textContent = 'Report summary';
+      report.appendChild(reportLabel);
+
+      if (audit) {
+        if (typeof audit.overall_score === 'number') {
+          appendText(report, 'saved-score', 'Overall score: ' + audit.overall_score + '/100');
+        }
+        var summaryText = firstText(audit.verdict, audit.summary, audit.reply);
+        appendText(report, 'saved-copy', summaryText || 'A structured report was saved with this argument.');
+        details.appendChild(report);
+        var firstFix = audit.priority_fixes && audit.priority_fixes[0];
+        var fixText = firstFix && firstText(firstFix.problem, firstFix.fix, firstFix.why_it_matters);
+        if (fixText) details.appendChild(createSavedBlock('Top revision priority', fixText));
+      } else {
+        appendText(report, 'saved-copy', 'No report summary was saved with this draft.');
+        details.appendChild(report);
+      }
+
+      item.appendChild(details);
+      return item;
+    }
+
+    var historyRenderInFlight = false;
+    async function renderEnhancedHistory() {
+      if (historyRenderInFlight) return;
+      historyRenderInFlight = true;
+      try {
+        var list = document.getElementById('savedProjectsList');
+        if (!list) return;
+        var results = await Promise.all([
+          window.FractureAuth.getUser(),
+          window.FractureAuth.listProjects()
+        ]);
+        var user = results[0];
+        var projects = results[1] || [];
+        var intro = document.getElementById('savedProjectsIntro');
+        var storageNote = document.getElementById('accountStorageNote');
+
+        if (user) {
+          if (intro) intro.textContent = 'Review earlier cloud-saved arguments and open an item to revisit its report summary.';
+          if (storageNote) storageNote.textContent = 'Signed-in saves are added to cloud history so you can return to an earlier argument and its report.';
+        } else {
+          if (intro) intro.textContent = 'Sign in to review cloud-saved arguments and earlier reports.';
+          if (storageNote) storageNote.textContent = 'Guest drafts are temporary. Sign in before leaving Studio if you want to keep an argument in cloud history.';
+        }
+
+        list.replaceChildren();
+        if (!projects.length) {
+          var empty = document.createElement('div');
+          empty.className = 'empty-state history-rendered';
+          empty.textContent = user
+            ? 'No cloud-saved arguments yet. Analyze or save a draft in Studio to start your history.'
+            : 'Guest sessions do not create saved history. Sign in to keep reports and revisit them later.';
+          list.appendChild(empty);
+          return;
+        }
+        projects.forEach(function (project) {
+          list.appendChild(createHistoryItem(project));
+        });
+      } finally {
+        historyRenderInFlight = false;
+      }
+    }
+
+    await window.FractureAuth.initAuthUI();
+    await renderEnhancedHistory();
+
+    var list = document.getElementById('savedProjectsList');
+    if (list) {
+      new MutationObserver(function () {
+        if (!list.querySelector('.history-rendered')) renderEnhancedHistory();
+      }).observe(list, { childList: true });
+    }
+
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Fracture Studio",
+  "colors": {
+    "primary": "#6c63ff",
+    "light": "#a78bfa",
+    "dark": "#6c63ff"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Introduction",
+        "pages": [
+          "introduction/what-is-fracture-studio",
+          "introduction/who-it-is-for",
+          "introduction/what-it-can-and-cannot-do"
+        ]
+      },
+      {
+        "group": "Using Fracture Studio",
+        "pages": [
+          "using/argument-analysis",
+          "using/speech-analysis",
+          "using/essay-analysis",
+          "using/model-un-preparation",
+          "using/academic-research-papers",
+          "using/college-essay-review",
+          "using/exporting-reports",
+          "using/fracture-chat"
+        ]
+      },
+      {
+        "group": "Engine Behavior",
+        "pages": [
+          "engine/scoring-system",
+          "engine/citation-checking",
+          "engine/source-reliability",
+          "engine/depth-levels",
+          "engine/what-the-ai-will-not-do"
+        ]
+      },
+      {
+        "group": "For Developers",
+        "pages": [
+          "developers/local-setup",
+          "developers/environment-variables",
+          "developers/api-endpoints",
+          "developers/deployment",
+          "developers/troubleshooting"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "primary": {
+      "type": "button",
+      "label": "Open Studio",
+      "href": "https://fracturestudio.vercel.app/studio"
+    }
+  },
+  "footer": {
+    "socials": {
+      "website": "https://fracturestudio.vercel.app"
+    }
+  }
+}

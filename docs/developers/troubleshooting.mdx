@@ -1,0 +1,30 @@
+---
+title: "Troubleshooting"
+description: "Common issues and how to resolve them."
+---
+
+## The audit returns a service message instead of a report
+
+The Fracture Engine credentials are missing or invalid. Confirm your `.env` has the engine key set, and that the same values are configured in your hosting provider. See [Environment Variables](/developers/environment-variables).
+
+## The server will not start
+
+- Run `npm install` to make sure dependencies are present.
+- Confirm you are on Node.js 18 or newer (`node --version`).
+- Check that nothing else is using port `8000`, or set a different `PORT`.
+
+## Source verification finds nothing
+
+The source pass searches the public web and can time out or return no usable results for vague claims. Name sources precisely in your draft and run the check again. Remember that matches are tentative by design.
+
+## Sign-in or saved work fails
+
+Confirm the `PUBLIC_FIREBASE_*` values are correct and that your Firestore rules are deployed. The public Firebase config is required for browser sign-in.
+
+## The admin page rejects the password
+
+The admin page requires both a valid service-account credential and the admin password to be configured on the server. Confirm both are set and that the password matches.
+
+<Tip>
+When an audit fails, the app degrades gracefully and still returns a usable structure. Check the server logs for the underlying error message.
+</Tip>

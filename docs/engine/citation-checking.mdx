@@ -1,0 +1,35 @@
+---
+title: "Citation Checking"
+description: "How Fracture searches the public web for your factual claims."
+---
+
+After the reasoning analysis, the Fracture Engine runs a separate source pass. It pulls the factual claims out of your draft and searches the public web to see what support exists.
+
+## How it works
+
+<Steps>
+  <Step title="Claim extraction">
+    The engine pulls out quoted passages, the claims it flagged during analysis, and factual-looking sentences from your draft.
+  </Step>
+  <Step title="Public web search">
+    For each claim, it searches public pages and retrieves page text to compare against your claim.
+  </Step>
+  <Step title="Match scoring">
+    It compares the retrieved page against your claim and assigns a support status.
+  </Step>
+  <Step title="Citation building">
+    For well-matched claims, it builds a starter MLA or APA entry from the page's details.
+  </Step>
+</Steps>
+
+## Support statuses
+
+- **Likely supported** — a retrieved page closely matches the claim.
+- **Partial match** — part of the claim matches, but not every detail is confirmed.
+- **Needs review** — pages were found but do not clearly support the claim.
+- **Citation incomplete** — the draft does not name the source precisely enough.
+- **Source not found** — no usable public result was returned.
+
+<Warning>
+Every match is tentative. Open the linked page and confirm the exact passage before using it in a final paper or speech.
+</Warning>

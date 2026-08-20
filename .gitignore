@@ -1,0 +1,32 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Vercel
+.vercel/
+
+# PocketBase local data
+.tools/
+pb_data/
+pb_test_data/
+
+# Logs
+*.log
+
+# Claude Code local config
+.claude/
+
+# Nested duplicate (old copy)
+fracturestudio-main/

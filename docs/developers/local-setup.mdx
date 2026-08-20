@@ -1,0 +1,43 @@
+---
+title: "Local Setup"
+description: "Run Fracture Studio on your own machine."
+---
+
+Fracture Studio is a Node.js and Express app that serves a static frontend. There is no build step.
+
+## Requirements
+
+- Node.js 18 or newer
+
+## Steps
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="Create your environment file">
+    Copy `.env.example` to `.env` and fill in the values. See [Environment Variables](/developers/environment-variables).
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+  <Step title="Start the server">
+    ```bash
+    npm start
+    ```
+    The app runs at `http://localhost:8000`.
+  </Step>
+</Steps>
+
+## Useful scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm start` | Start the server |
+| `npm run dev` | Start with file watching for local development |
+
+<Note>
+The app works without the Fracture Engine credentials configured — it falls back to a service message — but you need them set to produce real audits.
+</Note>

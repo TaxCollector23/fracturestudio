@@ -1,0 +1,35 @@
+---
+title: "Environment Variables"
+description: "Configuration the server reads from your environment."
+---
+
+Fracture Studio reads its configuration from environment variables, loaded from a local `.env` file in development. The repository ships a `.env.example` with the complete list and placeholder values — copy it to `.env` and fill in your own secrets.
+
+<Warning>
+Never commit `.env`. Secrets must stay server-side and out of any browser code.
+</Warning>
+
+## Categories
+
+The variables fall into four groups:
+
+<AccordionGroup>
+  <Accordion title="Fracture Engine credentials">
+    The key and model identifiers the server uses to run audits, Fracture Chat, and rebuttals. These are server-side only and are never sent to the browser. See `.env.example` for the exact variable names.
+  </Accordion>
+  <Accordion title="Site configuration">
+    `SITE_URL` and `PORT` control where the app runs and the referer it reports. `PORT` defaults to `8000`.
+  </Accordion>
+  <Accordion title="Firebase authentication and saved work">
+    The `PUBLIC_FIREBASE_*` values configure browser sign-in and saved-work storage. These are public by design; Firestore rules protect user data.
+  </Accordion>
+  <Accordion title="Private admin page">
+    `FIREBASE_SERVICE_ACCOUNT_JSON` and `FRACTURE_ADMIN_PASSWORD` gate the private account administration page. Keep both fully private.
+  </Accordion>
+</AccordionGroup>
+
+## Notes
+
+- Engine and admin credentials are read only on the server. The browser never receives them.
+- The model identifiers are optional overrides; sensible defaults are used when they are not set.
+- `.env.example` is the source of truth for the exact variable names.

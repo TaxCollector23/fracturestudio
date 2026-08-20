@@ -1,0 +1,31 @@
+---
+title: "API Endpoints"
+description: "The server routes that power Fracture Studio."
+---
+
+All AI calls are proxied through server routes, so engine credentials never reach the browser. The main endpoints are below.
+
+## Analysis and coaching
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/analyze` | Run a full audit. Streams progress and a normalized JSON report. |
+| `POST` | `/api/chat` | Stream Fracture Chat coaching with conversation context. |
+| `POST` | `/api/rebuttal` | Stream a rebuttal plan from an existing draft and report. |
+| `POST` | `/api/verify-sources` | Search public pages for a draft's claims and build a starter bibliography. |
+| `POST` | `/api/report-pdf` | Export a formatted PDF of a report. |
+
+## Configuration and admin
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/public-config` | Return the public Firebase web configuration. |
+| `POST` | `/api/admin-users` | Return account profiles after the server validates the admin password. |
+
+## Streaming
+
+`/api/analyze`, `/api/chat`, and `/api/rebuttal` use server-sent events. The analyze stream emits progress messages, a live model delta, readable report sections, and a final normalized JSON object.
+
+<Note>
+Input is size-limited (a 256 KB request body and a 40,000-character draft maximum) to prevent abuse.
+</Note>
