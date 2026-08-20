@@ -1,11 +1,23 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { AuthProvider } from "./lib/useAuth.jsx";
+import { AuthProvider, useAuth } from "./lib/useAuth.jsx";
 import Nav from "./components/Nav.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
 import FeedbackModal from "./components/FeedbackModal.jsx";
+import { setPrepStore, makeLocalStore } from "./lib/prep.js";
+import { firestorePrepStore } from "./lib/firebase.js";
+
+// Routes the prep data layer at the right store: Firestore for signed-in
+// users, localStorage for guests — the same content either way.
+function PrepStoreSync() {
+  const { user } = useAuth();
+  useEffect(() => {
+    setPrepStore(user ? firestorePrepStore(user.id) : makeLocalStore());
+  }, [user]);
+  return null;
+}
 
 // Route-level code splitting: each page loads on first visit instead of
 // shipping the whole app (including framer-motion pages) in one bundle.
@@ -20,6 +32,15 @@ const Blog = lazy(() => import("./pages/Blog.jsx"));
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Practice = lazy(() => import("./pages/Practice.jsx"));
+const PrepHub = lazy(() => import("./pages/PrepHub.jsx"));
+const PrepCases = lazy(() => import("./pages/PrepCases.jsx"));
+const PrepLibrary = lazy(() => import("./pages/PrepLibrary.jsx"));
+const PrepInbox = lazy(() => import("./pages/PrepInbox.jsx"));
+const PrepRound = lazy(() => import("./pages/PrepRound.jsx"));
+const PrepTopics = lazy(() => import("./pages/PrepTopics.jsx"));
+const PrepFlashcards = lazy(() => import("./pages/PrepFlashcards.jsx"));
+const PrepOutlines = lazy(() => import("./pages/PrepOutlines.jsx"));
+const PrepStrategy = lazy(() => import("./pages/PrepStrategy.jsx"));
 
 function Page({ children, bare }) {
   return (
@@ -54,6 +75,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+      <PrepStoreSync />
       <ErrorBoundary>
         {!bare && <Nav />}
         <AnimatePresence mode="wait">
@@ -64,6 +86,15 @@ export default function App() {
               <Route path="/dashboard" element={<Page><Dashboard /></Page>} />
               <Route path="/studio" element={<Page><Studio /></Page>} />
               <Route path="/practice" element={<Page><Practice /></Page>} />
+              <Route path="/prep" element={<Page><PrepHub /></Page>} />
+              <Route path="/prep/cases" element={<Page><PrepCases /></Page>} />
+              <Route path="/prep/library" element={<Page><PrepLibrary /></Page>} />
+              <Route path="/prep/inbox" element={<Page><PrepInbox /></Page>} />
+              <Route path="/prep/round" element={<Page><PrepRound /></Page>} />
+              <Route path="/prep/topics" element={<Page><PrepTopics /></Page>} />
+              <Route path="/prep/flashcards" element={<Page><PrepFlashcards /></Page>} />
+              <Route path="/prep/outlines" element={<Page><PrepOutlines /></Page>} />
+              <Route path="/prep/strategy" element={<Page><PrepStrategy /></Page>} />
               <Route path="/rebuttals" element={<Page><Rebuttals /></Page>} />
               <Route path="/past-work" element={<Page><PastWork /></Page>} />
               <Route path="/settings" element={<Page><Settings /></Page>} />

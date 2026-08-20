@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, CornerDownLeft, LayoutDashboard, PenLine, Swords, Target, FolderOpen, Settings, BookOpen, Newspaper, Sparkles, Timer, Flag } from "lucide-react";
+import { Search, CornerDownLeft, LayoutDashboard, PenLine, Swords, Target, FolderOpen, Settings, BookOpen, Newspaper, Sparkles, Timer, Flag, ShieldAlert, Library, Inbox, Layers } from "lucide-react";
 import { useAuth } from "../lib/useAuth.jsx";
 import { listProjects } from "../lib/firebase.js";
 import { loadLocalGoals } from "../lib/goals.js";
@@ -25,7 +25,12 @@ function quickActions() {
   return [
     { id: "new-audit", label: "Start a new audit", hint: "Paste a draft in the Studio", icon: Sparkles, run: (n) => n("/studio"), search: "new audit draft paste" },
     { id: "new-goal", label: "Create a goal", hint: "Set a target and get a training plan", icon: Flag, run: (n) => n("/dashboard?goal=1"), search: "goal target tournament plan" },
-    { id: "drill", label: "Pick a drill to practice", hint: "Timed practice on a skill", icon: Target, run: (n) => n("/practice"), search: "drill practice skill train" }
+    { id: "drill", label: "Pick a drill to practice", hint: "Timed practice on a skill", icon: Target, run: (n) => n("/practice"), search: "drill practice skill train" },
+    { id: "new-case", label: "Create a case", hint: "Structured case builder", icon: ShieldAlert, run: (n) => n("/prep/cases"), search: "case contention builder resolution" },
+    { id: "new-argument", label: "Add evidence or argument", hint: "Argument library", icon: Library, run: (n) => n("/prep/library"), search: "evidence argument block library" },
+    { id: "new-inbox", label: "Capture to research inbox", hint: "Fast capture for quotes and ideas", icon: Inbox, run: (n) => n("/prep/inbox"), search: "inbox research quote capture" },
+    { id: "start-prep", label: "Start round prep", hint: "Timed prep mode with a persistent clock", icon: Timer, run: (n) => n("/prep/round"), search: "prep round timer timed" },
+    { id: "new-flashcard", label: "Study flashcards", hint: "Spaced repetition from your library", icon: Layers, run: (n) => n("/prep/flashcards"), search: "flashcard review spaced repetition" }
   ];
 }
 
@@ -81,6 +86,9 @@ export default function CommandPalette() {
     const list = [];
     for (const a of quickActions()) list.push({ ...a, group: "Actions" });
     for (const a of pageActions()) list.push({ ...a, group: "Go to" });
+    list.push({ id: "nav-prep", label: "Open the Prep workspace", hint: "Case builder, library, inbox, prep", icon: LayoutDashboard, run: (n) => n("/prep"), group: "Go to", search: "prep prepare workspace case library inbox" });
+    list.push({ id: "nav-topics", label: "Knowledge base", hint: "Topic workspaces", icon: BookOpen, run: (n) => n("/prep/topics"), group: "Go to", search: "topics knowledge base definitions" });
+    list.push({ id: "nav-outlines", label: "Speech timer", hint: "Outline timing templates", icon: Timer, run: (n) => n("/prep/outlines"), group: "Go to", search: "outline speech timer timing" });
     if (user && projects) {
       for (const p of projects.slice(0, 6)) {
         list.push({

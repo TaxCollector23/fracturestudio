@@ -7,6 +7,7 @@ import { openCommandPalette } from "./CommandPalette.jsx";
 const LINKS = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/studio", label: "Studio" },
+  { to: "/prep", label: "Prepare" },
   { to: "/practice", label: "Practice" },
   { to: "/rebuttals", label: "Rebuttals" },
   { to: "/past-work", label: "Past Work" },

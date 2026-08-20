@@ -43,6 +43,18 @@ service cloud.firestore {
       match /drillResults/{resultId} {
         allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
       }
+
+      // Prep workspace collections (cases, evidence, blocks, response trees,
+      // inbox, cross-ex bank, flashcards, topics, prep sessions, outlines,
+      // strategy docs) — all owner-only, kept small by the app.
+      match /{prepCol}/{docId} {
+        allow read, create, update, delete: if request.auth != null
+          && request.auth.uid == userId
+          && prepCol in ['cases', 'evidence', 'blocks', 'responses', 'inbox',
+                         'crossfire', 'flashcards', 'topics', 'prepSessions',
+                         'outlines', 'strategies']
+          && request.resource.data.size() < 1000000;
+      }
     }
   }
 }

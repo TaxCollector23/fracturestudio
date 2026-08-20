@@ -169,6 +169,36 @@ export async function saveFeedbackIssue(userId, issue) {
   );
 }
 
+// ---- Prep workspace collections (users/{uid}/cases, evidence, blocks, …) ----
+// Generic store matching the interface in prep.js so signed-in users get
+// Firestore persistence while guests use the localStorage fallback.
+export function firestorePrepStore(userId) {
+  return {
+    list: async (col) => {
+      const { db, storeMod } = await getServices();
+      const q = storeMod.query(storeMod.collection(db, "users", userId, col), storeMod.limit(300));
+      const snap = await storeMod.getDocs(q);
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+    create: async (col, data) => {
+      const { db, storeMod } = await getServices();
+      const { id: _omit, createdAt: _c, updatedAt: _u, ...clean } = data;
+      const now = storeMod.serverTimestamp();
+      const ref = await storeMod.addDoc(storeMod.collection(db, "users", userId, col), { ...clean, createdAt: now, updatedAt: now });
+      return ref.id;
+    },
+    update: async (col, id, patch) => {
+      const { db, storeMod } = await getServices();
+      const { id: _omit, createdAt: _c, updatedAt: _u, ...clean } = patch;
+      await storeMod.updateDoc(storeMod.doc(db, "users", userId, col, id), { ...clean, updatedAt: storeMod.serverTimestamp() });
+    },
+    remove: async (col, id) => {
+      const { db, storeMod } = await getServices();
+      await storeMod.deleteDoc(storeMod.doc(db, "users", userId, col, id));
+    }
+  };
+}
+
 // ---- Drill results (users/{uid}/drillResults) ----
 export async function listDrillResults(userId) {
   const { db, storeMod } = await getServices();
