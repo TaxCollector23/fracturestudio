@@ -3,7 +3,9 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { handleAnalyze } from "./analyze-handler.js";
 import { listAdminUsers } from "./admin-users.js";
+import { joinTeamByCode } from "./team-join.js";
 import { getPublicAuthConfig } from "./public-config.js";
+import { extractSourceMetadata } from "./metadata.js";
 import { verifySources } from "./source-verify.js";
 import { handleTextStream } from "./text-stream-handler.js";
 import { createReportPdf } from "./report-pdf.js";
@@ -77,6 +79,20 @@ app.post("/api/report-pdf", async (req, res) => {
 app.post("/api/admin-users", async (req, res) => {
   const result = await listAdminUsers(req.body?.password);
   return res.status(result.status).json(result.body);
+});
+
+app.post("/api/team-join", async (req, res) => {
+  const result = await joinTeamByCode(req);
+  return res.status(result.status).json(result.body);
+});
+
+app.post("/api/metadata", async (req, res) => {
+  const url = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+  if (!url) {
+    return sendError(res, 400, "Provide a URL to extract metadata from.");
+  }
+  const result = await extractSourceMetadata(url);
+  return res.status(result.status === "ok" ? 200 : 422).json(result);
 });
 
 app.get("/api/public-config", (_req, res) => {

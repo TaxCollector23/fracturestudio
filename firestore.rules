@@ -3,6 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function signedIn() {
+      return request.auth != null;
+    }
+
     // Any write to a project must keep the document within size limits:
     // the pasted draft matches the API's 40,000-char cap, and the whole
     // document (draft + audit JSON) stays well under Firestore's 1 MiB limit.
@@ -13,47 +17,297 @@ service cloud.firestore {
       return draftOk && docOk;
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Per-user data (existing + competition memberships + notifications)
+    // ──────────────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, create, update: if request.auth != null && request.auth.uid == userId;
+      allow read, create, update: if signedIn() && request.auth.uid == userId;
       allow delete: if false;
 
       match /projects/{projectId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId
+        allow read, create, update, delete: if signedIn() && request.auth.uid == userId
           && validProjectWrite();
       }
 
       match /settings/{settingId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+        allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
       }
 
       // Goals, report ratings, feedback reports, and drill results are all
       // owned by the signed-in user and kept small (well under 1 MiB).
       match /goals/{goalId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+        allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
       }
 
       match /ratings/{ratingId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+        allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
       }
 
       match /feedback/{issueId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+        allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
       }
 
       match /drillResults/{resultId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+        allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
       }
 
-      // Prep workspace collections (cases, evidence, blocks, response trees,
-      // inbox, cross-ex bank, flashcards, topics, prep sessions, outlines,
-      // strategy docs) — all owner-only, kept small by the app.
+      // Prep workspace collections — all owner-only, kept small by the app.
+      // Research intelligence collections (sources, excerpts, questions,
+      // collections, tasks, conflicts) live in the same owner-only space and
+      // are guarded the same way.
       match /{prepCol}/{docId} {
-        allow read, create, update, delete: if request.auth != null
+        allow read, create, update, delete: if signedIn()
           && request.auth.uid == userId
           && prepCol in ['cases', 'evidence', 'blocks', 'responses', 'inbox',
                          'crossfire', 'flashcards', 'topics', 'prepSessions',
-                         'outlines', 'strategies']
+                         'outlines', 'strategies',
+                         'sources', 'excerpts', 'researchQuestions',
+                         'researchCollections', 'researchTasks', 'conflicts']
           && request.resource.data.size() < 1000000;
+      }
+
+      // Team/tournament membership docs — who the user belongs to. Written by
+      // the user themselves (create/join) or by a team coach / tournament
+      // admin when they add people (fan-out). Read by the owner only.
+      match /teams/{tid} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow create, update, delete: if signedIn()
+          && (request.auth.uid == userId
+              || get(/databases/$(database)/documents/teams/$(tid)).data.members[request.auth.uid].role in ['coach', 'admin']);
+      }
+
+      match /tournaments/{tid} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow create, update, delete: if signedIn()
+          && (request.auth.uid == userId
+              || request.auth.uid in get(/databases/$(database)/documents/tournaments/$(tid)).data.admins);
+      }
+
+      // Notifications are derived in-app and stored owner-only; nothing else
+      // writes here.
+      match /notifications/{nid} {
+        allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Teams — shared collection. The members map lives inside the team doc:
+    // { uid: { role: 'coach'|'admin'|'member', name, email, joinedAt } }.
+    // Coaches (and admins) manage the team; members read. Anyone can create a
+    // team with themselves as coach. Joining an existing team requires the
+    // team's join code (checked against the doc) and grants role 'member'.
+    // ──────────────────────────────────────────────────────────────────────
+    match /teams/{tid} {
+      function isMember() {
+        return signedIn() && request.auth.uid in resource.data.members;
+      }
+      function memberRole() {
+        return resource.data.members[request.auth.uid].role;
+      }
+      function isCoach() {
+        return isMember() && memberRole() in ['coach', 'admin'];
+      }
+      // Join-by-code: the update adds only the caller as a plain member and
+      // carries the team's join code.
+      function selfJoining() {
+        return signedIn()
+          && !(request.auth.uid in resource.data.members)
+          && request.resource.data.joinCode == resource.data.code
+          && request.resource.data.members[request.auth.uid].role == 'member'
+          && request.resource.data.members.keys().hasOnly([request.auth.uid]);
+      }
+      // Members may update only their own member entry (and never change
+      // their own role).
+      function selfProfileUpdate() {
+        return signedIn()
+          && isMember()
+          && request.resource.data.members.keys().hasOnly([request.auth.uid])
+          && request.resource.data.members[request.auth.uid].role == resource.data.members[request.auth.uid].role;
+      }
+
+      allow read: if isMember();
+      allow create: if signedIn()
+        && request.resource.data.members[request.auth.uid].role in ['coach', 'admin']
+        && request.resource.data.members.keys().hasOnly([request.auth.uid])
+        && request.resource.data.size() < 200000;
+      allow update: if isCoach() || selfJoining() || selfProfileUpdate();
+      allow delete: if false;
+
+      // Shared rubrics: readable by members, editable by coaches.
+      match /rubrics/{rubricId} {
+        function teamMember() {
+          return signedIn() && request.auth.uid in get(/databases/$(database)/documents/teams/$(tid)).data.members;
+        }
+        function teamCoach() {
+          return signedIn() && get(/databases/$(database)/documents/teams/$(tid)).data.members[request.auth.uid].role in ['coach', 'admin'];
+        }
+        allow read: if teamMember();
+        allow create, update, delete: if teamCoach();
+      }
+
+      // Assignments: coaches create; members read and submit against them.
+      match /assignments/{assignmentId} {
+        function teamMember() {
+          return signedIn() && request.auth.uid in get(/databases/$(database)/documents/teams/$(tid)).data.members;
+        }
+        function teamCoach() {
+          return signedIn() && get(/databases/$(database)/documents/teams/$(tid)).data.members[request.auth.uid].role in ['coach', 'admin'];
+        }
+        allow read: if teamMember();
+        allow create, update, delete: if teamCoach()
+          && request.resource.data.size() < 200000;
+
+        // Submissions: one per member per assignment. The member owns their
+        // row (uid fixed at creation); coaches add feedback and close it.
+        match /submissions/{submissionId} {
+          allow read: if teamMember();
+          allow create: if teamMember()
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.assignmentId == assignmentId
+            && request.resource.data.size() < 100000;
+          allow update: if teamCoach()
+            || (signedIn() && request.resource.data.uid == request.auth.uid
+                && request.resource.data.uid == resource.data.uid)
+            && request.resource.data.size() < 100000;
+          allow delete: if false;
+        }
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Tournaments — shared collection. Access is explicit: admins/judges/
+    // participants maps on the doc, keyed by uid. Admins organize; judges
+    // submit ballots for rounds they're assigned to; everyone attached reads.
+    // ──────────────────────────────────────────────────────────────────────
+    match /tournaments/{tid} {
+      function isAdminHere() {
+        return signedIn() && request.auth.uid in resource.data.admins;
+      }
+
+      allow read: if signedIn() && (
+        request.auth.uid in resource.data.admins
+        || request.auth.uid in resource.data.judges
+        || request.auth.uid in resource.data.participants);
+      allow create: if signedIn()
+        && request.resource.data.admins.keys().hasOnly([request.auth.uid])
+        && request.resource.data.size() < 200000;
+      allow update: if isAdminHere()
+        && (!('admins' in request.resource.data) || request.resource.data.admins.keys().size() >= 1)
+        && request.resource.data.size() < 1000000;
+      allow delete: if false;
+
+      // Events: admins define them; everyone attached reads them.
+      match /events/{eventId} {
+        function tournament() { return get(/databases/$(database)/documents/tournaments/$(tid)); }
+        function canReadTournament() {
+          return signedIn() && (
+            request.auth.uid in tournament().data.admins
+            || request.auth.uid in tournament().data.judges
+            || request.auth.uid in tournament().data.participants);
+        }
+        function isTournamentAdmin() {
+          return signedIn() && request.auth.uid in tournament().data.admins;
+        }
+        allow read: if canReadTournament();
+        allow create, update, delete: if isTournamentAdmin()
+          && request.resource.data.size() < 200000;
+      }
+
+      // Rounds: admins run them; judges + participants see them.
+      match /rounds/{roundId} {
+        function tournament() { return get(/databases/$(database)/documents/tournaments/$(tid)); }
+        function canReadTournament() {
+          return signedIn() && (
+            request.auth.uid in tournament().data.admins
+            || request.auth.uid in tournament().data.judges
+            || request.auth.uid in tournament().data.participants);
+        }
+        function isTournamentAdmin() {
+          return signedIn() && request.auth.uid in tournament().data.admins;
+        }
+        allow read: if canReadTournament();
+        allow create, update, delete: if isTournamentAdmin()
+          && request.resource.data.size() < 500000;
+      }
+
+      // Ballots: a judge creates ballots only for rounds they were assigned
+      // to; they may edit their own while it is a draft and flip it to
+      // 'submitted'. Admins may edit/lock anything. Everyone attached can
+      // read ballots (that is how results get shown).
+      match /ballots/{ballotId} {
+        function tournament() { return get(/databases/$(database)/documents/tournaments/$(tid)); }
+        function canReadTournament() {
+          return signedIn() && (
+            request.auth.uid in tournament().data.admins
+            || request.auth.uid in tournament().data.judges
+            || request.auth.uid in tournament().data.participants);
+        }
+        function isTournamentAdmin() {
+          return signedIn() && request.auth.uid in tournament().data.admins;
+        }
+        function isTournamentJudge() {
+          return signedIn() && request.auth.uid in tournament().data.judges;
+        }
+        function isAssignedJudge(roundId) {
+          return request.auth.uid in get(/databases/$(database)/documents/tournaments/$(tid)/rounds/$(roundId)).data.judges;
+        }
+
+        allow read: if canReadTournament()
+          || (signedIn() && request.auth.uid == resource.data.judgeId);
+        allow create: if signedIn()
+          && request.resource.data.judgeId == request.auth.uid
+          && request.resource.data.status == 'draft'
+          && request.resource.data.roundId is string && request.resource.data.roundId.size() > 0
+          && (isTournamentAdmin() || (isTournamentJudge() && isAssignedJudge(request.resource.data.roundId)))
+          && request.resource.data.size() < 300000;
+        allow update: if (isTournamentAdmin()
+            || (signedIn()
+                && resource.data.judgeId == request.auth.uid
+                && resource.data.status == 'draft'
+                && (!('status' in request.resource.data) || request.resource.data.status in ['draft', 'submitted'])))
+          && request.resource.data.size() < 300000;
+        allow delete: if false;
+      }
+
+      // Timeline: the competition feed everyone attached can read; admins
+      // and judges append entries for actions they perform.
+      match /timeline/{entryId} {
+        function tournament() { return get(/databases/$(database)/documents/tournaments/$(tid)); }
+        function canReadTournament() {
+          return signedIn() && (
+            request.auth.uid in tournament().data.admins
+            || request.auth.uid in tournament().data.judges
+            || request.auth.uid in tournament().data.participants);
+        }
+        function isTournamentAdmin() {
+          return signedIn() && request.auth.uid in tournament().data.admins;
+        }
+        function isTournamentJudge() {
+          return signedIn() && request.auth.uid in tournament().data.judges;
+        }
+        allow read: if canReadTournament();
+        allow create: if signedIn()
+          && (isTournamentAdmin()
+              || (isTournamentJudge() && request.resource.data.actorId == request.auth.uid))
+          && request.resource.data.size() < 50000;
+        allow update, delete: if false;
+      }
+
+      // Log: the admin-only audit trail for competition-critical changes.
+      match /log/{entryId} {
+        function tournament() { return get(/databases/$(database)/documents/tournaments/$(tid)); }
+        function isTournamentAdmin() {
+          return signedIn() && request.auth.uid in tournament().data.admins;
+        }
+        function isTournamentJudge() {
+          return signedIn() && request.auth.uid in tournament().data.judges;
+        }
+        allow read: if isTournamentAdmin();
+        allow create: if signedIn()
+          && (isTournamentAdmin()
+              || (isTournamentJudge() && request.resource.data.actorId == request.auth.uid))
+          && request.resource.data.size() < 50000;
+        allow update, delete: if false;
       }
     }
   }

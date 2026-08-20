@@ -9,6 +9,8 @@ const LINKS = [
   { to: "/studio", label: "Studio" },
   { to: "/prep", label: "Prepare" },
   { to: "/practice", label: "Practice" },
+  { to: "/compete", label: "Compete" },
+  { to: "/coach", label: "Coach" },
   { to: "/rebuttals", label: "Rebuttals" },
   { to: "/past-work", label: "Past Work" },
   { to: "/about", label: "Methods" }

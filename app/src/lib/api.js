@@ -91,6 +91,26 @@ export async function summarizeTitle(draft) {
   return text.slice(0, 70);
 }
 
+/**
+ * Extract public metadata from a URL (title, site, author, date, …). The
+ * backend reads the page once and parses meta/OG tags; extracted fields are
+ * always editable client-side and never treated as verified.
+ * Resolves to { status, source?, verified?, missing?, inferredType?, message? }.
+ */
+export async function extractMetadata(url) {
+  const res = await fetch("/api/metadata", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (data?.message) throw new ApiError(data.message, res.status);
+    throw new ApiError(data?.error || `Could not read that page (${res.status}).`, res.status);
+  }
+  return data;
+}
+
 export async function verifySources({ essay, audit, citation_style }) {
   const res = await fetch("/api/verify-sources", {
     method: "POST",

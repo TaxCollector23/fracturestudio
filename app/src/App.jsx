@@ -7,7 +7,8 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
 import FeedbackModal from "./components/FeedbackModal.jsx";
 import { setPrepStore, makeLocalStore } from "./lib/prep.js";
-import { firestorePrepStore } from "./lib/firebase.js";
+import { setCompetitionStore, makeLocalCompetitionStore } from "./lib/competition.js";
+import { firestorePrepStore, firebaseCompetitionStore } from "./lib/firebase.js";
 
 // Routes the prep data layer at the right store: Firestore for signed-in
 // users, localStorage for guests — the same content either way.
@@ -15,6 +16,7 @@ function PrepStoreSync() {
   const { user } = useAuth();
   useEffect(() => {
     setPrepStore(user ? firestorePrepStore(user.id) : makeLocalStore());
+    setCompetitionStore(user ? firebaseCompetitionStore(user.id) : makeLocalCompetitionStore());
   }, [user]);
   return null;
 }
@@ -41,6 +43,12 @@ const PrepTopics = lazy(() => import("./pages/PrepTopics.jsx"));
 const PrepFlashcards = lazy(() => import("./pages/PrepFlashcards.jsx"));
 const PrepOutlines = lazy(() => import("./pages/PrepOutlines.jsx"));
 const PrepStrategy = lazy(() => import("./pages/PrepStrategy.jsx"));
+const Compete = lazy(() => import("./pages/Compete.jsx"));
+const Tournament = lazy(() => import("./pages/Tournament.jsx"));
+const RoundWorkspace = lazy(() => import("./pages/RoundWorkspace.jsx"));
+const JudgeWorkspace = lazy(() => import("./pages/JudgeWorkspace.jsx"));
+const TeamWorkspace = lazy(() => import("./pages/TeamWorkspace.jsx"));
+const CoachDashboard = lazy(() => import("./pages/CoachDashboard.jsx"));
 
 function Page({ children, bare }) {
   return (
@@ -95,6 +103,12 @@ export default function App() {
               <Route path="/prep/flashcards" element={<Page><PrepFlashcards /></Page>} />
               <Route path="/prep/outlines" element={<Page><PrepOutlines /></Page>} />
               <Route path="/prep/strategy" element={<Page><PrepStrategy /></Page>} />
+              <Route path="/compete" element={<Page><Compete /></Page>} />
+              <Route path="/compete/judge" element={<Page><JudgeWorkspace /></Page>} />
+              <Route path="/compete/tournament/:tid" element={<Page><Tournament /></Page>} />
+              <Route path="/compete/tournament/:tid/round/:rid" element={<Page><RoundWorkspace /></Page>} />
+              <Route path="/compete/team/:tid" element={<Page><TeamWorkspace /></Page>} />
+              <Route path="/coach" element={<Page><CoachDashboard /></Page>} />
               <Route path="/rebuttals" element={<Page><Rebuttals /></Page>} />
               <Route path="/past-work" element={<Page><PastWork /></Page>} />
               <Route path="/settings" element={<Page><Settings /></Page>} />

@@ -10,7 +10,11 @@
 
 export const COLS = [
   "cases", "evidence", "blocks", "responses", "inbox", "crossfire",
-  "flashcards", "topics", "prepSessions", "outlines", "strategies"
+  "flashcards", "topics", "prepSessions", "outlines", "strategies",
+  // Research intelligence layer (same per-user store, same relationship
+  // conventions — denormalized id arrays):
+  "sources", "excerpts", "researchQuestions", "researchCollections",
+  "researchTasks", "conflicts"
 ];
 
 export const LOCAL_PREFIX = "fracture_prep_";

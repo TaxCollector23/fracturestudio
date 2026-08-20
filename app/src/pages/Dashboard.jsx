@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight, ArrowUpRight, ArrowDownRight, Minus, Sparkles, Flag, Timer,
-  Plus, FolderOpen, PenLine, Swords, Loader2, CheckCircle2, X, TrendingUp, AlertTriangle
+  Plus, FolderOpen, PenLine, Swords, Loader2, CheckCircle2, X, TrendingUp, AlertTriangle, Trophy
 } from "lucide-react";
 import { useAuth } from "../lib/useAuth.jsx";
 import { listProjects, listGoals, addGoal, updateGoal, deleteGoal, listDrillResults, loadPreferences } from "../lib/firebase.js";
@@ -203,6 +203,9 @@ export default function Dashboard() {
           <Link to="/auth" className="btn-solid py-2 px-4 text-xs">Sign in <ArrowRight size={13} /></Link>
         </div>
       )}
+
+      {/* Competition: upcoming rounds I'm in */}
+      <CompetitionStrip user={user} />
 
       {/* What should I do now */}
       {recs.length > 0 && (
@@ -459,6 +462,60 @@ function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+// Small strip on the dashboard: upcoming competition rounds the user is part
+// of. Silently renders nothing when there is no competition data.
+function CompetitionStrip({ user }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { listMy, listItems } = await import("../lib/competition.js");
+        const ts = await listMy("tournaments");
+        const data = await Promise.all((ts || []).map(async (t) => {
+          const rounds = await listItems("rounds", t.id).catch(() => []);
+          return { t, rounds: rounds || [] };
+        }));
+        if (mounted) setRows(data);
+      } catch (_) {
+        if (mounted) setRows([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user]);
+
+  if (!rows) return null;
+  const upcoming = [];
+  for (const { t, rounds } of rows) {
+    for (const r of rounds) {
+      const part = user?.id ? r.participants && user.id in (r.participants || {}) : true;
+      if (part && (r.status === "not-started" || r.status === "active")) upcoming.push({ r, t });
+    }
+  }
+  if (!upcoming.length) return null;
+  return (
+    <section className="card p-4 mb-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-serif text-lg flex items-center gap-2"><Trophy size={15} className="faint" /> Competition</h2>
+        <Link to="/compete" className="text-xs faint hover:text-zinc-950 dark:hover:text-zinc-50">All competitions →</Link>
+      </div>
+      <ul className="space-y-1.5">
+        {upcoming.slice(0, 3).map(({ r, t }) => (
+          <li key={r.id}>
+            <Link to={`/compete/tournament/${t.id}/round/${r.id}`}
+              className="flex items-center gap-2 text-sm rounded-sm px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+              <span className={r.status === "active" ? "w-2 h-2 rounded-full bg-amber-500 shrink-0" : "w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700 shrink-0"} />
+              <span className="font-medium">{r.name || `Round ${r.number}`}</span>
+              <span className="faint text-xs">· {t.name}</span>
+              {r.status === "active" && <span className="pill ml-auto text-amber-600 dark:text-amber-400">live</span>}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 function GoalModal({ onClose, onSave, prefs, setPrefs }) {

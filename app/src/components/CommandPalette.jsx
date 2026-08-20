@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, CornerDownLeft, LayoutDashboard, PenLine, Swords, Target, FolderOpen, Settings, BookOpen, Newspaper, Sparkles, Timer, Flag, ShieldAlert, Library, Inbox, Layers } from "lucide-react";
+import { Search, CornerDownLeft, LayoutDashboard, PenLine, Swords, Target, FolderOpen, Settings, BookOpen, Newspaper, Sparkles, Timer, Flag, ShieldAlert, Library, Inbox, Layers, Trophy, Scale, Shield } from "lucide-react";
 import { useAuth } from "../lib/useAuth.jsx";
 import { listProjects } from "../lib/firebase.js";
 import { loadLocalGoals } from "../lib/goals.js";
@@ -15,6 +15,9 @@ function pageActions() {
     { id: "nav-practice", label: "Browse drills", hint: "Practice a skill", icon: Timer, run: (n) => n("/practice"), search: "practice drills train" },
     { id: "nav-rebuttals", label: "Build a rebuttal plan", hint: "Opponent prep", icon: Swords, run: (n) => n("/rebuttals"), search: "rebuttal opponent prep debate" },
     { id: "nav-past", label: "Past Work", hint: "Saved audits", icon: FolderOpen, run: (n) => n("/past-work"), search: "past saved history audits" },
+    { id: "nav-compete", label: "Competitions", hint: "Tournaments, teams, rounds", icon: Trophy, run: (n) => n("/compete"), search: "compete tournament team round judge" },
+    { id: "nav-judge", label: "Judge workspace", hint: "Assigned rounds and ballots", icon: Scale, run: (n) => n("/compete/judge"), search: "judge ballot round" },
+    { id: "nav-coach", label: "Coach dashboard", hint: "Team progress and attention", icon: Shield, run: (n) => n("/coach"), search: "coach team progress assignments" },
     { id: "nav-settings", label: "Settings & profile", hint: "Defaults, role, event", icon: Settings, run: (n) => n("/settings"), search: "settings prefs profile role" },
     { id: "nav-about", label: "How Fracture works", hint: "Methods & scoring", icon: BookOpen, run: (n) => n("/about"), search: "about methods scoring docs" },
     { id: "nav-blog", label: "Blog", hint: "Coaching notes", icon: Newspaper, run: (n) => n("/blog"), search: "blog articles" }
@@ -30,6 +33,9 @@ function quickActions() {
     { id: "new-argument", label: "Add evidence or argument", hint: "Argument library", icon: Library, run: (n) => n("/prep/library"), search: "evidence argument block library" },
     { id: "new-inbox", label: "Capture to research inbox", hint: "Fast capture for quotes and ideas", icon: Inbox, run: (n) => n("/prep/inbox"), search: "inbox research quote capture" },
     { id: "start-prep", label: "Start round prep", hint: "Timed prep mode with a persistent clock", icon: Timer, run: (n) => n("/prep/round"), search: "prep round timer timed" },
+    { id: "new-tournament", label: "Create a tournament", hint: "Organize events, rounds, judges", icon: Trophy, run: (n) => n("/compete"), search: "tournament event organize competition" },
+    { id: "new-team", label: "Create a team", hint: "Members, assignments, rubrics", icon: Shield, run: (n) => n("/compete"), search: "team club assignments rubrics" },
+    { id: "judge-ballots", label: "Submit a ballot", hint: "Open your judging assignments", icon: Scale, run: (n) => n("/compete/judge"), search: "ballot judge submit score" },
     { id: "new-flashcard", label: "Study flashcards", hint: "Spaced repetition from your library", icon: Layers, run: (n) => n("/prep/flashcards"), search: "flashcard review spaced repetition" }
   ];
 }

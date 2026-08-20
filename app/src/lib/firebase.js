@@ -229,3 +229,116 @@ export async function touchUserProfile(userId, { email, name, provider }) {
     lastSeen: storeMod.serverTimestamp()
   }, { merge: true });
 }
+
+// ─── Competition layer: shared collections (teams, tournaments) ─────────────
+// These live at the top level of Firestore, not under users/{uid}, because
+// they are shared across members. Security is enforced by firestore.rules
+// (role checks on the tournament/team doc) and mirrored client-side in
+// lib/access.js. The store interface matches lib/competition.js so guests
+// can run the same flows against localStorage.
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+// Subcollection parent collection names (subcollections live under tournaments
+// or teams; the store interface only knows the subcollection + parent doc id).
+const SUBCOL_PARENT = {
+  events: "tournaments", rounds: "tournaments", ballots: "tournaments",
+  timeline: "tournaments", log: "tournaments",
+  assignments: "teams", submissions: "teams", rubrics: "teams"
+};
+
+function subPath(storeMod, db, col, parent, id) {
+  const parentCol = SUBCOL_PARENT[col];
+  if (parentCol && parent) {
+    return id ? storeMod.doc(db, parentCol, parent, col, id) : storeMod.collection(db, parentCol, parent, col);
+  }
+  return id ? storeMod.doc(db, col, id) : storeMod.collection(db, col);
+}
+
+export function firebaseCompetitionStore(userId) {
+  return {
+    isLocal: false,
+    list: async (col, parent) => {
+      const { db, storeMod } = await getServices();
+      const snap = await storeMod.getDocs(subPath(storeMod, db, col, parent));
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+    get: async (col, id, parent) => {
+      const { db, storeMod } = await getServices();
+      const snap = await storeMod.getDoc(subPath(storeMod, db, col, parent, id));
+      return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    },
+    create: async (col, data, parent) => {
+      const { db, storeMod } = await getServices();
+      const { id: _omit, createdAt: _c, updatedAt: _u, ...clean } = data;
+      const ref = await storeMod.addDoc(subPath(storeMod, db, col, parent), {
+        ...clean, createdAt: clean.createdAt || nowIso(), updatedAt: nowIso()
+      });
+      return ref.id;
+    },
+    update: async (col, id, patch, parent) => {
+      const { db, storeMod } = await getServices();
+      const { id: _omit, createdAt: _c, updatedAt: _u, ...clean } = patch;
+      await storeMod.updateDoc(subPath(storeMod, db, col, parent, id), { ...clean, updatedAt: nowIso() });
+    },
+    remove: async (col, id, parent) => {
+      const { db, storeMod } = await getServices();
+      await storeMod.deleteDoc(subPath(storeMod, db, col, parent, id));
+    },
+    // users/{uid}/tournaments and users/{uid}/teams hold membership docs
+    // ({ id, role, name }) written when people are added; reads resolve each
+    // referenced doc so the hub can show name + role.
+    listMy: async (kind) => {
+      const { db, storeMod } = await getServices();
+      const snap = await storeMod.getDocs(storeMod.collection(db, "users", userId, kind));
+      const docs = await Promise.all(snap.docs.map(async (m) => {
+        const ref = storeMod.doc(db, kind, m.id);
+        const d = await storeMod.getDoc(ref);
+        return d.exists() ? { ...d.data(), id: d.id, myRole: m.data().role } : null;
+      }));
+      return docs.filter(Boolean);
+    },
+    subscribe: (col, parent, cb) => {
+      let unsub = () => {};
+      getServices().then(({ db, storeMod }) => {
+        const q = subPath(storeMod, db, col, parent);
+        unsub = storeMod.onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+      }).catch(() => {});
+      return () => unsub();
+    }
+  };
+}
+
+/** Write (or update) a user's membership doc: users/{uid}/teams/{id} or users/{uid}/tournaments/{id}. */
+export async function writeMembership(targetUid, kind, id, { role, name }) {
+  const { db, storeMod } = await getServices();
+  const ref = storeMod.doc(db, "users", targetUid, kind, id);
+  await storeMod.setDoc(ref, { id, role, name: name || "", updatedAt: nowIso() }, { merge: true });
+}
+
+export async function removeMembership(targetUid, kind, id) {
+  const { db, storeMod } = await getServices();
+  await storeMod.deleteDoc(storeMod.doc(db, "users", targetUid, kind, id));
+}
+
+/**
+ * Join a team by its shareable join code. Runs through the backend
+ * (api/team-join) because the rules intentionally hide team docs from
+ * non-members; the server verifies the caller's ID token and resolves the
+ * code with the Admin SDK. Throws with a human-readable message on failure.
+ */
+export async function joinTeamByCode(code) {
+  const { auth, authMod } = await getServices();
+  const token = await authMod.getIdToken(auth.currentUser);
+  const res = await fetch("/api/team-join", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ code })
+  });
+  let data = {};
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok) throw new Error(data?.error || "Could not join the team — try again.");
+  return data.team;
+}
