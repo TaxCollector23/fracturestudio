@@ -2,7 +2,7 @@
 
 Fracture Studio is an argument auditing tool built for anyone who writes to persuade. Paste in a speech, debate case, Model UN position paper, college essay, research paper, or any piece of writing, and the Fracture Engine returns a full analysis in under a minute.
 
-Live at [fracture-studio-v6-eta.vercel.app](https://fracture-studio-v6-eta.vercel.app)
+Live at [fracturestudio.vercel.app](https://fracture-studio-v6-eta.vercel.app)
 
 ---
 
@@ -72,8 +72,8 @@ User and developer documentation lives at [the Fracture Studio docs](https://fra
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/taxcollector23/fracture-studio.git
-cd fracture-studio
+git clone https://github.com/TaxCollector23/fracturestudio.git
+cd fracturestudio
 ```
 
 ### 2. Set up environment variables
