@@ -9,8 +9,6 @@ import { buildAuditMessages } from "./prompts.js";
 import { collectTextFromOpenRouter, logOpenRouterError, openRouterStream } from "./openrouter.js";
 import { verifySources } from "./source-verify.js";
 import { startSse, writeDone, writeSse } from "./sse-utils.js";
-import { LIMITS, sendError } from "./request-utils.js";
-import { logError, logWarn } from "./logger.js";
 
 function asArr(value) { return Array.isArray(value) ? value : []; }
 function firstNonEmpty(...values) {
@@ -176,7 +174,11 @@ function readableAuditSections(audit, mode) {
     }
   ];
 
-  const scoreLines = Object.keys(scores).map((key) => `${prettyDimension(key)}: ${scores[key] ?? "—"}`);
+  const scoreLines = Object.keys(scores).map((key) => {
+    const val = scores[key];
+    if (val == null || val === "") return `${prettyDimension(key)}: —`;
+    return `${prettyDimension(key)}: ${val}`;
+  });
   if (scoreLines.length) {
     sections.push({ title: "Score breakdown", body: scoreLines.join("\n") });
   }
@@ -979,7 +981,6 @@ async function finish(res, audit, recovered = false, options = {}) {
         await sleep(18);
       }
     } catch (err) {
-      logError("source-verify.attach-failed", err);
       finalAudit = {
         ...audit,
         source_verification_report: {
@@ -1024,15 +1025,11 @@ function buildEvidenceContext(sourceData) {
 }
 
 export async function handleAnalyze(req, res) {
-  if (req.method && req.method !== "POST") return sendError(res, 405, "Method not allowed.");
+  if (req.method && req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
 
   const essay = typeof req.body?.essay === "string" ? req.body.essay.trim() : "";
-  if (!essay) return sendError(res, 400, "Paste an argument before using Fracture.");
-  if (essay.length > LIMITS.analyzeCharacters) {
-    return sendError(res, 400, `Draft exceeds the ${LIMITS.analyzeCharacters.toLocaleString()} character limit.`);
-  }
-
-  const citationStyle = String(req.body?.preferences?.citationStyle || "mla").toLowerCase() === "apa" ? "apa" : "mla";
+  if (!essay) return res.status(400).json({ error: "Paste an argument before using Fracture." });
+  if (essay.length > 40000) return res.status(400).json({ error: "Draft exceeds the 40,000 character limit." });
 
   startSse(res);
   writeProgress(res, 4, PROGRESS_MESSAGES[0]);
@@ -1043,9 +1040,7 @@ export async function handleAnalyze(req, res) {
   }
 
   if (!process.env.OPENROUTER_API_KEY) {
-    // Source verification does not need the AI key — still surface it so the
-    // citation check works even when the model is not configured.
-    return await finish(res, buildServiceFallbackAudit(essay, "OPENROUTER_API_KEY is not configured"), true, { essay, citationStyle });
+    return await finish(res, buildServiceFallbackAudit(essay, "OPENROUTER_API_KEY is not configured"), true);
   }
 
   // Cap output so the audit reliably finishes within the function timeout.
@@ -1053,6 +1048,7 @@ export async function handleAnalyze(req, res) {
   const depth = String(req.body?.preferences?.depthLevel || "medium").toLowerCase();
   // Tuned so a medium audit completes around ~85s on the free model while staying rich.
   const maxTokens = depth === "surface" ? 2600 : depth === "extreme" ? 6500 : 4800;
+  const citationStyle = req.body?.preferences?.citationStyle;
 
   // STEP 1 — Check the draft's factual claims against the live web BEFORE grading,
   // so the model scores evidence based on what is actually real. The result is
@@ -1061,10 +1057,9 @@ export async function handleAnalyze(req, res) {
   let evidenceContext = "";
   try {
     writeProgress(res, 12, "Checking the draft's claims against the live web");
-    sourceData = await verifySources({ essay, citationStyle });
+    sourceData = await verifySources({ essay, citationStyle: String(citationStyle || "mla").toLowerCase() === "apa" ? "apa" : "mla" });
     evidenceContext = buildEvidenceContext(sourceData);
-  } catch (err) {
-    logWarn("source-verify.pre-grading-failed", { message: err?.message || String(err) });
+  } catch (_) {
     sourceData = null;
   }
 

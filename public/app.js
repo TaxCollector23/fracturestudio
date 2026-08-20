@@ -473,7 +473,11 @@
   }
 
   function scoreChip(label, value, description) {
-    return '<div class="score-chip"><strong>' + esc(label) + '</strong><span>' + esc(String(value ?? '—')) + '/25</span><small>' + esc(description || '') + '</small></div>';
+    return '<div class="score-chip"><strong>' + esc(label) + '</strong><span>' + esc(String(value ?? '—')) + '</span><small>' + esc(description || '') + '</small></div>';
+  }
+
+  function prettyDim(key) {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
   }
 
   function mainStrength(parsed) {
@@ -519,12 +523,12 @@
     lines.push('Overall score: ' + (typeof parsed.overall_score === 'number' ? parsed.overall_score + '/100' : 'Not scored'));
     lines.push(scoreLabel(parsed.overall_score));
     if (parsed.verdict) lines.push(parsed.verdict);
+    if (parsed.coaching_note) lines.push('Where to start: ' + parsed.coaching_note);
     lines.push('');
     lines.push('Score Breakdown');
-    lines.push('Argument Strength: ' + (scores.argument_strength ?? '—') + '/25');
-    lines.push('Assumption Safety: ' + (scores.assumption_audit ?? '—') + '/25');
-    lines.push('Logic: ' + (scores.logic ?? '—') + '/25');
-    lines.push('Rhetoric: ' + (scores.rhetoric ?? '—') + '/25');
+    Object.keys(scores).forEach(function (key) {
+      lines.push(prettyDim(key) + ': ' + (scores[key] ?? '—'));
+    });
     lines.push('');
     lines.push('Main Strength');
     lines.push(mainStrength(parsed));
@@ -553,10 +557,14 @@
     if (collapse.strongest_defense || collapse.reinforcement) lines.push('Repair: ' + firstText(collapse.strongest_defense, collapse.reinforcement));
     lines.push('');
     lines.push('Claims');
-    asArray((parsed.argument_strength || {}).claims).forEach(function (claim, index) {
+    const claimSource = asArray(parsed.claims).length ? parsed.claims : (parsed.argument_strength || {}).claims;
+    asArray(claimSource).forEach(function (claim, index) {
       lines.push((index + 1) + '. ' + firstText(claim.quote, 'Claim'));
       if (claim.rating) lines.push('Rating: ' + claim.rating);
+      if (claim.warrant) lines.push('Warrant: ' + claim.warrant);
+      if (claim.missing_warrant) lines.push('Missing step: ' + claim.missing_warrant);
       if (claim.diagnosis) lines.push('Diagnosis: ' + claim.diagnosis);
+      if (claim.opponent_exploit) lines.push('Opponent attack: ' + claim.opponent_exploit);
       if (claim.fix) lines.push('Repair: ' + claim.fix);
       lines.push('');
     });
@@ -599,10 +607,12 @@
          + '<span class="report-label">Load-bearing sentence:</span>'
          + quoteBlock(quote)
          + '<p><b>Why it can collapse:</b> ' + esc(firstText(collapse.why_it_collapses, fallbackClaim.diagnosis, 'If this sentence is not proven, the rest of the argument loses force.')) + '</p>'
-         + '<div class="report-metric-row">'
-         + '<span class="report-metric">Dependent claims: ' + esc(String(collapse.dependency_count ?? 0)) + '</span>'
-         + '<span class="report-metric report-metric-risk">Survival chance: ' + esc(String(collapse.survival_probability ?? '—')) + '%</span>'
-         + '</div>'
+         + (((collapse.dependency_count ?? null) !== null || (collapse.survival_probability ?? null) !== null)
+           ? '<div class="report-metric-row">'
+             + ((collapse.dependency_count ?? null) !== null ? '<span class="report-metric">Dependent claims: ' + esc(String(collapse.dependency_count)) + '</span>' : '')
+             + ((collapse.survival_probability ?? null) !== null ? '<span class="report-metric report-metric-risk">Survival chance: ' + esc(String(collapse.survival_probability)) + '%</span>' : '')
+             + '</div>'
+           : '')
          + renderInlineList('What depends on it', collapse.affected_claims)
          + '<p><b>Strongest opponent attack:</b> ' + esc(firstText(collapse.strongest_attack, collapse.opponent_attack, fallbackClaim.opponent_exploit, 'A strong opponent will ask what proves this exact point.')) + '</p>'
          + '<p><b>Strongest defense:</b> ' + esc(firstText(collapse.strongest_defense, collapse.reinforcement, fallbackClaim.fix, 'Add direct evidence, a warrant sentence, and a qualifier that survives counterexamples.')) + '</p>'
@@ -632,12 +642,14 @@
   function renderAttackTree(parsed) {
     return asArray(parsed.attack_tree).map(function (item, index) {
       return '<div class="report-item">'
-        + '<div class="report-metric-row"><span class="report-metric report-metric-risk">Attack rank ' + esc(String(item.rank ?? index + 1)) + '</span><span class="report-metric">Risk score: ' + esc(String(item.fatality_score ?? '—')) + '/100</span></div>'
+        + '<div class="report-metric-row"><span class="report-metric report-metric-risk">Attack ' + esc(String(item.rank || index + 1)) + '</span>'
+        + ((item.fatality_score ?? null) !== null ? '<span class="report-metric">Risk score: ' + esc(String(item.fatality_score)) + '/100</span>' : '')
+        + '</div>'
         + '<p><b>Attack:</b> ' + esc(item.attack || '') + '</p>'
-        + '<p><b>Target:</b> ' + esc(item.targets || '') + '</p>'
-        + '<p><b>Why it is dangerous:</b> ' + esc(item.why_dangerous || '') + '</p>'
-        + '<p><b>Best response:</b> ' + esc(item.response || '') + '</p>'
-        + '<p><b>Crossfire question:</b> ' + esc(item.crossfire_question || '') + '</p>'
+        + (item.targets ? '<p><b>Target:</b> ' + esc(item.targets) + '</p>' : '')
+        + (item.why_dangerous ? '<p><b>Why it is dangerous:</b> ' + esc(item.why_dangerous) + '</p>' : '')
+        + (item.response ? '<p><b>Best response:</b> ' + esc(item.response) + '</p>' : '')
+        + (item.crossfire_question ? '<p><b>Crossfire question:</b> ' + esc(item.crossfire_question) + '</p>' : '')
         + '</div>';
     }).join('') || '<p>No additional attack paths were identified.</p>';
   }
@@ -702,40 +714,7 @@
 
   function renderArgumentGraph(parsed) {
     if (!argumentGraph) return;
-    var currentMode = (analysisFormat && analysisFormat.value) || 'argument';
 
-    // Dispatch to mode-specific visual maps
-    if (currentMode === 'speech') {
-      return renderSpeechMap(parsed);
-    } else if (currentMode === 'essay' || currentMode === 'college-essay') {
-      return renderEssayMap(parsed);
-    } else if (currentMode === 'research-paper') {
-      return renderResearchMap(parsed);
-    } else if (currentMode === 'rubric') {
-      return renderRubricMap(parsed);
-    } else if (currentMode === 'model-un') {
-      return renderModelUnMap(parsed);
-    }
-    // Default: argument/debate map
-    return renderArgumentDebateMap(parsed);
-  }
-
-  function showMap(html, title, subtitle, badge) {
-    argumentGraph.innerHTML =
-      '<div class="argument-map-head">'
-    + '<div>'
-    + '<div class="panel-title">' + esc(title) + '</div>'
-    + '<div class="panel-sub">' + esc(subtitle) + '</div>'
-    + '</div>'
-    + '<span class="graph-status">' + esc(badge) + '</span>'
-    + '</div>'
-    + '<div class="graph-canvas">' + html + '</div>';
-    argumentGraph.hidden = false;
-    if (argumentMapPlaceholder) argumentMapPlaceholder.hidden = true;
-  }
-
-  // ── Argument/Debate Map (original) ────────────────────────────────────────
-  function renderArgumentDebateMap(parsed) {
     const thesis = (parsed.argument_strength || {}).thesis || {};
     const claims = asArray((parsed.argument_strength || {}).claims).slice(0, 4);
     const fixes = asArray(parsed.priority_fixes);
@@ -807,259 +786,6 @@
     if (argumentMapPlaceholder) argumentMapPlaceholder.hidden = true;
   }
 
-  // ── Speech Visual Map ─────────────────────────────────────────────────────
-  function renderSpeechMap(parsed) {
-    var score = typeof parsed.overall_score === 'number' ? parsed.overall_score : null;
-    var hook = (parsed.hook_analysis || {});
-    var cta = (parsed.call_to_action || {});
-    var structure = (parsed.structure_analysis || {});
-    var memorability = (parsed.memorability_check || {});
-    var fixes = asArray(parsed.priority_fixes);
-
-    var hookRating = ratingClass(hook.rating);
-    var hookHtml = '<div class="graph-node claim-node ' + hookRating + '" role="button" tabindex="0" data-chat-point="' + dataPoint(hook.current_hook) + '">'
-      + '<div class="node-kicker">Opening Hook</div>'
-      + '<div class="node-text">' + esc(truncateText(firstText(hook.current_hook, 'No hook identified.'), 160)) + '</div>'
-      + '<span class="node-badge ' + hookRating + '">' + esc((hook.rating || 'WEAK').toUpperCase()) + '</span>'
-      + '</div>'
-      + '<div class="graph-connector"><span></span></div>'
-      + '<div class="graph-node evidence-node">'
-      + '<div class="node-kicker">Stronger Hook</div>'
-      + '<div class="node-text">' + esc(truncateText(firstText(hook.stronger_hook, 'Add a stronger opening.'), 160)) + '</div>'
-      + '</div>';
-
-    var ctaPresent = cta.present;
-    var ctaRating = ctaPresent ? 'strong' : 'weak';
-    var ctaHtml = '<div class="graph-node claim-node ' + ctaRating + '" role="button" tabindex="0" data-chat-point="' + dataPoint(cta.current) + '">'
-      + '<div class="node-kicker">Call to Action</div>'
-      + '<div class="node-text">' + esc(truncateText(firstText(cta.current, 'No call to action found.'), 160)) + '</div>'
-      + '<span class="node-badge ' + ctaRating + '">' + (ctaPresent ? 'PRESENT' : 'MISSING') + '</span>'
-      + '</div>'
-      + '<div class="graph-connector"><span></span></div>'
-      + '<div class="graph-node evidence-node">'
-      + '<div class="node-kicker">Stronger Ending</div>'
-      + '<div class="node-text">' + esc(truncateText(firstText(cta.stronger_ending, cta.assessment, 'Write a clearer call to action.'), 160)) + '</div>'
-      + '</div>';
-
-    var memHtml = '<div class="graph-note ' + (memorability.has_memorable_moment ? 'strong' : 'weak') + '">'
-      + '<div class="note-title">Memorability</div>'
-      + '<p>' + esc(asArray(memorability.found).join(', ') || 'No memorable elements found.') + '</p>'
-      + '<small>Add: ' + esc(asArray(memorability.missing).slice(0, 3).join(', ') || 'story, repeated phrase, or emotional moment') + '</small>'
-      + '</div>';
-
-    var topFix = fixes[0] || {};
-    var fixNote = '<div class="graph-note weak">'
-      + '<div class="note-title">Top Priority Fix</div>'
-      + '<p>' + esc(truncateText(firstText(topFix.problem, 'Review the priority fixes.'), 160)) + '</p>'
-      + '<small>' + esc(truncateText(firstText(topFix.fix, topFix.rewrite, ''), 140)) + '</small>'
-      + '</div>';
-
-    var html = '<div class="graph-thesis-wrap">'
-      + '<div class="graph-node thesis-node">'
-      + '<div class="node-kicker">Main Message</div>'
-      + '<div class="node-text">' + esc(truncateText(firstText((parsed.audience_clarity || {}).main_message_obvious ? structure.detected_structure : parsed.verdict, parsed.verdict, 'No clear main message.'), 190)) + '</div>'
-      + '</div>'
-      + fixNote
-      + '</div>'
-      + '<div class="graph-spine"><span></span><span></span></div>'
-      + '<div class="graph-rows">'
-      + '<div class="graph-row">' + hookHtml + memHtml + '</div>'
-      + '<div class="graph-row">' + ctaHtml + '</div>'
-      + '</div>';
-
-    showMap(html, 'Speech Structure Map', 'Hook strength, call to action, and memorability at a glance.', score !== null ? 'Score ' + score + '/100' : 'Mapped');
-  }
-
-  // ── Essay / College Essay Visual Map ──────────────────────────────────────
-  function renderEssayMap(parsed) {
-    var score = typeof parsed.overall_score === 'number' ? parsed.overall_score : null;
-    var paragraphs = asArray(parsed.paragraph_map || parsed.paragraph_architecture).slice(0, 5);
-    var flow = parsed.flow_and_transitions || {};
-    var conclusion = parsed.conclusion_strength || parsed.conclusion_check || {};
-    var fixes = asArray(parsed.priority_fixes);
-
-    var paraHtml = paragraphs.length ? paragraphs.map(function (p, i) {
-      var hasJob = p.has_clear_job !== false;
-      var rating = hasJob ? 'strong' : 'weak';
-      var job = firstText(p.job, 'Paragraph ' + (i + 1));
-      var fix = firstText(p.fix, '');
-      return '<div class="graph-node claim-node ' + rating + '">'
-        + '<div class="node-kicker">¶' + (p.number || i + 1) + ' — ' + esc(truncateText(job, 50)) + '</div>'
-        + '<div class="node-text">' + esc(truncateText(firstText(p.topic_sentence, p.assessment, 'See fix below.'), 130)) + '</div>'
-        + (fix ? '<span class="node-badge ' + rating + '">' + esc(truncateText(fix, 55)) + '</span>' : '')
-        + '</div>';
-    }).join('<div class="graph-connector"><span></span></div>') : '<p class="argument-map-empty">No paragraphs mapped.</p>';
-
-    var flowNote = '<div class="graph-note ' + (asArray(flow.abrupt_jumps).length ? 'weak' : 'strong') + '">'
-      + '<div class="note-title">Flow</div>'
-      + '<p>' + esc(truncateText(firstText(flow.assessment, 'Flow not assessed.'), 140)) + '</p>'
-      + '<small>' + esc(asArray(flow.abrupt_jumps).slice(0, 2).join(' | ') || 'No major jumps found.') + '</small>'
-      + '</div>';
-
-    var concRating = (conclusion.restates_without_copying && conclusion.strong_final_thought) ? 'strong' : 'weak';
-    var concNote = '<div class="graph-note ' + concRating + '">'
-      + '<div class="note-title">Conclusion</div>'
-      + '<p>' + esc(truncateText(firstText(conclusion.assessment, ''), 140)) + '</p>'
-      + '<small>' + esc(truncateText(firstText(conclusion.stronger_conclusion, conclusion.stronger_closing, ''), 120)) + '</small>'
-      + '</div>';
-
-    var html = '<div class="graph-thesis-wrap">'
-      + '<div class="graph-node thesis-node">'
-      + '<div class="node-kicker">Main Point / Thesis</div>'
-      + '<div class="node-text">' + esc(truncateText(firstText((parsed.main_point_check || {}).central_idea, (parsed.thesis_pressure_test || {}).quote, parsed.verdict, 'No thesis identified.'), 190)) + '</div>'
-      + '</div>'
-      + flowNote
-      + '</div>'
-      + '<div class="graph-spine"><span></span><span></span></div>'
-      + '<div class="graph-rows"><div class="graph-row">' + paraHtml + '</div></div>'
-      + '<div class="graph-rows" style="margin-top:10px"><div class="graph-row">' + concNote + '</div></div>';
-
-    showMap(html, 'Essay Structure Map', 'Paragraph-by-paragraph flow and conclusion strength.', score !== null ? 'Score ' + score + '/100' : 'Mapped');
-  }
-
-  // ── Research Paper Visual Map ──────────────────────────────────────────────
-  function renderResearchMap(parsed) {
-    var score = typeof parsed.overall_score === 'number' ? parsed.overall_score : null;
-    var sections = asArray(parsed.section_architecture);
-    var rqAudit = parsed.research_question_audit || {};
-    var alignment = parsed.research_alignment_map || {};
-    var citationCoverage = asArray(parsed.citation_coverage_map).slice(0, 4);
-    var missingCitations = asArray(parsed.missing_citation_flags).slice(0, 3);
-
-    var sectHtml = sections.length ? sections.map(function (s) {
-      var present = s.present !== false;
-      var rating = present ? 'strong' : 'weak';
-      return '<div class="graph-node claim-node ' + rating + '" style="min-width:110px;max-width:150px">'
-        + '<div class="node-kicker">' + esc(s.section || 'Section') + '</div>'
-        + '<span class="node-badge ' + rating + '">' + (present ? 'PRESENT' : 'MISSING') + '</span>'
-        + (s.fix && !present ? '<div class="node-text" style="font-size:10px;margin-top:4px">' + esc(truncateText(s.fix, 80)) + '</div>' : '')
-        + '</div>';
-    }).join('') : '<p>No sections mapped.</p>';
-
-    var rqHtml = '<div class="graph-note ' + (rqAudit.is_clear && rqAudit.paper_answers_it ? 'strong' : 'weak') + '">'
-      + '<div class="note-title">Research Question</div>'
-      + '<p>' + esc(truncateText(firstText(rqAudit.detected_question, 'Not identified.'), 150)) + '</p>'
-      + '<small>' + esc(truncateText(firstText(rqAudit.assessment, ''), 100)) + '</small>'
-      + '</div>';
-
-    var citHtml = citationCoverage.length ? citationCoverage.map(function (c) {
-      var citRating = (c.citation_present && c.source_strength !== 'WEAK') ? 'strong' : 'weak';
-      return '<div class="graph-node claim-node ' + citRating + '">'
-        + '<div class="node-kicker">Claim Coverage</div>'
-        + '<div class="node-text">' + esc(truncateText(firstText(c.claim, ''), 100)) + '</div>'
-        + '<span class="node-badge ' + citRating + '">' + (c.citation_present ? c.source_strength || 'CITED' : 'UNCITED') + '</span>'
-        + '</div>';
-    }).join('<div class="graph-connector"><span></span></div>') : '';
-
-    var missCitHtml = missingCitations.length ? '<div class="graph-note weak">'
-      + '<div class="note-title">Missing Citations (' + missingCitations.length + ')</div>'
-      + missingCitations.map(function (m) { return '<p style="margin:4px 0;font-size:11px">' + esc(truncateText(m.sentence || m.why || '', 100)) + '</p>'; }).join('')
-      + '</div>' : '';
-
-    var html = '<div class="graph-thesis-wrap">'
-      + '<div class="graph-node thesis-node">'
-      + '<div class="node-kicker">Thesis vs. Research Question</div>'
-      + '<div class="node-text">' + esc(truncateText(firstText(alignment.research_question, rqAudit.detected_question, parsed.verdict, 'No research question identified.'), 190)) + '</div>'
-      + '</div>'
-      + rqHtml
-      + '</div>'
-      + '<div class="graph-spine"><span></span><span></span></div>'
-      + '<div class="graph-rows"><div class="graph-row" style="flex-wrap:wrap;gap:8px">' + sectHtml + '</div></div>'
-      + (citHtml ? '<div class="graph-rows" style="margin-top:12px"><div class="graph-row">' + citHtml + missCitHtml + '</div></div>' : '');
-
-    showMap(html, 'Research Paper Structure Map', 'Section presence, citation coverage, and research question alignment.', score !== null ? 'Score ' + score + '/100' : 'Mapped');
-  }
-
-  // ── Rubric Visual Map ──────────────────────────────────────────────────────
-  function renderRubricMap(parsed) {
-    var earned = parsed.score_earned || 0;
-    var possible = parsed.rubric_total_possible || 0;
-    var pct = parsed.percentage || (possible ? Math.round((earned / possible) * 100) + '%' : '0%');
-    var grade = parsed.letter_grade || '—';
-    var criteria = asArray(parsed.criterion_scores).slice(0, 6);
-    var recovery = asArray(parsed.point_recovery_plan).slice(0, 3);
-
-    var critHtml = criteria.length ? criteria.map(function (c) {
-      var ratio = c.score_possible ? c.score_earned / c.score_possible : 0;
-      var rating = ratio >= 0.8 ? 'strong' : ratio >= 0.5 ? 'moderate' : 'weak';
-      return '<div class="graph-node claim-node ' + rating + '">'
-        + '<div class="node-kicker">' + esc(truncateText(c.criterion || 'Criterion', 40)) + '</div>'
-        + '<div class="node-text">' + esc(truncateText(firstText(c.what_is_missing, c.reason, ''), 110)) + '</div>'
-        + '<span class="node-badge ' + rating + '">' + esc(c.score_earned) + '/' + esc(c.score_possible) + '</span>'
-        + '</div>';
-    }).join('') : '<p>No criteria found.</p>';
-
-    var recoveryHtml = recovery.length ? '<div class="graph-note weak">'
-      + '<div class="note-title">Point Recovery</div>'
-      + recovery.map(function (r) {
-          return '<p style="margin:4px 0;font-size:11px"><b>+' + (r.points_possible || '?') + 'pts:</b> ' + esc(truncateText(r.action || '', 100)) + '</p>';
-        }).join('')
-      + '</div>' : '';
-
-    var html = '<div class="graph-thesis-wrap">'
-      + '<div class="graph-node thesis-node" style="text-align:center">'
-      + '<div class="node-kicker">Overall Grade</div>'
-      + '<div class="node-text" style="font-size:2rem;font-weight:700">' + esc(grade) + '</div>'
-      + '<span class="node-badge">' + esc(earned) + ' / ' + esc(possible) + ' &mdash; ' + esc(pct) + '</span>'
-      + '</div>'
-      + recoveryHtml
-      + '</div>'
-      + '<div class="graph-spine"><span></span><span></span></div>'
-      + '<div class="graph-rows"><div class="graph-row" style="flex-wrap:wrap;gap:8px">' + critHtml + '</div></div>';
-
-    showMap(html, 'Rubric Score Map', 'Criterion-by-criterion breakdown and point recovery opportunities.', grade + ' — ' + pct);
-  }
-
-  // ── Model UN Visual Map ────────────────────────────────────────────────────
-  function renderModelUnMap(parsed) {
-    var score = typeof parsed.overall_score === 'number' ? parsed.overall_score : null;
-    var brief = parsed.delegate_brief || {};
-    var strategy = parsed.strategy_map || {};
-    var clauses = asArray(parsed.resolution_clauses).slice(0, 3);
-    var policyCheck = parsed.policy_accuracy_check || {};
-
-    var allyHtml = asArray(brief.likely_allies).slice(0, 3).map(function (c) {
-      return '<span class="node-badge strong" style="margin:2px">' + esc(c) + '</span>';
-    }).join('');
-    var oppHtml = asArray(brief.likely_opponents).slice(0, 3).map(function (c) {
-      return '<span class="node-badge weak" style="margin:2px">' + esc(c) + '</span>';
-    }).join('');
-
-    var clauseHtml = clauses.length ? clauses.map(function (cl, i) {
-      var realistic = cl.is_realistic !== false;
-      var rating = realistic ? (cl.too_vague ? 'moderate' : 'strong') : 'weak';
-      return '<div class="graph-node claim-node ' + rating + '">'
-        + '<div class="node-kicker">Resolution Clause ' + (i + 1) + '</div>'
-        + '<div class="node-text">' + esc(truncateText(firstText(cl.operative_clause, cl.solution, ''), 140)) + '</div>'
-        + '<span class="node-badge ' + rating + '">' + (realistic ? (cl.too_vague ? 'TOO VAGUE' : 'REALISTIC') : 'UNREALISTIC') + '</span>'
-        + '</div>';
-    }).join('<div class="graph-connector"><span></span></div>') : '<p>No resolution clauses mapped.</p>';
-
-    var stateNote = '<div class="graph-note ' + (policyCheck.realistic_for_country ? 'strong' : 'weak') + '">'
-      + '<div class="note-title">Policy Accuracy</div>'
-      + '<p>' + esc(truncateText(firstText(brief.country_stance, ''), 130)) + '</p>'
-      + (asArray(policyCheck.red_flags).length ? '<small>Watch: ' + esc(asArray(policyCheck.red_flags).slice(0, 2).join(' | ')) + '</small>' : '')
-      + '</div>';
-
-    var diplomacyNote = '<div class="graph-note">'
-      + '<div class="note-title">Bloc Strategy</div>'
-      + '<p>' + esc(truncateText(firstText(strategy.bloc_strategy, 'No bloc strategy identified.'), 130)) + '</p>'
-      + '<small>Allies: ' + (allyHtml || '—') + ' &nbsp; Opponents: ' + (oppHtml || '—') + '</small>'
-      + '</div>';
-
-    var html = '<div class="graph-thesis-wrap">'
-      + '<div class="graph-node thesis-node">'
-      + '<div class="node-kicker">' + esc(brief.country || 'Country') + ' — ' + esc(truncateText(brief.committee || '', 40)) + '</div>'
-      + '<div class="node-text">' + esc(truncateText(firstText(brief.topic, parsed.verdict, ''), 180)) + '</div>'
-      + '</div>'
-      + stateNote
-      + '</div>'
-      + '<div class="graph-spine"><span></span><span></span></div>'
-      + '<div class="graph-rows"><div class="graph-row">' + clauseHtml + '</div></div>'
-      + '<div class="graph-rows" style="margin-top:10px"><div class="graph-row">' + diplomacyNote + '</div></div>';
-
-    showMap(html, 'Model UN Position Map', 'Country stance, resolution clauses, and bloc strategy.', score !== null ? 'Score ' + score + '/100' : 'Mapped');
-  }
   function mountSourceVerification() {
     if (!sourceVerificationArea || !window.FractureSources) return null;
     if (sourceVerifier) return sourceVerifier;
@@ -1082,8 +808,26 @@
   async function runSourceVerification() {
     if (!essayInput.value.trim() || !parsedAudit || !window.FractureSources) return null;
     const verifier = mountSourceVerification();
-    if (!verifier || typeof verifier.verify !== 'function') return null;
+    if (!verifier) return null;
 
+    // The analyze pipeline already ran verification server-side and attached
+    // source_verification_report to the audit. Render that result directly
+    // instead of searching the web a second time. The panel button still
+    // triggers a fresh verify() on demand.
+    const precomputed = parsedAudit.source_verification_report;
+    if (precomputed && !precomputed.error && typeof verifier.render === 'function') {
+      try {
+        sourceVerificationData = precomputed;
+        verifier.render(precomputed);
+        persistActiveWorkspace();
+        if (statusDetail) statusDetail.textContent = 'Fracture report complete. Source verification added.';
+        return sourceVerificationData;
+      } catch (_) {
+        sourceVerificationData = null;
+      }
+    }
+
+    if (typeof verifier.verify !== 'function') return null;
     try {
       const preferences = await loadFeedbackPreferences();
       preferredCitationStyle = preferences && preferences.citationStyle === 'apa' ? 'apa' : 'mla';
@@ -1475,6 +1219,7 @@
       '<div class="verdict-card">'
     + '<div><span class="report-label">Overall Score</span><strong>' + esc(typeof parsed.overall_score === 'number' ? parsed.overall_score + '/100' : 'Not scored') + '</strong><small>' + esc(scoreLabel(parsed.overall_score)) + '</small></div>'
     + '<p>' + esc(parsed.verdict || 'Fracture did not receive enough report text to write a verdict.') + '</p>'
+    + (firstText(parsed.coaching_note) ? '<span class="report-label">Where to start:</span><p>' + esc(parsed.coaching_note) + '</p>' : '')
     + '</div>'
     + '<div class="report-dual-grid">'
     + '<div class="report-item"><p><b>Main strength:</b> ' + esc(mainStrength(parsed)) + '</p></div>'
@@ -1484,10 +1229,9 @@
 
     const scoreSection =
       '<div class="score-grid">'
-    + scoreChip('Argument Strength', scores.argument_strength, scoreDescriptions.argument_strength)
-    + scoreChip('Assumption Safety', scores.assumption_audit, scoreDescriptions.assumption_audit)
-    + scoreChip('Logic', scores.logic, scoreDescriptions.logic)
-    + scoreChip('Rhetoric', scores.rhetoric, scoreDescriptions.rhetoric)
+    + Object.keys(scores).map(function (key) {
+        return scoreChip(prettyDim(key), scores[key], scoreDescriptions[key]);
+      }).join('')
     + '</div>';
 
     const thesis = (parsed.argument_strength || {}).thesis || {};
@@ -1608,8 +1352,12 @@
         return '<div class="report-item"><p><b>' + esc(f.name || 'Fallacy') + '</b></p>' + quoteBlock(f.quote) + '<p>' + esc(f.explanation || '') + '</p><p><b>Fix:</b> ' + esc(f.fix || '') + '</p></div>';
       }).join('') || '<p>No explicit fallacies flagged.</p>';
 
+      var collapseHtml = renderCollapsePoint(parsed);
+      var attackTreeHtml = renderAttackTree(parsed);
       c.innerHTML = verdictAndScore
         + renderModeSpecificSections(parsed, section)
+        + (firstText((parsed.collapse_point || {}).quote) ? section('Collapse Point', collapseHtml, true, 'report-collapse') : '')
+        + (asArray(parsed.attack_tree).length ? section('Opponent Attack Tree', attackTreeHtml, true, 'report-attacks') : '')
         + (parsed.logical_fallacies && asArray(parsed.logical_fallacies).length ? section('Logical Fallacies', fallaciesHtml2, false) : '')
         + (parsed.rhetorical_analysis ? section('Rhetorical Analysis', rhetoricSection, false) : '')
         + section('Priority Fixes', pfixesHtml, true, 'report-priorities');
@@ -2276,16 +2024,7 @@
 
   // ── Core analysis ──────────────────────────────────────────────────────────
   async function runAnalysis() {
-    var essayRaw = essayInput.value.trim();
-    // If a rubric file was uploaded in rubric mode, append it to the text
-    var mode = analysisFormat ? analysisFormat.value : '';
-    if (mode === 'rubric' && rubricFileText) {
-      var rubricMarker = '\n\n--- RUBRIC ---\n';
-      if (!essayRaw.includes('--- RUBRIC ---')) {
-        essayRaw = essayRaw + rubricMarker + rubricFileText;
-      }
-    }
-    const essay = essayRaw;
+    const essay = essayInput.value.trim();
     if (!essay) { setStatus('error', 'Paste an argument before using Fracture.'); return; }
 
     // Auth gate: require sign-in or guest access before running
@@ -2609,80 +2348,6 @@
       copyReadableReport();
     }
   });
-
-  // ── Rubric file upload ─────────────────────────────────────────────────────
-  var rubricUploadRow = document.getElementById('rubricUploadRow');
-  var rubricFileInput = document.getElementById('rubricFileInput');
-  var rubricFileName  = document.getElementById('rubricFileName');
-  var rubricFileClear = document.getElementById('rubricFileClear');
-  var rubricFileText  = null; // extracted text from uploaded rubric file
-
-  function updateRubricUploadVisibility() {
-    var mode = analysisFormat ? analysisFormat.value : '';
-    if (rubricUploadRow) rubricUploadRow.hidden = (mode !== 'rubric');
-  }
-
-  var MAP_TITLES = {
-    'speech': 'Speech Structure Map',
-    'essay': 'Essay Structure Map',
-    'college-essay': 'Essay Structure Map',
-    'research-paper': 'Research Paper Map',
-    'rubric': 'Rubric Score Map',
-    'model-un': 'Position Map',
-    'argument': 'Argument Map'
-  };
-
-  function updateVisualMapTitle() {
-    var titleEl = document.getElementById('visualMapTitle');
-    if (!titleEl) return;
-    var mode = analysisFormat ? analysisFormat.value : 'argument';
-    titleEl.textContent = MAP_TITLES[mode] || 'Argument Map';
-  }
-
-  if (analysisFormat) {
-    analysisFormat.addEventListener('change', function () {
-      updateRubricUploadVisibility();
-      updateVisualMapTitle();
-    });
-  }
-  updateRubricUploadVisibility();
-  updateVisualMapTitle();
-
-  if (rubricFileInput) {
-    rubricFileInput.addEventListener('change', function () {
-      var file = rubricFileInput.files && rubricFileInput.files[0];
-      if (!file) return;
-      if (rubricFileName) rubricFileName.textContent = file.name;
-      if (rubricFileClear) rubricFileClear.hidden = false;
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        // For txt files we get text directly; for pdf/docx we get the raw text
-        // the browser can read; for binary files we fall back to a note
-        var text = e.target.result;
-        if (typeof text === 'string' && text.trim()) {
-          rubricFileText = text.trim();
-        } else {
-          rubricFileText = null;
-          if (rubricFileName) rubricFileName.textContent = file.name + ' (could not extract text — paste rubric instead)';
-        }
-      };
-      // Read as text — works for .txt; for pdf/docx a basic extraction attempt
-      reader.readAsText(file);
-    });
-  }
-
-  if (rubricFileClear) {
-    rubricFileClear.addEventListener('click', function () {
-      rubricFileText = null;
-      if (rubricFileInput) rubricFileInput.value = '';
-      if (rubricFileName) rubricFileName.textContent = 'No file chosen';
-      rubricFileClear.hidden = true;
-    });
-  }
-
-  // Inject uploaded rubric text into the essay before running analysis
-  var _originalRunAnalysis = runAnalysis;
-  // (We patch via a wrapper around the fetch call instead — see below)
 
   // ── Init ───────────────────────────────────────────────────────────────────
   updateCharCount();

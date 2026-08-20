@@ -18,7 +18,7 @@ export function getOpenRouterRuntimeConfig() {
     model,
     chatModel: resolveOpenRouterModel(process.env.OPENROUTER_CHAT_MODEL, model),
     speedModel: resolveOpenRouterModel(process.env.OPENROUTER_SPEED_MODEL, DEFAULT_SPEED_MODEL),
-    requestTimeoutMs: numberFromEnv("OPENROUTER_REQUEST_TIMEOUT_MS", 45000),
+    requestTimeoutMs: numberFromEnv("OPENROUTER_REQUEST_TIMEOUT_MS", 120000),
     streamStallMs: numberFromEnv("OPENROUTER_STREAM_STALL_MS", 45000)
   };
 }
@@ -43,7 +43,7 @@ export async function openRouterStream(options = {}) {
   const controller = new AbortController();
   const timeoutMs = Number(options.timeoutMs) > 0
     ? Number(options.timeoutMs)
-    : numberFromEnv("OPENROUTER_REQUEST_TIMEOUT_MS", 45000);
+    : numberFromEnv("OPENROUTER_REQUEST_TIMEOUT_MS", 120000);
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {

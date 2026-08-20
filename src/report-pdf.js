@@ -101,14 +101,12 @@ export function createReportPdf(input = {}) {
     const scores = audit.score_breakdown || {};
     const scoreExplanations = audit.score_explanations || {};
     addHeading("Score Breakdown");
-    [
-      ["Argument strength", scores.argument_strength, scoreExplanations.argument_strength],
-      ["Assumption safety", scores.assumption_audit, scoreExplanations.assumption_audit],
-      ["Logic", scores.logic, scoreExplanations.logic],
-      ["Rhetoric", scores.rhetoric, scoreExplanations.rhetoric]
-    ].forEach(([label, value, explanation]) => {
-      addLabel(label, value === undefined ? "Not scored" : `${value}/25`);
-      addParagraph(explanation, { color: COLORS.muted, size: 9.6 });
+    Object.keys(scores).forEach((key) => {
+      const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      const value = scores[key];
+      addLabel(label, value === undefined ? "Not scored" : `${value}`);
+      const explanation = scoreExplanations[key] || "";
+      if (explanation) addParagraph(explanation, { color: COLORS.muted, size: 9.6 });
     });
 
     const fixes = array(audit.priority_fixes);
@@ -117,7 +115,7 @@ export function createReportPdf(input = {}) {
     fixes.forEach((fix, index) => {
       addHeading(`${index + 1}. ${clean(fix.problem) || "Revision priority"}`, 2);
       addLabel("Impact if skipped", fix.fatality);
-      addLabel("Risk score", fix.fatality_score === undefined ? "" : `${fix.fatality_score}/100`);
+      addLabel("Risk score", fix.fatality_score == null ? "" : `${fix.fatality_score}/100`);
       addLabel("Quoted passage", fix.quote);
       addLabel("Why this repair is necessary", fix.necessity);
       addLabel("Claims affected", list(fix.affected_claims));
@@ -170,7 +168,7 @@ export function createReportPdf(input = {}) {
     addCollection("Counterarguments and Rebuttal Preparation", array(audit.counter_arguments), (item) => [
       ["Rank", item.rank],
       ["Attack type", item.attack_type],
-      ["Risk score", item.fatality_score === undefined ? "" : `${item.fatality_score}/100`],
+      ["Risk score", item.fatality_score == null ? "" : `${item.fatality_score}/100`],
       ["Steelman", item.steelman],
       ["Target", item.targets],
       ["Damage", item.damage],
@@ -190,7 +188,7 @@ export function createReportPdf(input = {}) {
 
     addCollection("Attack Tree", array(audit.attack_tree), (item) => [
       ["Rank", item.rank],
-      ["Risk score", item.fatality_score === undefined ? "" : `${item.fatality_score}/100`],
+      ["Risk score", item.fatality_score == null ? "" : `${item.fatality_score}/100`],
       ["Attack", item.attack],
       ["Target", item.targets],
       ["Why it is dangerous", item.why_dangerous],

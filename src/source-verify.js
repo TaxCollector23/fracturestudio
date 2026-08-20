@@ -24,8 +24,8 @@ const STOP_WORDS = new Set([
 
 const FACTUAL_SIGNALS = [
   /\baccording to\b/i,
-  /\b(study|studies|report|reports|reported|survey|research|data|statistics|evidence|article|journal|book|source)\b/i,
-  /\b(found|finds?|shows?|showed|suggests?|demonstrates?|indicates?|proves?|published|claims?|states?)\b/i,
+  /\b(study|report|survey|research|data|statistics|evidence|article|journal|book|source)\b/i,
+  /\b(found|shows?|showed|suggests?|demonstrates?|indicates?|proves?|reported|published)\b/i,
   /\b(causes?|caused|leads? to|results? in|increases?|decreases?|reduces?|prevents?|improves?)\b/i,
   /\b(in|since|by|during)\s+(1[5-9]\d{2}|20\d{2})\b/i,
   /\b\d+(?:\.\d+)?\s*(%|percent|million|billion|thousand|years?|people|students|adults)\b/i,
@@ -75,7 +75,7 @@ export async function verifySources(input = {}) {
   // gracefully degrade to "needs_review" rather than all timing out together.
   for (const claim of extractedClaims) {
     const result = Date.now() < deadline - 1500
-      ? await verifyClaim(claim, citationStyle).catch((err) =>
+      ? await verifyClaim(claim, citationStyle, deadline).catch((err) =>
           finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`, citationStyle)
         )
       : finalizeClaim(claim, [], "needs_review", "The source-review time limit was reached — check this claim manually.", citationStyle);
@@ -235,14 +235,32 @@ export function extractClaims(essay = "", audit = null) {
   }
 }
 
-async function verifyClaim(claim, citationStyle) {
+async function verifyClaim(claim, citationStyle, deadline = Number.POSITIVE_INFINITY) {
   const citationTooVague = isSourceTooVague(claim.text);
 
   let search;
+  let effectiveQuery = claim.query;
   try {
     search = await searchOpenWeb(claim.query);
   } catch (err) {
     return finalizeClaim(claim, [], "needs_review", `Search failed gracefully: ${err?.message || String(err)}`, citationStyle);
+  }
+
+  // Exact-phrase queries frequently return zero hits even for real claims.
+  // Retry once with the claim's distinctive terms before giving up.
+  if (!search.results.length && !search.fallback_error && Date.now() < deadline - 8000) {
+    const retryQuery = importantTerms(claim.text).slice(0, 8).join(" ");
+    if (retryQuery && retryQuery !== claim.query) {
+      try {
+        const retry = await searchOpenWeb(retryQuery);
+        if (retry.results.length) {
+          search = retry;
+          effectiveQuery = retryQuery;
+        }
+      } catch (_) {
+        // Keep the original empty result and fall through to the not-found path.
+      }
+    }
   }
 
   if (!search.results.length && search.fallback_error) {
@@ -274,7 +292,7 @@ async function verifyClaim(claim, citationStyle) {
     }))
     .sort((a, b) => b.match_score - a.match_score);
   const status = classifySupport(claim, scoredSources, citationTooVague);
-  return finalizeClaim(claim, scoredSources, status.status, status.reason, citationStyle);
+  return finalizeClaim({ ...claim, query: effectiveQuery }, scoredSources, status.status, status.reason, citationStyle);
 }
 
 function finalizeClaim(claim, sources, supportStatus, verificationNote, citationStyle) {
@@ -684,7 +702,11 @@ function buildSummary(claims, worksCited, citationStyle) {
 
 function buildSearchQuery(text, quotedPassage = "") {
   const quoted = quotedPassage || extractQuotedSource(text);
-  if (quoted) return `"${quoted.slice(0, 240)}"`;
+  if (quoted) {
+    // Cap phrase at ~15 words — longer phrases almost never match on search engines
+    const words = quoted.split(/\s+/).slice(0, 15);
+    return `"${words.join(" ")}"`;
+  }
   const terms = importantTerms(text).slice(0, 10);
   return Array.from(new Set(terms.filter(Boolean))).join(" ") || text.slice(0, 160);
 }
@@ -939,7 +961,7 @@ function pageExcerpt(html) {
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
     .replace(/<[^>]+>/g, " "))
-    .slice(0, 6000);
+    .slice(0, 20000);
 }
 
 function sentenceCase(value) {
