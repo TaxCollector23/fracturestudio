@@ -8,6 +8,7 @@ import {
   newInboxItem, newEvidence, newBlock, newResponseTree, newTopic,
   createItem, updateItem, removeItem, filterByQuery, timeAgo
 } from "../lib/prep.js";
+import { newSource } from "../lib/research.js";
 import { useCollection, EmptyState, ErrorNote, LoadingBlock, Modal, Field, Pill } from "../components/PrepKit.jsx";
 import { cx } from "../lib/ui.js";
 
@@ -24,6 +25,7 @@ const kindOf = (id) => KINDS.find((k) => k.id === id) || KINDS[0];
 
 const MOVE_TARGETS = [
   { id: "evidence", label: "Evidence card", hint: "Becomes a searchable quote with source" },
+  { id: "source", label: "Source record", hint: "Becomes a library source you can cite" },
   { id: "block", label: "Block", hint: "Becomes a reusable answer with a tag" },
   { id: "tree", label: "Response tree", hint: "Becomes an 'if they say X, say Y' trigger" },
   { id: "topic", label: "Knowledge topic", hint: "Adds to a topic's notes" }
@@ -75,6 +77,9 @@ export default function PrepInbox() {
       if (target === "evidence") {
         createdId = await createItem("evidence", newEvidence({ text: contentText, url, source: "", note: `From inbox${url ? " · " + url : ""}` }));
         label = "Evidence card";
+      } else if (target === "source") {
+        createdId = await createItem("sources", newSource({ title: contentText.slice(0, 80), url, description: item.kind === "source" ? "From research inbox" : "" }));
+        label = "Source record";
       } else if (target === "block") {
         createdId = await createItem("blocks", newBlock({ tag: contentText.slice(0, 40), theirArgument: "", myResponse: contentText, explanation: "" }));
         label = "Block";

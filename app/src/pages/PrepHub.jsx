@@ -54,6 +54,17 @@ export default function PrepHub() {
         </div>
       )}
 
+      <Link to="/research" className="card card-hover p-4 mb-6 flex flex-wrap items-center justify-between gap-3 group">
+        <div className="flex items-center gap-3">
+          <Library size={18} className="text-zinc-500 group-hover:text-zinc-950 dark:group-hover:text-zinc-100 transition-colors" />
+          <div>
+            <h3 className="font-serif text-lg leading-tight">Research Intelligence & Citation Engine</h3>
+            <p className="muted text-xs mt-0.5">Structured sources with MLA / APA / Chicago / debate citations, evidence cards, research gaps, and a bibliography builder.</p>
+          </div>
+        </div>
+        <span className="text-xs muted group-hover:text-zinc-950 dark:group-hover:text-zinc-100 inline-flex items-center gap-1">Open research <ArrowRight size={12} /></span>
+      </Link>
+
       <div className="flex flex-wrap items-center gap-1.5 mb-8">
         {WORKFLOW.map((w, i) => (
           <span key={w} className="inline-flex items-center gap-1.5">

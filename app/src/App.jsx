@@ -49,6 +49,11 @@ const RoundWorkspace = lazy(() => import("./pages/RoundWorkspace.jsx"));
 const JudgeWorkspace = lazy(() => import("./pages/JudgeWorkspace.jsx"));
 const TeamWorkspace = lazy(() => import("./pages/TeamWorkspace.jsx"));
 const CoachDashboard = lazy(() => import("./pages/CoachDashboard.jsx"));
+const Research = lazy(() => import("./pages/Research.jsx"));
+const ResearchTopic = lazy(() => import("./pages/ResearchTopic.jsx"));
+const SourceLibrary = lazy(() => import("./pages/SourceLibrary.jsx"));
+const SourceWorkspace = lazy(() => import("./pages/SourceWorkspace.jsx"));
+const Bibliography = lazy(() => import("./pages/Bibliography.jsx"));
 
 function Page({ children, bare }) {
   return (
@@ -109,6 +114,11 @@ export default function App() {
               <Route path="/compete/tournament/:tid/round/:rid" element={<Page><RoundWorkspace /></Page>} />
               <Route path="/compete/team/:tid" element={<Page><TeamWorkspace /></Page>} />
               <Route path="/coach" element={<Page><CoachDashboard /></Page>} />
+              <Route path="/research" element={<Page><Research /></Page>} />
+              <Route path="/research/topic/:id" element={<Page><ResearchTopic /></Page>} />
+              <Route path="/research/sources" element={<Page><SourceLibrary /></Page>} />
+              <Route path="/research/source/:id" element={<Page><SourceWorkspace /></Page>} />
+              <Route path="/research/bibliography" element={<Page><Bibliography /></Page>} />
               <Route path="/rebuttals" element={<Page><Rebuttals /></Page>} />
               <Route path="/past-work" element={<Page><PastWork /></Page>} />
               <Route path="/settings" element={<Page><Settings /></Page>} />

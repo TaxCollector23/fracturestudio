@@ -1,10 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import {
   newSource, newExcerpt, newResearchQuestion, newResearchCollection, newResearchTask, newConflict,
   normalizeUrl, findDuplicateSources, researchGaps, topicCoverage, buildBibliography,
   evidenceForArgument, argumentsForEvidence, questionsForSource, excerptsForSourceId, evidenceForSource,
   topicActivity, recencyBuckets, researchSearch, sourceAttribution, hostOf, authorNames
 } from "./research.js";
+import { formatCitation } from "./citations.js";
+import { setPrepStore, createItem, updateItem, listItems } from "./prep.js";
 
 describe("source helpers", () => {
   it("normalizes URLs for duplicate comparison", () => {
@@ -212,5 +214,117 @@ describe("factories", () => {
     expect(newConflict().type).toBe("conflicting");
     expect(newResearchTask().status).toBe("open");
     expect(newResearchCollection().sourceIds).toEqual([]);
+  });
+});
+
+describe("research workflows (store-level)", () => {
+  // In-memory store with the exact interface of the prep store the UI uses,
+  // so these tests exercise the same create/list/update path as the app.
+  const memory = {};
+  const store = {
+    list: async (col) => (memory[col] || []).slice(),
+    create: async (col, data) => {
+      const id = "id-" + Math.random().toString(36).slice(2, 8);
+      memory[col] = memory[col] || [];
+      memory[col].unshift({ id, ...data, createdAt: "2026-08-20T00:00:00Z", updatedAt: "2026-08-20T00:00:00Z" });
+      return id;
+    },
+    update: async (col, id, patch) => {
+      memory[col] = (memory[col] || []).map((i) => i.id === id ? { ...i, ...patch, updatedAt: "2026-08-20T01:00:00Z" } : i);
+    },
+    remove: async (col, id) => { memory[col] = (memory[col] || []).filter((i) => i.id !== id); }
+  };
+  beforeAll(() => { setPrepStore(store); });
+  beforeEach(() => { Object.keys(memory).forEach((k) => delete memory[k]); });
+
+  it("Workflow A: topic → question → source → excerpt → evidence → argument → citation → bibliography", async () => {
+    const topicId = await createItem("topics", { name: "School Start Times", status: "active", tags: ["pro"] });
+    const questionId = await createItem("researchQuestions", newResearchQuestion({
+      question: "Do later start times improve academic outcomes?",
+      topicIds: [topicId], priority: "high", status: "researching"
+    }));
+    const sourceId = await createItem("sources", newSource({
+      title: "Later School Start Times Improve Adolescent Sleep",
+      url: "https://www.nytimes.com/2026/08/20/health/school-start-times.html",
+      authors: [{ name: "Jane Q. Rodriguez" }], publication: "The New York Times",
+      publishDate: "2026-08-20", accessDate: "2026-08-21", topicIds: [topicId]
+    }));
+    const excerptId = await createItem("excerpts", newExcerpt({
+      quote: "Teenagers at schools with later start times slept 34 minutes more per night.",
+      sourceId, questionId, page: "A12"
+    }));
+    const evidenceId = await createItem("evidence", {
+      label: "Sleep–grades link", evidenceType: "study-finding", claim: "Later starts improve sleep and academics",
+      text: "Teenagers at schools with later start times slept 34 minutes more per night.",
+      sourceId, source: "Rodriguez, J., The New York Times, Aug. 2026", url: "https://www.nytimes.com/2026/08/20/health/school-start-times.html",
+      topicIds: [topicId], blockIds: ["b1"]
+    });
+    await updateItem("researchQuestions", questionId, { sourceIds: [sourceId], evidenceIds: [evidenceId], status: "answered" });
+
+    const source = (await listItems("sources")).find((s) => s.id === sourceId);
+    expect(formatCitation(source, "mla")).toContain("Rodriguez, Jane Q.");
+    expect(formatCitation(source, "apa")).toContain("(2026, August 20)");
+
+    const bib = buildBibliography(await listItems("sources"), "chicago");
+    expect(bib.items.length).toBe(1);
+    expect(bib.text).toContain("The New York Times");
+
+    // The whole chain resolves: no gaps for the linked question/argument.
+    const gaps = researchGaps({
+      topics: [{ id: topicId, name: "School Start Times" }], topicId,
+      questions: await listItems("researchQuestions"),
+      sources: await listItems("sources"),
+      evidence: await listItems("evidence"),
+      blocks: [{ id: "b1", topicIds: [topicId], tag: "Later starts work" }],
+      cases: []
+    });
+    expect(gaps.some((g) => g.kind === "question")).toBe(false);
+    expect(gaps.some((g) => g.kind === "argument")).toBe(false);
+    expect(excerptId).toBeTruthy();
+  });
+
+  it("Workflow B: duplicate detection offers 'use existing' instead of a second record", async () => {
+    const first = await createItem("sources", newSource({ title: "Climate Report", url: "https://www.epa.gov/climate/report" }));
+    const candidate = newSource({ title: "Climate Report", url: "http://www.epa.gov/climate/report/" });
+    const dupes = findDuplicateSources(await listItems("sources"), candidate);
+    expect(dupes.length).toBeGreaterThan(0);
+    expect(dupes[0].reason).toBe("url");
+    // "Use existing" = keep the original; no merge happens automatically.
+    expect((await listItems("sources")).length).toBe(1);
+    expect((await listItems("sources"))[0].id).toBe(first);
+  });
+
+  it("Workflow C: unsupported argument gap appears and resolves after linking evidence", async () => {
+    const topicId = await createItem("topics", { name: "AI Policy" });
+    const args = { topics: [{ id: topicId, name: "AI Policy" }], topicId, questions: [], sources: [], evidence: await listItems("evidence"), blocks: [{ id: "b9", topicIds: [topicId], tag: "AI creates jobs" }], cases: [] };
+    expect(researchGaps(args).some((g) => g.kind === "argument")).toBe(true);
+
+    await createItem("evidence", { id: "ignored", text: "AI creates 2M new roles", topicIds: [topicId], blockIds: ["b9"] });
+    const after = { ...args, evidence: await listItems("evidence") };
+    expect(researchGaps(after).some((g) => g.kind === "argument")).toBe(false);
+  });
+
+  it("Workflow D: conflicting evidence links without declaring a winner", async () => {
+    const a = await createItem("evidence", { text: "Policy X reduces emissions 40%", topicIds: ["t9"] });
+    const b = await createItem("evidence", { text: "Policy X has no measurable effect", topicIds: ["t9"] });
+    const conflict = newConflict({ evidenceAId: a, evidenceBId: b, type: "conflicting", notes: "Different methodologies — compare before the round." });
+    await createItem("conflicts", conflict);
+    const saved = (await listItems("conflicts"))[0];
+    expect(saved.type).toBe("conflicting");
+    expect(saved.evidenceAId).toBe(a);
+    expect(saved.evidenceBId).toBe(b);
+  });
+
+  it("Workflow E: collection → bibliography with style switching and export text", async () => {
+    const col = await createItem("researchCollections", newResearchCollection({ name: "Pro case" }));
+    const s1 = await createItem("sources", newSource({ title: "Zebra Study", authors: [{ name: "Ann Author" }], publication: "Nature", publishDate: "2026-01-01", collectionIds: [col] }));
+    const s2 = await createItem("sources", newSource({ title: "Apple Report", url: "https://x.io", collectionIds: [col] }));
+    const chosen = (await listItems("sources")).filter((s) => (s.collectionIds || []).includes(col));
+    const mla = buildBibliography(chosen, "mla");
+    const apa = buildBibliography(chosen, "apa");
+    expect(mla.items.map((i) => i.source.id)).toEqual([s2, s1]); // alphabetical by author/title
+    expect(mla.text).not.toBe(apa.text);
+    expect(apa.text).toContain("Author, A. (2026, January 1). Zebra study.");
+    expect(mla.issues.some((x) => x.issues.length > 0)).toBe(true); // Apple Report missing fields
   });
 });

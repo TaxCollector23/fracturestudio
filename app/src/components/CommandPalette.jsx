@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, CornerDownLeft, LayoutDashboard, PenLine, Swords, Target, FolderOpen, Settings, BookOpen, Newspaper, Sparkles, Timer, Flag, ShieldAlert, Library, Inbox, Layers, Trophy, Scale, Shield } from "lucide-react";
+import { Search, CornerDownLeft, LayoutDashboard, PenLine, Swords, Target, FolderOpen, Settings, BookOpen, Newspaper, Sparkles, Timer, Flag, ShieldAlert, Library, Inbox, Layers, Trophy, Scale, Shield, FileText, HelpCircle } from "lucide-react";
 import { useAuth } from "../lib/useAuth.jsx";
 import { listProjects } from "../lib/firebase.js";
 import { loadLocalGoals } from "../lib/goals.js";
@@ -16,6 +16,9 @@ function pageActions() {
     { id: "nav-rebuttals", label: "Build a rebuttal plan", hint: "Opponent prep", icon: Swords, run: (n) => n("/rebuttals"), search: "rebuttal opponent prep debate" },
     { id: "nav-past", label: "Past Work", hint: "Saved audits", icon: FolderOpen, run: (n) => n("/past-work"), search: "past saved history audits" },
     { id: "nav-compete", label: "Competitions", hint: "Tournaments, teams, rounds", icon: Trophy, run: (n) => n("/compete"), search: "compete tournament team round judge" },
+    { id: "nav-research", label: "Research Intelligence", hint: "Topics, sources, evidence, citations", icon: Library, run: (n) => n("/research"), search: "research topic source evidence citation" },
+    { id: "nav-sources", label: "Source library", hint: "All saved sources, searchable", icon: Library, run: (n) => n("/research/sources"), search: "sources library metadata url" },
+    { id: "nav-bibliography", label: "Bibliography builder", hint: "Export MLA / APA / Chicago", icon: FileText, run: (n) => n("/research/bibliography"), search: "bibliography citations export mla apa chicago" },
     { id: "nav-judge", label: "Judge workspace", hint: "Assigned rounds and ballots", icon: Scale, run: (n) => n("/compete/judge"), search: "judge ballot round" },
     { id: "nav-coach", label: "Coach dashboard", hint: "Team progress and attention", icon: Shield, run: (n) => n("/coach"), search: "coach team progress assignments" },
     { id: "nav-settings", label: "Settings & profile", hint: "Defaults, role, event", icon: Settings, run: (n) => n("/settings"), search: "settings prefs profile role" },
@@ -36,7 +39,10 @@ function quickActions() {
     { id: "new-tournament", label: "Create a tournament", hint: "Organize events, rounds, judges", icon: Trophy, run: (n) => n("/compete"), search: "tournament event organize competition" },
     { id: "new-team", label: "Create a team", hint: "Members, assignments, rubrics", icon: Shield, run: (n) => n("/compete"), search: "team club assignments rubrics" },
     { id: "judge-ballots", label: "Submit a ballot", hint: "Open your judging assignments", icon: Scale, run: (n) => n("/compete/judge"), search: "ballot judge submit score" },
-    { id: "new-flashcard", label: "Study flashcards", hint: "Spaced repetition from your library", icon: Layers, run: (n) => n("/prep/flashcards"), search: "flashcard review spaced repetition" }
+    { id: "new-flashcard", label: "Study flashcards", hint: "Spaced repetition from your library", icon: Layers, run: (n) => n("/prep/flashcards"), search: "flashcard review spaced repetition" },
+    { id: "new-source", label: "Add a source", hint: "Paste a URL or enter details manually", icon: Library, run: (n) => n("/research/sources"), search: "source url metadata add save" },
+    { id: "new-topic", label: "Create a research topic", hint: "Organize questions, sources, evidence", icon: BookOpen, run: (n) => n("/research"), search: "topic research question resolution workspace" },
+    { id: "new-question", label: "Add a research question", hint: "Define what you need to answer", icon: HelpCircle, run: (n) => n("/research"), search: "question research answer evidence" }
   ];
 }
 

@@ -8,6 +8,7 @@ const LINKS = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/studio", label: "Studio" },
   { to: "/prep", label: "Prepare" },
+  { to: "/research", label: "Research" },
   { to: "/practice", label: "Practice" },
   { to: "/compete", label: "Compete" },
   { to: "/coach", label: "Coach" },
