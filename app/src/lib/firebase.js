@@ -117,6 +117,77 @@ export async function savePreferences(userId, prefs) {
   await storeMod.setDoc(ref, prefs, { merge: true });
 }
 
+// ---- Goals (users/{uid}/goals) ----
+export async function listGoals(userId) {
+  const { db, storeMod } = await getServices();
+  const q = storeMod.query(
+    storeMod.collection(db, "users", userId, "goals"),
+    storeMod.orderBy("createdAt", "desc"),
+    storeMod.limit(50)
+  );
+  const snap = await storeMod.getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function addGoal(userId, goal) {
+  const { db, storeMod } = await getServices();
+  const now = storeMod.serverTimestamp();
+  const { id: _omit, ...data } = goal;
+  const ref = await storeMod.addDoc(
+    storeMod.collection(db, "users", userId, "goals"),
+    { ...data, createdAt: now, updatedAt: now }
+  );
+  return ref.id;
+}
+
+export async function updateGoal(userId, goalId, patch) {
+  const { db, storeMod } = await getServices();
+  const ref = storeMod.doc(db, "users", userId, "goals", goalId);
+  await storeMod.updateDoc(ref, { ...patch, updatedAt: storeMod.serverTimestamp() });
+}
+
+export async function deleteGoal(userId, goalId) {
+  const { db, storeMod } = await getServices();
+  await storeMod.deleteDoc(storeMod.doc(db, "users", userId, "goals", goalId));
+}
+
+// ---- Report ratings (users/{uid}/ratings) ----
+export async function saveReportRating(userId, rating) {
+  const { db, storeMod } = await getServices();
+  await storeMod.addDoc(
+    storeMod.collection(db, "users", userId, "ratings"),
+    { ...rating, createdAt: storeMod.serverTimestamp() }
+  );
+}
+
+// ---- Issue / feedback reports (users/{uid}/feedback) ----
+export async function saveFeedbackIssue(userId, issue) {
+  const { db, storeMod } = await getServices();
+  await storeMod.addDoc(
+    storeMod.collection(db, "users", userId, "feedback"),
+    { ...issue, createdAt: storeMod.serverTimestamp() }
+  );
+}
+
+// ---- Drill results (users/{uid}/drillResults) ----
+export async function listDrillResults(userId) {
+  const { db, storeMod } = await getServices();
+  const q = storeMod.query(
+    storeMod.collection(db, "users", userId, "drillResults"),
+    storeMod.limit(200)
+  );
+  const snap = await storeMod.getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function saveDrillResult(userId, drillId, result) {
+  const { db, storeMod } = await getServices();
+  await storeMod.addDoc(
+    storeMod.collection(db, "users", userId, "drillResults"),
+    { drillId, ...result, createdAt: storeMod.serverTimestamp() }
+  );
+}
+
 // Write user profile to users/{userId} so admin can see who has signed in.
 export async function touchUserProfile(userId, { email, name, provider }) {
   const { db, storeMod } = await getServices();

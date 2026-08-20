@@ -1,5 +1,27 @@
 // Thin client for the Fracture backend (/api/*). Same-origin in production.
 
+/**
+ * Error thrown by the API client for any non-2xx response.
+ * Carries the HTTP status so callers can distinguish auth failures (401),
+ * validation errors (400), and provider outages (503) from network issues.
+ */
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message || `Request failed (${status || "network"})`);
+    this.name = "ApiError";
+    this.status = status || 0;
+  }
+}
+
+async function errorFromResponse(res) {
+  let message = `Request failed (${res.status})`;
+  try {
+    const j = await res.json();
+    if (j?.error) message = j.error;
+  } catch (_) {}
+  return new ApiError(message, res.status);
+}
+
 // Generic SSE reader: POSTs JSON, streams `data: {json}` events to onEvent().
 async function streamSSE(url, body, onEvent, signal) {
   const res = await fetch(url, {
@@ -9,9 +31,7 @@ async function streamSSE(url, body, onEvent, signal) {
     signal
   });
   if (!res.ok) {
-    let msg = `Request failed (${res.status})`;
-    try { const j = await res.json(); if (j?.error) msg = j.error; } catch (_) {}
-    throw new Error(msg);
+    throw await errorFromResponse(res);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder("utf-8");
@@ -77,7 +97,7 @@ export async function verifySources({ essay, audit, citation_style }) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ essay, audit, citation_style })
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Source check failed");
+  if (!res.ok) throw await errorFromResponse(res);
   return res.json();
 }
 
@@ -87,7 +107,7 @@ export async function exportPdf({ audit, sources, draft, citation_style }) {
     headers: { "Content-Type": "application/json", Accept: "application/pdf" },
     body: JSON.stringify({ audit, sources, draft, citation_style })
   });
-  if (!res.ok) throw new Error("PDF export failed");
+  if (!res.ok) throw await errorFromResponse(res);
   const blob = await res.blob();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);

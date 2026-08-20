@@ -28,5 +28,8 @@ pb_test_data/
 # Claude Code local config
 .claude/
 
+# Freebuff session state
+.freebuff/
+
 # Nested duplicate (old copy)
 fracturestudio-main/

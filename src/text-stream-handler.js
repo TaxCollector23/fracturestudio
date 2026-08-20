@@ -2,11 +2,12 @@ import { DEFAULT_MODEL } from "./audit-utils.js";
 import { buildChatMessages, buildRebuttalMessages } from "./prompts.js";
 import { collectTextFromOpenRouter, DEFAULT_SPEED_MODEL, logOpenRouterError, openRouterStream } from "./openrouter.js";
 import { startSse, writeDone, writeSse } from "./sse-utils.js";
+import { LIMITS } from "./request-utils.js";
 
 const MODES = {
   chat: {
     getText: (body) => String(body?.message || "").trim(),
-    tooLong: 6000,
+    tooLong: LIMITS.chatCharacters,
     messages: buildChatMessages,
     model: () => process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
     maxTokens: 1800,
@@ -14,7 +15,7 @@ const MODES = {
   },
   rebuttal: {
     getText: (body) => String(body?.draft || "").trim(),
-    tooLong: 40000,
+    tooLong: LIMITS.rebuttalCharacters,
     messages: buildRebuttalMessages,
     model: () => process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
     maxTokens: 2600,

@@ -44,13 +44,27 @@ Paste in a rubric alongside your draft and Fracture grades criterion by criterio
 
 ## Pages
 
-**Studio** — where you run the audit. Paste your draft, choose a mode and depth, and read the report. Includes the argument map, source verification panel, Fracture Chat, and rebuttal builder.
+**Dashboard** — the “what should I do next” hub for signed-in users. Shows your latest score and trend, weakest and strongest skills, active goals with a rebuilt-every-visit 5-day training plan, explainable recommendations (each with a *why*), recent saved work, and quick actions. Guests get the same workspace with local-only storage.
 
-**Past Work** — saved audits you can return to. Requires a free account.
+**Studio** — where you run the audit. Paste your draft, choose a mode and depth, and read the report. Includes the argument map, source verification panel, Fracture Chat, and rebuttal builder. Drafts autosave locally so a refresh or a sign-in round-trip never loses your work, and you can rate each report (correct / partially correct / incorrect / not useful) or flag a specific problem.
+
+**Practice** — the drill library: ten timed drills covering rebuttal, cross-examination, organization, evidence, argumentation, delivery, and prep. Each drill has instructions, a difficulty level, event relevance, a timer, optional AI-generated practice material, and a self-score that feeds back into your recommendations. Difficulty is recommended from your saved audit scores.
+
+**Rebuttals** — opponent preparation with structured practice modes: coach, aggressive opponent, technical opponent, judge questioning, or a beginner walkthrough. The plan is built against the mode you pick.
+
+**Past Work** — saved audits you can return to, each with a structured at-a-glance summary (top strengths / weaknesses) and a one-click “Continue in Studio”. Requires a free account.
 
 **About** — explains how Fracture reads and scores writing, what each part of an argument is checked for, and links to the full documentation.
 
-**Settings** — account preferences, citation style (MLA or APA), feedback depth and tone defaults.
+**Settings** — account preferences, role/event/focus profile, citation style (MLA or APA), feedback depth and tone defaults.
+
+### Skill tracking & progress
+
+Fracture derives a long-term performance profile from your saved audits — no generic AI memory. Each report is scored against a speech/debate skill taxonomy (argumentation, organization, clarity, rebuttal, evidence, persuasion, cross-examination, delivery, confidence, preparation, pacing, time management), and the dashboard aggregates those scores into trends: weakest and strongest categories, recently-improved skills, persistent weaknesses, and your most-practiced events. Skills that an audit has no signal for are never forced.
+
+### Command palette & feedback
+
+Press **⌘K / Ctrl+K** anywhere (or the Search button in the nav) for a command palette that jumps to pages, starts a new audit or goal, and searches your saved work, drills, and goals. A floating **Feedback** button opens a lightweight bug / confusing-feature / feature-request / incorrect-feedback reporter with captured context — the same channel the per-report rating widget feeds.
 
 ---
 
@@ -120,10 +134,39 @@ When prompted, select or create a project. The CLI auto-detects the correct sett
 ```bash
 npm install
 cp .env.example .env   # fill in your keys
-npm run dev
+cd app && npm install
 ```
 
-The dev server runs at `http://localhost:8000` with hot-reload.
+Run both processes from the repo root:
+
+```bash
+# Terminal 1 — API backend + serverless routes (port 8000)
+npm start
+
+# Terminal 2 — React frontend with hot reload (port 4567)
+cd app && npm run dev
+```
+
+Open **http://localhost:4567**. The Vite dev server proxies `/api/*` to the
+backend on port 8000.
+
+### Tests
+
+Core logic (audit normalization, scoring invariants, claim extraction, and
+frontend helpers) is covered by Vitest:
+
+```bash
+npm test            # run once
+npm run test:watch  # watch mode
+```
+
+### Backend layout
+
+`api/*.js` are thin adapters for Vercel serverless; the real logic lives in
+`src/` and is shared with the Express dev server. Shared request limits and
+error helpers live in `src/request-utils.js`; structured logging in
+`src/logger.js`. Keep character limits and the `{ error }` response shape
+consistent across all endpoints.
 
 See `.local-dev/` for platform-specific setup scripts and notes.
 

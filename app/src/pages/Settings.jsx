@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut, MessageSquare } from "lucide-react";
 import { useAuth } from "../lib/useAuth.jsx";
-import { loadPrefs, savePrefs, FORMATS, DEPTHS } from "../lib/prefs.js";
+import { loadPrefs, savePrefs, FORMATS, DEPTHS, ROLES, EVENTS, FOCUSES } from "../lib/prefs.js";
 import { savePreferences } from "../lib/firebase.js";
+import { openFeedbackModal } from "../components/FeedbackModal.jsx";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -33,6 +34,38 @@ export default function Settings() {
         {user
           ? <button onClick={() => { signOut(); navigate("/"); }} className="btn-ghost mt-5 py-2 px-4"><LogOut size={14} /> Sign out</button>
           : <button onClick={() => navigate("/auth")} className="btn-solid mt-5 py-2 px-4">Sign in</button>}
+      </section>
+
+      <section className="card p-6 mb-5">
+        <h2 className="font-serif text-xl mb-1">Practice profile</h2>
+        <p className="faint text-xs mb-4">These tune your dashboard, recommendations, and default mode. Change them any time.</p>
+        <div className="space-y-4">
+          <div>
+            <label className="label-mono mb-1.5">I am a…</label>
+            <select value={prefs.role || "student"} onChange={(e) => setPref("role", e.target.value)} className="field">
+              {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label-mono mb-1.5">Primary event</label>
+            <select value={prefs.event || ""} onChange={(e) => setPref("event", e.target.value)} className="field">
+              <option value="">Mixed / not sure</option>
+              {EVENTS.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label-mono mb-1.5">Right now I want to…</label>
+            <select value={prefs.focus || ""} onChange={(e) => setPref("focus", e.target.value)} className="field">
+              <option value="">Not set</option>
+              {FOCUSES.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <button onClick={() => openFeedbackModal({})} className="btn-ghost py-2 px-4 text-xs">
+              <MessageSquare size={13} /> Send feedback
+            </button>
+          </div>
+        </div>
       </section>
 
       <section className="card p-6">

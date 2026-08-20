@@ -36,12 +36,12 @@ function UserRow({ u }) {
       </button>
 
       {open && (
-        <div className="border-t border-[var(--color-border)] px-5 pb-5 pt-4 space-y-4">
+        <div className="border-t hair px-5 pb-5 pt-4 space-y-4">
           {(!u.allWritings || u.allWritings.length === 0) ? (
             <p className="faint text-sm">No submissions saved yet.</p>
           ) : (
             u.allWritings.map((w, i) => (
-              <div key={w.id || i} className="bg-[var(--color-surface)] rounded-lg p-4 space-y-2">
+              <div key={w.id || i} className="bg-zinc-50 dark:bg-zinc-900/50 rounded-lg p-4 space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate">{w.title || "Untitled"}</div>
@@ -50,7 +50,7 @@ function UserRow({ u }) {
                   <ScoreBadge score={w.score} />
                 </div>
                 {w.draft && (
-                  <div className="text-xs muted leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto rounded bg-[var(--color-bg)] p-3 font-mono">
+                  <div className="text-xs muted leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto rounded bg-zinc-100 dark:bg-zinc-950/60 p-3 font-mono">
                     {w.draft.slice(0, 800)}{w.draft.length > 800 ? "\n…" : ""}
                   </div>
                 )}
@@ -108,18 +108,18 @@ export default function Admin() {
                 onChange={(e) => setPw(e.target.value)}
                 placeholder="Password"
                 autoFocus
-                className="input w-full pr-10"
+                className="field pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 faint hover:text-[var(--color-text)] transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 faint hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
               >
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
             {error && <p className="text-rose-500 text-sm">{error}</p>}
-            <button type="submit" disabled={loading} className="btn-primary w-full">
+            <button type="submit" disabled={loading} className="btn-solid w-full">
               {loading ? "Checking…" : "Enter"}
             </button>
           </form>

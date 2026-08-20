@@ -9,6 +9,8 @@ import { handleTextStream } from "./text-stream-handler.js";
 import { createReportPdf } from "./report-pdf.js";
 import { loadEnv } from "./env.js";
 import { getHealthPayload } from "./health.js";
+import { LIMITS, sendError } from "./request-utils.js";
+import { logError, logInfo, logRequest } from "./logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 loadEnv();
@@ -16,6 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 const PUBLIC_DIR = join(__dirname, "../public");
 
+app.use(logRequest);
 app.use(express.json({ limit: "256kb" }));
 
 // Keep both clean URLs and static filenames available in development.
@@ -35,24 +38,23 @@ app.post("/api/verify-sources", async (req, res) => {
   const citationStyle = req.body?.citation_style === "apa" ? "apa" : "mla";
 
   if (!essay && !audit) {
-    return res.status(400).json({ error: "Provide draft text or a Fracture report to verify." });
+    return sendError(res, 400, "Provide draft text or a Fracture report to verify.");
   }
-  if (essay.length > 40000) {
-    return res.status(400).json({ error: "Draft exceeds the 40,000 character limit." });
+  if (essay.length > LIMITS.verifySourcesCharacters) {
+    return sendError(res, 400, `Draft exceeds the ${LIMITS.verifySourcesCharacters.toLocaleString()} character limit.`);
   }
 
   try {
     return res.status(200).json(await verifySources({ essay, audit, citationStyle }));
   } catch (err) {
-    return res.status(503).json({
-      error: `Source verification could not complete: ${err?.message || String(err)}`
-    });
+    logError("verify-sources.failed", err);
+    return sendError(res, 503, `Source verification could not complete: ${err?.message || String(err)}`);
   }
 });
 
 app.post("/api/report-pdf", async (req, res) => {
   if (!req.body?.audit || typeof req.body.audit !== "object") {
-    return res.status(400).json({ error: "Run Fracture It before exporting a PDF report." });
+    return sendError(res, 400, "Run Fracture It before exporting a PDF report.");
   }
 
   try {
@@ -67,7 +69,8 @@ app.post("/api/report-pdf", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(pdf);
   } catch (err) {
-    return res.status(500).json({ error: `PDF export could not complete: ${err?.message || String(err)}` });
+    logError("report-pdf.failed", err);
+    return sendError(res, 500, "PDF export could not complete.");
   }
 });
 
@@ -100,9 +103,17 @@ app.get("/auth/callback", (_req, res) => res.sendFile(join(PUBLIC_DIR, "auth-cal
 app.get("/admin", (_req, res) => res.sendFile(join(PUBLIC_DIR, "admin.html")));
 
 app.use((_req, res) => {
-  res.status(404).json({ error: "Not found" });
+  sendError(res, 404, "Not found");
+});
+
+// Central error handler: keeps unexpected failures off the wire as raw stacks
+// while still logging enough detail to debug.
+app.use((err, _req, res, _next) => {
+  logError("http.unhandled", err);
+  sendError(res, 500, "Something went wrong. Please try again.");
 });
 
 app.listen(PORT, () => {
+  logInfo("server.started", { port: PORT });
   console.log(`\nFracture Studio running at http://localhost:${PORT}\n`);
 });

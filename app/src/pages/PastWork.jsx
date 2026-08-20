@@ -1,14 +1,32 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { FolderOpen, Loader2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { FolderOpen, Loader2, ArrowRight, Sparkles, TrendingUp, AlertTriangle } from "lucide-react";
 import { useAuth } from "../lib/useAuth.jsx";
 import { listProjects } from "../lib/firebase.js";
 import { FORMATS } from "../lib/prefs.js";
+import { auditSkillScores, skillById } from "../lib/skills.js";
 
 const modeLabel = (id) => FORMATS.find((f) => f.id === id)?.label || "Argument / Debate";
 
+// Quick structured round summary from one audit: top strengths + weaknesses.
+function skillStrip(audit, mode) {
+  const scores = auditSkillScores(audit, mode);
+  const ranked = Object.entries(scores).sort((a, b) => b[1].score - a[1].score);
+  if (!ranked.length) return null;
+  return {
+    strengths: ranked.slice(0, 2),
+    weaknesses: ranked.slice(-2).reverse()
+  };
+}
+
+function openInStudio(navigate, it) {
+  sessionStorage.setItem("fracture_continue", JSON.stringify({ draft: it.draft, audit: it.audit, mode: it.mode }));
+  navigate("/studio");
+}
+
 export default function PastWork() {
   const { user, ready } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState(null);
   const [active, setActive] = useState(null);
   const [err, setErr] = useState(null);
@@ -34,7 +52,13 @@ export default function PastWork() {
       {err && <p className="text-red-500 text-sm">{err}</p>}
 
       {user && items && items.length === 0 && (
-        <p className="muted">No saved work yet. Run an audit in the Studio and hit Save.</p>
+        <div className="card p-10 text-center">
+          <Sparkles size={26} className="faint mx-auto mb-4" />
+          <p className="muted mb-5 max-w-sm mx-auto text-sm leading-relaxed">
+            Saved audits live here — each one also feeds your skill profile and the recommendations on your Dashboard.
+          </p>
+          <Link to="/studio" className="btn-solid inline-flex">Run your first audit <ArrowRight size={14} /></Link>
+        </div>
       )}
 
       {user && items && items.length > 0 && (
@@ -59,6 +83,37 @@ export default function PastWork() {
               {active.score != null && <span className="font-serif text-4xl">{active.score}<span className="text-lg muted">/100</span></span>}
             </div>
             {active.audit?.verdict && <p className="muted text-sm leading-relaxed mb-4 whitespace-pre-line">{active.audit.verdict}</p>}
+
+            {(() => {
+              const strip = skillStrip(active.audit, active.mode);
+              if (!strip) return null;
+              return (
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="rounded-sm border hair p-3">
+                    <div className="label-mono mb-1.5 flex items-center gap-1"><TrendingUp size={11} /> Strongest</div>
+                    <ul className="space-y-1">
+                      {strip.strengths.map(([id, v]) => (
+                        <li key={id} className="text-xs"><span className="font-medium">{skillById(id).label}</span> <span className="font-mono faint">{v.score}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-sm border hair p-3">
+                    <div className="label-mono mb-1.5 flex items-center gap-1"><AlertTriangle size={11} /> Weakest</div>
+                    <ul className="space-y-1">
+                      {strip.weaknesses.map(([id, v]) => (
+                        <li key={id} className="text-xs"><span className="font-medium">{skillById(id).label}</span> <span className="font-mono faint">{v.score}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => openInStudio(navigate, active)} className="btn-solid py-2 px-3.5 text-xs">
+                Continue in Studio <ArrowRight size={13} />
+              </button>
+            </div>
             <div className="label-mono mb-1">Draft</div>
             <p className="faint text-sm leading-relaxed whitespace-pre-line">{active.draft}</p>
           </div>

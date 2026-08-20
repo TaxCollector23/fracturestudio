@@ -2,15 +2,45 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Any write to a project must keep the document within size limits:
+    // the pasted draft matches the API's 40,000-char cap, and the whole
+    // document (draft + audit JSON) stays well under Firestore's 1 MiB limit.
+    function validProjectWrite() {
+      let draftOk = !("draft" in request.resource.data)
+        || request.resource.data.draft.size() <= 40000;
+      let docOk = request.resource.data.size() < 1000000;
+      return draftOk && docOk;
+    }
+
     match /users/{userId} {
       allow read, create, update: if request.auth != null && request.auth.uid == userId;
       allow delete: if false;
 
       match /projects/{projectId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId
+          && validProjectWrite();
       }
 
       match /settings/{settingId} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Goals, report ratings, feedback reports, and drill results are all
+      // owned by the signed-in user and kept small (well under 1 MiB).
+      match /goals/{goalId} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /ratings/{ratingId} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /feedback/{issueId} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /drillResults/{resultId} {
         allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
       }
     }

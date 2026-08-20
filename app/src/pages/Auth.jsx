@@ -12,7 +12,19 @@ export default function Auth() {
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validate = (action) => {
+    if (action === "google") return null; // Google shows its own account picker.
+    if (!email.trim()) return "Enter your email address first.";
+    if (!EMAIL_RE.test(email.trim())) return "That email address doesn't look right — check the format.";
+    if (password.length < 8) return "Password must be at least 8 characters.";
+    return null;
+  };
+
   const run = async (fn, key) => {
+    const problem = validate(key);
+    if (problem) { setErr(problem); return; }
     setErr(null); setMsg(null); setBusy(key);
     try { await fn(); navigate("/studio"); }
     catch (e) { setErr(e?.message || "Something went wrong."); }
@@ -57,7 +69,12 @@ export default function Auth() {
           <div className="flex items-center justify-between text-xs">
             <button onClick={() => run(() => createEmailAccount(email, password), "create")} disabled={!!busy} className="faint hover:text-zinc-900 dark:hover:text-zinc-200">Create account</button>
             <button
-              onClick={async () => { setErr(null); try { await sendReset(email); setMsg("Password reset email sent."); } catch (e) { setErr(e?.message || "Could not send reset."); } }}
+              onClick={async () => {
+                if (!email.trim()) { setErr("Enter your email address to reset your password."); return; }
+                setErr(null);
+                try { await sendReset(email); setMsg("Password reset email sent."); }
+                catch (e) { setErr(e?.message || "Could not send reset."); }
+              }}
               disabled={!!busy} className="faint hover:text-zinc-900 dark:hover:text-zinc-200">Forgot password?</button>
           </div>
         </div>

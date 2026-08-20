@@ -1,124 +1,32 @@
-import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Sparkles, Download, Save, MessageSquare, Send, Loader2 } from "lucide-react";
-import { analyze, streamText, exportPdf, summarizeTitle } from "../lib/api.js";
-import { loadPrefs, savePrefs, FORMATS, DEPTHS } from "../lib/prefs.js";
-import { useAuth } from "../lib/useAuth.jsx";
-import { saveProject } from "../lib/firebase.js";
+import {
+  Sparkles, Download, Save, MessageSquare, Send, Loader2, Swords,
+  FileText, RotateCcw
+} from "lucide-react";
+import { exportPdf } from "../lib/api.js";
+import { FORMATS, DEPTHS, formatById, depthById } from "../lib/prefs.js";
+import { useAudit } from "../lib/useAudit.js";
+import { useChat } from "../lib/useChat.js";
+import { breakdownBars, scoreLabel } from "../lib/ui.js";
+import Report from "../components/Report.jsx";
+import OnboardingModal from "../components/OnboardingModal.jsx";
 
-function scoreLabel(s) {
-  if (s == null) return "";
-  if (s >= 95) return "Outstanding";
-  if (s >= 85) return "Excellent";
-  if (s >= 70) return "Solid";
-  if (s >= 50) return "Needs work";
-  return "Breaks down";
-}
+const SAMPLE = `Resolved: High schools should start no earlier than 9:00 a.m.
+
+Schools must delay start times to 9:00 a.m. because sleep deprivation harms students. The CDC reports that most teenagers get less than seven hours of sleep on school nights, and the American Academy of Pediatrics recommends 8.5 to 9.5 hours for adolescents. Because early bells force students to wake before their natural circadian rhythm, they arrive at first period too tired to learn, which means their grades suffer and their health declines. Therefore, delaying the bell would improve both academic outcomes and student well-being.`;
 
 export default function Studio() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [essay, setEssay] = useState("");
-  const [prefs, setPrefs] = useState(loadPrefs());
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState({ progress: 0, message: "" });
-  const [sections, setSections] = useState([]);
-  const [audit, setAudit] = useState(null);
-  const [error, setError] = useState(null);
-  const [saved, setSaved] = useState(false);
-
-  // chat
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatMsgs, setChatMsgs] = useState([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatBusy, setChatBusy] = useState(false);
-  const chatEndRef = useRef(null);
-
-  useEffect(() => savePrefs(prefs), [prefs]);
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMsgs]);
-
-  const setPref = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
-
-  async function run() {
-    if (!essay.trim() || running) return;
-    setRunning(true); setError(null); setSections([]); setAudit(null); setSaved(false);
-    setProgress({ progress: 4, message: "Preparing the audit" });
-    let gotAudit = false;
-    let gotSections = false;
-    let tokens = 0;
-    try {
-      await analyze({ essay, preferences: prefs }, {
-        // Server milestones set the label; never let them pull the bar backwards.
-        onProgress: (p) => setProgress((prev) => ({
-          progress: Math.max(prev.progress, p.progress),
-          message: p.message || prev.message
-        })),
-        // Nudge the bar forward as tokens stream in, so it visibly moves every few
-        // tokens and the wait feels alive instead of frozen.
-        onModelDelta: () => {
-          tokens += 1;
-          if (tokens % 2 === 0) {
-            setProgress((prev) => {
-              if (prev.progress >= 88) return prev;
-              const target = Math.min(88, 22 + tokens * 0.18);
-              return { progress: Math.max(prev.progress, target), message: prev.message };
-            });
-          }
-        },
-        onReportSection: (s) => { gotSections = true; setSections((prev) => [...prev, s]); },
-        onAudit: (a) => { gotAudit = true; setAudit(a); }
-      });
-      // The stream can end cleanly without ever producing a report when every free
-      // model is unavailable. Don't reset to an empty panel silently — say what happened.
-      if (!gotAudit && !gotSections) {
-        setError("The free models are overloaded right now and didn't return a report. Wait a moment and press Fracture It again.");
-      }
-    } catch (e) {
-      setError(e?.message || "The audit could not complete. Try again.");
-    } finally {
-      setRunning(false);
-      setProgress({ progress: 100, message: "Ready" });
-    }
-  }
-
-  const [saving, setSaving] = useState(false);
-  async function save() {
-    if (!audit || saving) return;
-    if (!user) { navigate("/auth"); return; }
-    setSaving(true);
-    try {
-      const summary = await summarizeTitle(essay).catch(() => "");
-      const title = summary || (audit.thesis?.quote || "").slice(0, 70) || essay.trim().slice(0, 60) || "Untitled draft";
-      await saveProject(user.id, {
-        title,
-        draft: essay,
-        audit,
-        score: audit.overall_score ?? null,
-        mode: prefs.analysisFormat
-      });
-      setSaved(true);
-    } catch (e) { setError("Could not save: " + (e?.message || "")); }
-    finally { setSaving(false); }
-  }
-
-  async function sendChat() {
-    const q = chatInput.trim();
-    if (!q || chatBusy) return;
-    setChatInput("");
-    setChatMsgs((m) => [...m, { role: "user", content: q }, { role: "assistant", content: "" }]);
-    setChatBusy(true);
-    try {
-      await streamText("chat", { message: q, draft: essay, report: audit, history: chatMsgs.slice(-8) }, {
-        onDelta: (d) => setChatMsgs((m) => {
-          const copy = [...m]; copy[copy.length - 1] = { role: "assistant", content: copy[copy.length - 1].content + d }; return copy;
-        })
-      });
-    } catch (e) {
-      setChatMsgs((m) => { const copy = [...m]; copy[copy.length - 1] = { role: "assistant", content: "Chat error: " + (e?.message || "") }; return copy; });
-    } finally { setChatBusy(false); }
-  }
+  const auditFlow = useAudit();
+  const {
+    essay, setEssay, rubric, setRubric, prefs, setPref,
+    running, progress, sections, audit, error, saved, saving,
+    essayRef, run, jumpToQuote, clear, save, copyReport, buildRebuttals
+  } = auditFlow;
+  const chat = useChat({ draft: essay, audit });
 
   const score = audit?.overall_score;
+  const dims = breakdownBars(audit?.score_breakdown);
+  const mode = formatById(prefs.analysisFormat);
+  const depth = depthById(prefs.depthLevel);
 
   return (
     <div className="max-w-7xl mx-auto px-5 md:px-8 py-10">
@@ -127,33 +35,56 @@ export default function Studio() {
         <h1 className="font-serif text-4xl md:text-5xl">Fracture the draft. <span className="italic muted">Plan the repair.</span></h1>
       </header>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Input */}
-        <section className="card p-5 flex flex-col">
-          <div className="flex flex-wrap gap-3 mb-4">
-            <div className="flex-1 min-w-[160px]">
-              <label className="label-mono mb-1.5">Mode</label>
+      <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-6 items-start">
+        {/* ── Input ─────────────────────────────────────────────────────── */}
+        <section className="card p-5 flex flex-col lg:sticky lg:top-20">
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="col-span-2">
+              <label className="label-mono mb-1.5">Analysis mode</label>
               <select value={prefs.analysisFormat} onChange={(e) => setPref("analysisFormat", e.target.value)} className="field">
                 {FORMATS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
               </select>
+              <p className="faint text-xs mt-1.5 leading-relaxed">{mode.hint}</p>
             </div>
-            <div className="flex-1 min-w-[160px]">
+            <div>
+              <label className="label-mono mb-1.5">Citation style</label>
+              <select value={prefs.citationStyle} onChange={(e) => setPref("citationStyle", e.target.value)} className="field">
+                <option value="mla">MLA</option>
+                <option value="apa">APA</option>
+              </select>
+            </div>
+            <div>
               <label className="label-mono mb-1.5">Depth</label>
               <select value={prefs.depthLevel} onChange={(e) => setPref("depthLevel", e.target.value)} className="field">
-                {DEPTHS.map((d) => <option key={d.id} value={d.id}>{d.label} — {d.hint}</option>)}
+                {DEPTHS.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
               </select>
+            </div>
+            <div className="col-span-2">
+              <div className="rounded-sm bg-zinc-50 dark:bg-zinc-900/50 border hair px-3 py-2 text-xs muted leading-relaxed">
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">{depth.label}:</span> {depth.blurb}
+              </div>
             </div>
           </div>
 
-          <textarea value={essay} onChange={(e) => setEssay(e.target.value)}
-            placeholder="Paste your speech, essay, debate case, position paper, or research paper here…"
-            className="field flex-1 min-h-[340px] resize-y leading-relaxed font-sans" />
+          {prefs.analysisFormat === "rubric" && (
+            <div className="mb-3">
+              <label className="label-mono mb-1.5">Rubric (optional)</label>
+              <textarea value={rubric} onChange={(e) => setRubric(e.target.value)}
+                placeholder="Paste your rubric here. Fracture grades your draft against each criterion."
+                className="field min-h-[110px] resize-y leading-relaxed font-sans" />
+              <p className="faint text-xs mt-1.5">Leave blank to paste the rubric below your draft instead.</p>
+            </div>
+          )}
 
-          <div className="flex items-center justify-between mt-4">
+          <textarea ref={essayRef} value={essay} onChange={(e) => setEssay(e.target.value)}
+            placeholder="Paste your speech, essay, debate case, position paper, or research paper here…"
+            className="field flex-1 min-h-[300px] resize-y leading-relaxed font-sans" />
+
+          <div className="flex items-center justify-between mt-3">
             <span className="faint text-xs font-mono">{essay.trim() ? essay.trim().length.toLocaleString() : 0} chars</span>
             <div className="flex gap-2">
-              <button onClick={() => { setEssay(""); setSections([]); setAudit(null); }} className="btn-ghost py-2.5 px-4">Clear</button>
-              <button onClick={run} disabled={running || !essay.trim()} className="btn-solid py-2.5 px-5">
+              <button onClick={clear} className="btn-ghost py-2 px-3.5 text-xs">Clear</button>
+              <button onClick={run} disabled={running || !auditFlow.payload().trim()} className="btn-solid py-2 px-5 text-sm">
                 {running ? <><Loader2 size={15} className="animate-spin" /> Fracturing…</> : <><Sparkles size={15} /> Fracture It</>}
               </button>
             </div>
@@ -162,10 +93,8 @@ export default function Studio() {
           {running && (
             <div className="mt-4">
               <div className="h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-zinc-950 dark:bg-zinc-100 rounded-full transition-[width] duration-200 ease-out"
-                  style={{ width: `${Math.max(progress.progress, 4)}%` }}
-                />
+                <div className="h-full bg-zinc-950 dark:bg-zinc-100 rounded-full transition-[width] duration-200 ease-out"
+                  style={{ width: `${Math.max(progress.progress, 4)}%` }} />
               </div>
               <div className="flex items-center justify-between mt-2">
                 <p className="faint text-xs font-mono flex items-center gap-2">
@@ -179,63 +108,128 @@ export default function Studio() {
           {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
         </section>
 
-        {/* Output */}
-        <section className="card p-5 min-h-[460px]">
-          {!sections.length && !running && (
-            <div className="h-full flex flex-col items-center justify-center text-center py-20">
+        {/* ── Report ────────────────────────────────────────────────────── */}
+        <section className="min-h-[460px]">
+          {!audit && !running && (
+            <div className="card h-full flex flex-col items-center justify-center text-center py-20 px-8">
               <Sparkles size={28} className="faint mb-4" />
-              <p className="muted max-w-xs">Your Fracture report will appear here — score, collapse point, claim-by-claim analysis, evidence checks, and a revision plan.</p>
+              <p className="muted max-w-sm mb-5">Your Fracture report appears here — score, collapse point, claim map, hidden assumptions, opponent attacks, evidence checks, and a revision plan.</p>
+              <button onClick={() => { setEssay(SAMPLE); }} className="btn-ghost text-xs py-2 px-4">Load a sample debate case</button>
             </div>
           )}
 
-          {(score != null) && (
-            <div className="flex items-end justify-between mb-6 pb-5 border-b hair">
-              <div>
-                <div className="label-mono mb-1">Overall score</div>
-                <div className="font-serif text-6xl leading-none">{score}<span className="text-2xl muted">/100</span></div>
+          {running && !audit && (
+            <div className="card p-5">
+              <div className="label-mono mb-3">Live report</div>
+              <div className="space-y-4">
+                {sections.map((s, i) => (
+                  <div key={i} className="animate-fadeUp">
+                    <h3 className="font-serif text-lg mb-1.5">{s.title}</h3>
+                    <p className="muted text-sm leading-relaxed whitespace-pre-line">{s.body}</p>
+                  </div>
+                ))}
               </div>
-              <div className="text-right">
-                <div className="font-serif text-2xl italic">{scoreLabel(score)}</div>
-                <div className="flex gap-2 mt-3">
+            </div>
+          )}
+
+          {audit && (
+            <div className="card p-6">
+              {/* Score hero */}
+              <div className="flex items-start justify-between pb-5 border-b hair mb-5">
+                <div>
+                  <div className="label-mono mb-1">Overall score</div>
+                  <div className="font-serif text-6xl leading-none">{score}<span className="text-2xl muted">/100</span></div>
+                  <div className="font-serif text-xl italic mt-1.5">{scoreLabel(score)}</div>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-end">
                   <button onClick={save} disabled={saving} className="btn-ghost py-2 px-3 text-xs"><Save size={13} /> {saving ? "Saving…" : saved ? "Saved" : "Save"}</button>
                   <button onClick={() => exportPdf({ audit, sources: audit?.source_verification_report, draft: essay, citation_style: prefs.citationStyle })} className="btn-ghost py-2 px-3 text-xs"><Download size={13} /> PDF</button>
+                  <button onClick={copyReport} className="btn-ghost py-2 px-3 text-xs"><FileText size={13} /> Copy report</button>
                 </div>
+              </div>
+
+              {/* Score breakdown */}
+              {dims.length > 0 && (
+                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 pb-5 border-b hair mb-5">
+                  {dims.map((d) => (
+                    <div key={d.key}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="muted">{d.label}</span>
+                        <span className="font-mono">{d.value}</span>
+                      </div>
+                      <div className="h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-zinc-950 dark:bg-zinc-100 rounded-full" style={{ width: `${d.width}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Report
+                audit={audit}
+                essay={essay}
+                mode={prefs.analysisFormat}
+                onQuote={jumpToQuote}
+                onAskAbout={chat.askAbout}
+              />
+
+              {/* Next steps */}
+              <div className="flex flex-wrap gap-2 pt-5 border-t hair mt-5">
+                <button onClick={buildRebuttals} className="btn-ghost py-2 px-3.5 text-xs"><Swords size={13} /> Build rebuttal plan</button>
+                {audit?.source_verification_report && (
+                  <a href="#sources" className="btn-ghost py-2 px-3.5 text-xs"><Sparkles size={13} /> Verify sources</a>
+                )}
+                <button onClick={() => { chat.setOpen(true); }} className="btn-ghost py-2 px-3.5 text-xs"><MessageSquare size={13} /> Ask in chat</button>
+                <button onClick={run} className="btn-ghost py-2 px-3.5 text-xs"><RotateCcw size={13} /> Re-run</button>
               </div>
             </div>
           )}
-
-          <div className="space-y-5">
-            {sections.map((s, i) => (
-              <div key={i} className="animate-fadeUp">
-                <h3 className="font-serif text-lg mb-1.5">{s.title}</h3>
-                <p className="muted text-sm leading-relaxed whitespace-pre-line">{s.body}</p>
-              </div>
-            ))}
-          </div>
         </section>
       </div>
+
+      {/* First-time setup: ask what they're here for after their first audit. */}
+      {audit && !prefs.onboardingDone && (
+        <OnboardingModal
+          onDone={(next) => {
+            setPref("role", next.role);
+            setPref("event", next.event);
+            setPref("focus", next.focus);
+            setPref("onboardingDone", true);
+          }}
+        />
+      )}
 
       {/* Chat */}
       {audit && (
         <section className="card mt-6 overflow-hidden">
-          <button onClick={() => setChatOpen((o) => !o)} className="w-full flex items-center gap-2 px-5 py-4 text-left">
+          <button onClick={() => chat.setOpen((o) => !o)} className="w-full flex items-center gap-2 px-5 py-4 text-left">
             <MessageSquare size={16} /> <span className="font-serif text-lg">Fracture Chat</span>
-            <span className="faint text-xs ml-auto">{chatOpen ? "Hide" : "Ask about this draft"}</span>
+            <span className="faint text-xs ml-auto">{chat.open ? "Hide" : "Ask about this draft"}</span>
           </button>
-          {chatOpen && (
+          {chat.open && (
             <div className="px-5 pb-5">
+              {chat.selectedPoint && (
+                <div className="mb-3 flex items-center gap-2 text-xs bg-zinc-50 dark:bg-zinc-900/50 border hair rounded-sm px-3 py-2">
+                  <span className="label-mono">Asking about</span>
+                  <span className="truncate muted italic">“{chat.selectedPoint}”</span>
+                  <button onClick={() => chat.setSelectedPoint(null)} className="ml-auto text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-50">✕</button>
+                </div>
+              )}
               <div className="max-h-72 overflow-y-auto space-y-3 mb-3">
-                {chatMsgs.map((m, i) => (
+                {chat.msgs.length === 0 && (
+                  <p className="faint text-xs">Ask Fracture to rewrite a line, explain a diagnosis, or draft the missing warrant.</p>
+                )}
+                {chat.msgs.map((m, i) => (
                   <div key={i} className={`text-sm leading-relaxed ${m.role === "user" ? "text-zinc-950 dark:text-zinc-50 font-medium" : "muted whitespace-pre-line"}`}>
-                    <span className="label-mono mr-2 align-middle">{m.role === "user" ? "You" : "Fracture"}</span>{m.content || (chatBusy && i === chatMsgs.length - 1 ? "…" : "")}
+                    <span className="label-mono mr-2 align-middle">{m.role === "user" ? "You" : "Fracture"}</span>{m.content || (chat.busy && i === chat.msgs.length - 1 ? "…" : "")}
                   </div>
                 ))}
-                <div ref={chatEndRef} />
+                <div ref={chat.endRef} />
               </div>
               <div className="flex gap-2">
-                <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendChat()}
+                <input value={chat.input} onChange={(e) => chat.setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && chat.send()}
                   placeholder="e.g. rewrite my intro to be punchier" className="field flex-1" />
-                <button onClick={sendChat} disabled={chatBusy} className="btn-solid px-4">{chatBusy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}</button>
+                <button onClick={chat.send} disabled={chat.busy} className="btn-solid px-4">{chat.busy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}</button>
               </div>
             </div>
           )}

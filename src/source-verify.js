@@ -24,8 +24,8 @@ const STOP_WORDS = new Set([
 
 const FACTUAL_SIGNALS = [
   /\baccording to\b/i,
-  /\b(study|report|survey|research|data|statistics|evidence|article|journal|book|source)\b/i,
-  /\b(found|shows?|showed|suggests?|demonstrates?|indicates?|proves?|reported|published)\b/i,
+  /\b(study|studies|report|reports|reported|survey|research|data|statistics|evidence|article|journal|book|source)\b/i,
+  /\b(found|finds?|shows?|showed|suggests?|demonstrates?|indicates?|proves?|published|claims?|states?)\b/i,
   /\b(causes?|caused|leads? to|results? in|increases?|decreases?|reduces?|prevents?|improves?)\b/i,
   /\b(in|since|by|during)\s+(1[5-9]\d{2}|20\d{2})\b/i,
   /\b\d+(?:\.\d+)?\s*(%|percent|million|billion|thousand|years?|people|students|adults)\b/i,

@@ -1,5 +1,5 @@
 import { verifySources } from "../src/source-verify.js";
-import { parseJsonBody, sendOptions } from "../src/request-utils.js";
+import { LIMITS, parseJsonBody, sendOptions } from "../src/request-utils.js";
 
 export const config = { maxDuration: 60 };
 
@@ -19,10 +19,10 @@ export default async function handler(req, res) {
   const citationStyle = body?.citation_style === "apa" ? "apa" : "mla";
 
   if (!essay && !audit) {
-    return res.status(400).json({ error: "Provide essay text or an audit object to verify." });
+    return res.status(400).json({ error: "Provide draft text or a Fracture report to verify." });
   }
-  if (essay.length > 40000) {
-    return res.status(400).json({ error: "Essay exceeds maximum length (40,000 characters)." });
+  if (essay.length > LIMITS.verifySourcesCharacters) {
+    return res.status(400).json({ error: `Draft exceeds the ${LIMITS.verifySourcesCharacters.toLocaleString()} character limit.` });
   }
 
   try {

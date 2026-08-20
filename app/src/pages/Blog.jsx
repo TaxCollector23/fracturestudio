@@ -90,7 +90,7 @@ export default function Blog() {
               transition={{ duration: 0.25 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between gap-4 p-7 pb-5 border-b border-[var(--color-border)]">
+              <div className="flex items-start justify-between gap-4 p-7 pb-5 border-b hair">
                 <div>
                   <div className="flex items-center gap-3 mb-3">
                     <span className="pill">{active.tag}</span>
@@ -98,7 +98,7 @@ export default function Blog() {
                   </div>
                   <h2 className="font-serif text-2xl leading-tight">{active.title}</h2>
                 </div>
-                <button onClick={() => setActive(null)} className="shrink-0 faint hover:text-[var(--color-text)] transition-colors mt-1">
+                <button onClick={() => setActive(null)} className="shrink-0 faint hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mt-1">
                   <X size={20} />
                 </button>
               </div>

@@ -18,7 +18,7 @@ const FEATURES = [
   { icon: GitBranch, title: "Argument dependency map", body: "See how every claim, warrant, and assumption connects, so you fix the cause, not the symptom." },
   { icon: ShieldCheck, title: "Live evidence checks", body: "Before grading, Fracture searches the web for your factual claims and scores you on what's actually verifiable." },
   { icon: Clock, title: "Full audit in under a minute", body: "Paste a draft and get a calibrated score, priority fixes, and rewrites you can paste straight back in." },
-  { icon: BookOpen, title: "Six analysis modes", body: "Argument, speech, essay, research paper, rubric grading, and Model UN — each with its own rubric." }
+  { icon: BookOpen, title: "Seven analysis modes", body: "Argument, speech, essay, college essay, research paper, rubric grading, and Model UN — each with its own rubric." }
 ];
 
 const STEPS = [

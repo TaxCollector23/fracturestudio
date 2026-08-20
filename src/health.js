@@ -1,5 +1,6 @@
 import { loadEnv } from "./env.js";
 import { getOpenRouterRuntimeConfig } from "./openrouter.js";
+import { LIMITS } from "./request-utils.js";
 
 export function getHealthPayload() {
   loadEnv();
@@ -15,8 +16,7 @@ export function getHealthPayload() {
       speedModel: openrouter.speedModel
     },
     limits: {
-      analyzeCharacters: 40000,
-      chatCharacters: 6000,
+      ...LIMITS,
       openrouterRequestTimeoutMs: openrouter.requestTimeoutMs,
       openrouterStreamStallMs: openrouter.streamStallMs
     }
