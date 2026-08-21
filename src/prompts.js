@@ -1343,7 +1343,7 @@ function buildLeanSchema(mode, depth) {
       "fix": "one concrete repair the writer can paste in, or empty string if already strong"
     }
   ],
-  "_claims_note": "REQUIRED: rate every major claim (typically 3-6), including strong ones. This is the claim-by-claim diagnostic map — separate from priority_fixes.",
+  "_claims_note": "Rate every major claim (typically 3-6), separate from priority_fixes. The thesis is always a claim. Any evidence sentence that asserts a fact is a claim. A warrant is a claim. Include strong claims too — they tell the reader what is already working.",
   "assumption_audit": [
     {
       "assumption": "the specific unstated premise the argument depends on — state it as a complete sentence the author never writes",
@@ -1969,7 +1969,6 @@ export function buildRebuttalMessages(input = {}) {
   const draft = compactContext(input.draft, 14000);
   const report = compactContext(input.report, 8000);
   const request = compactContext(input.message, 1600);
-  const style = practiceStyleLine(input.style);
   return [
     { role: 'system', content: REBUTTAL_SYSTEM_PROMPT },
     {
@@ -1977,25 +1976,10 @@ export function buildRebuttalMessages(input = {}) {
       content: [
         draft ? `Current speech or argument:\n${draft}` : '',
         report ? `Existing Fracture report context:\n${report}` : '',
-        style ? `PRACTICE MODE — ${style}` : '',
         request ? `User preparation request:\n${request}` : 'Prepare the strongest useful rebuttal plan for this argument.'
       ].filter(Boolean).join('\n\n')
     }
   ];
-}
-
-// Structured practice modes keep the AI focused on a specific training goal.
-const PRACTICE_STYLES = {
-  coach: 'You are a supportive coach preparing this debater for a round. Warm but precise: give them the plan they could actually deliver tomorrow.',
-  aggressive: 'You are preparing this debater against an AGGRESSIVE opponent who attacks every assertion immediately and talks over weaker answers. Every attack below must be sharp, fast, and include the exact aggressive language the opponent would use, plus the strongest possible reply.',
-  technical: 'You are preparing this debater against a TECHNICAL opponent who wins on evidence comparison, definitional ground, and dropped burdens. Focus the plan on warrant gaps, weighing, and the arguments the opponent will punish if dropped.',
-  judge: 'You are preparing this debater for JUDGE QUESTIONING — a judge who interrupts to ask about the weakest step in the reasoning. Deliver the questions the judge will ask and the clean, short answers (claim, warrant, impact) that satisfy them.',
-  beginner: 'You are preparing a BEGINNER debater. Keep the plan simple and walk them through each step: what the opponent will say, why it threatens, and one clear way to answer, in plain language.'
-};
-
-function practiceStyleLine(style) {
-  if (!style) return '';
-  return PRACTICE_STYLES[String(style).toLowerCase()] || '';
 }
 
 export function buildChatMessages(input = {}) {

@@ -126,7 +126,8 @@ function readWithTimeout(reader, inactivityMs) {
 
 export function prepareAuditFromModelText(rawText, essay) {
   try {
-    return { audit: normalizeAudit(parseJsonWithRepair(rawText), essay), recovered: false };
+    const audit = normalizeAudit(parseJsonWithRepair(rawText), essay);
+    return { audit, recovered: false };
   } catch (err) {
     return {
       audit: buildRecoveryAudit(essay, `The model returned malformed JSON, so Fracture generated a stable validated report instead. Recovery reason: ${err.message}`),
@@ -136,7 +137,16 @@ export function prepareAuditFromModelText(rawText, essay) {
 }
 
 function parseJsonWithRepair(rawText) {
-  const text = String(rawText || "").trim();
+  // DeepSeek models sometimes output Python-style NA instead of JSON null/strings.
+  // Replace bare NA values before parsing.
+  let text = String(rawText || "").trim()
+    .replace(/(?<=[\s,:\[])\bNA\b(?=[\s,\]}])/g, 'null')
+    .replace(/(?<=[\s,:\[])\bNone\b(?=[\s,\]}])/g, 'null')
+    .replace(/(?<=[\s,:\[])\bTRUE\b(?=[\s,\]}])/g, 'true')
+    .replace(/(?<=[\s,:\[])\bFALSE\b(?=[\s,\]}])/g, 'false');
+  // Strip markdown code fences if present
+  text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
   const candidates = [
     text,
     extractJsonObject(text),
@@ -350,15 +360,21 @@ export function normalizeAudit(audit, essay) {
   };
 
   if (normalized.overall_score === null) {
-    normalized.overall_score = clampInt(
-      normalized.score_breakdown.argument_strength +
-      normalized.score_breakdown.assumption_audit +
-      normalized.score_breakdown.logic +
-      normalized.score_breakdown.rhetoric,
-      20,
-      0,
-      100
-    );
+    // Sum whatever dimensions the model actually returned. Lean/mode-specific
+    // breakdowns (non-legacy keys) must not be scored from the legacy
+    // placeholders above, which default to 1 each.
+    const inputKeys = input.score_breakdown && typeof input.score_breakdown === "object" ? Object.keys(input.score_breakdown) : [];
+    const legacyKeys = ["argument_strength", "assumption_audit", "logic", "rhetoric"];
+    const usesLeanKeys = inputKeys.some((key) => !legacyKeys.includes(key));
+    const parts = usesLeanKeys
+      ? inputKeys.map((key) => Math.max(0, Number(input.score_breakdown[key]) || 0))
+      : [
+          normalized.score_breakdown.argument_strength,
+          normalized.score_breakdown.assumption_audit,
+          normalized.score_breakdown.logic,
+          normalized.score_breakdown.rhetoric
+        ];
+    normalized.overall_score = clampInt(parts.reduce((total, value) => total + value, 0), 20, 0, 100);
   }
 
   normalized.overall_score = calibrateShortCoherentArgumentScore(normalized.overall_score, text, essaySentences);
@@ -429,6 +445,20 @@ export function normalizeAudit(audit, essay) {
     }))
     .filter((c) => c.quote);
   if (leanClaims.length) normalized.claims = leanClaims;
+
+  // Sync lean claims into the legacy argument_strength shape so frontend/PDF render real data
+  if (leanClaims.length) {
+    normalized.argument_strength.claims = leanClaims.map((c) => ({
+      quote: c.quote,
+      rating: c.rating,
+      diagnosis: c.diagnosis || c.warrant || "",
+      opponent_exploit: c.missing_warrant || "",
+      fix: c.fix || ""
+    }));
+  }
+  if (input.thesis && typeof input.thesis === "object") {
+    normalized.argument_strength.thesis = normalized.thesis;
+  }
   if (input.counterargument && typeof input.counterargument === "object") {
     normalized.counterargument = {
       strongest_objection: stringOr(input.counterargument.strongest_objection, ""),
@@ -452,14 +482,20 @@ export function normalizeAudit(audit, essay) {
       fix: stringOr(f?.fix, "")
     }))
     .filter((f) => f.name && f.explanation);
-  normalized.attack_tree = ensureArray(input.attack_tree)
-    .map((t) => ({
-      attack: stringOr(t?.attack, ""),
-      targets: stringOr(t?.targets, ""),
+  const leanAttacks = ensureArray(input.attack_tree)
+    .map((t, index) => ({
+      // The lean schema sends neither rank nor fatality_score: default rank to
+      // list position and leave fatality null instead of a misleading 0.
+      rank: clampInt(t?.rank, index + 1, 1, 99),
+      attack: stringOr(t?.attack, t?.opponent, ""),
+      targets: stringOr(t?.targets, t?.target, ""),
       why_dangerous: stringOr(t?.why_dangerous, ""),
-      response: stringOr(t?.response, "")
+      fatality_score: clampInt(t?.fatality_score, null, 0, 100),
+      response: stringOr(t?.response, t?.defense, t?.rebuttal, ""),
+      crossfire_question: stringOr(t?.crossfire_question, "")
     }))
     .filter((t) => t.attack);
+  if (leanAttacks.length) normalized.attack_tree = leanAttacks;
   if (input.rhetorical_analysis && typeof input.rhetorical_analysis === "object") {
     const ra = input.rhetorical_analysis;
     normalized.rhetorical_analysis = {
@@ -520,7 +556,7 @@ export function normalizeAudit(audit, essay) {
     "thesis", "strengths", "claims", "counterargument", "mode_analysis"
   ]);
   for (const key of Object.keys(input)) {
-    if (!legacyTopLevelKeys.has(key) && input[key] !== undefined && input[key] !== null) {
+    if (!legacyTopLevelKeys.has(key) && !key.startsWith("_") && input[key] !== undefined && input[key] !== null) {
       normalized[key] = input[key];
     }
   }
@@ -530,6 +566,9 @@ export function normalizeAudit(audit, essay) {
 
 function rebalanceScoreBreakdown(audit) {
   const keys = ["argument_strength", "assumption_audit", "logic", "rhetoric"];
+  // Lean/mode-specific breakdowns are rescaled in normalizeAudit against the
+  // model's own keys — never rewrite them into the four legacy dimensions.
+  if (Object.keys(audit.score_breakdown || {}).some((key) => !keys.includes(key))) return;
   const totalScore = clampInt(audit.overall_score, 0, 0, 100);
   const values = keys.map((key) => clampInt(audit.score_breakdown[key], 0, 0, 25));
   const currentTotal = values.reduce((sum, value) => sum + value, 0);
