@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, CornerDownLeft, LayoutDashboard, PenLine, Swords, Target, FolderOpen, Settings, BookOpen, Newspaper, Sparkles, Timer, Flag, ShieldAlert, Library, Inbox, Layers, Trophy, Scale, Shield, FileText, HelpCircle } from "lucide-react";
+import { Search, CornerDownLeft, LayoutDashboard, PenLine, Swords, Target, FolderOpen, Settings, BookOpen, Newspaper, Sparkles, Timer, Flag, ShieldAlert, Library, Inbox, Layers, Trophy, Scale, Shield, FileText, HelpCircle, Compass } from "lucide-react";
 import { useAuth } from "../lib/useAuth.jsx";
 import { listProjects } from "../lib/firebase.js";
 import { loadLocalGoals } from "../lib/goals.js";
@@ -10,6 +10,7 @@ const OPEN_EVENT = "fracture:open-palette";
 
 function pageActions() {
   return [
+    { id: "nav-explore", label: "Explore everything", hint: "The full navigation directory", icon: Compass, run: (n) => n("/explore"), search: "explore menu navigate directory all pages" },
     { id: "nav-dashboard", label: "Go to Dashboard", hint: "Progress, goals, recommendations", icon: LayoutDashboard, run: (n) => n("/dashboard"), search: "dashboard home progress skills goals" },
     { id: "nav-studio", label: "Open the Studio", hint: "Run a Fracture audit", icon: PenLine, run: (n) => n("/studio"), search: "studio audit fracture draft" },
     { id: "nav-practice", label: "Browse drills", hint: "Practice a skill", icon: Timer, run: (n) => n("/practice"), search: "practice drills train" },

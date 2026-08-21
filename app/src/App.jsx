@@ -24,6 +24,7 @@ function PrepStoreSync() {
 // Route-level code splitting: each page loads on first visit instead of
 // shipping the whole app (including framer-motion pages) in one bundle.
 const Landing = lazy(() => import("./pages/Landing.jsx"));
+const Explore = lazy(() => import("./pages/Explore.jsx"));
 const Auth = lazy(() => import("./pages/Auth.jsx"));
 const Studio = lazy(() => import("./pages/Studio.jsx"));
 const Rebuttals = lazy(() => import("./pages/Rebuttals.jsx"));
@@ -95,6 +96,7 @@ export default function App() {
           <Suspense fallback={<PageFallback />}>
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<Page><Landing /></Page>} />
+              <Route path="/explore" element={<Page><Explore /></Page>} />
               <Route path="/auth" element={<Page bare><Auth /></Page>} />
               <Route path="/dashboard" element={<Page><Dashboard /></Page>} />
               <Route path="/studio" element={<Page><Studio /></Page>} />

@@ -1,21 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ShieldAlert, Library, Inbox, Timer, BookOpen, Layers, HelpCircle, Compass,
-  Clock, ArrowRight, Sparkles
-} from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
+import AppLogo from "../components/AppLogos.jsx";
 import { listItems } from "../lib/prep.js";
 import { useAuth } from "../lib/useAuth.jsx";
 
 const HUBS = [
-  { to: "/prep/cases", icon: ShieldAlert, title: "Case Builder", body: "Structured contentions with claim, warrant, evidence, impact — plus a live completeness check, versions, and AI stress tests." },
-  { to: "/prep/library", icon: Library, title: "Argument Library", body: "Evidence, blocks, response trees, and cross-ex questions — searchable, tagged, reusable across every case." },
-  { to: "/prep/inbox", icon: Inbox, title: "Research Inbox", body: "Capture quotes, sources, and ideas fast; move them into evidence, blocks, trees, or topics later." },
-  { to: "/prep/round", icon: Timer, title: "Round Prep", body: "Timed, distraction-free prep with a persistent clock, predictions, and responses. Nothing locks when time ends." },
-  { to: "/prep/topics", icon: BookOpen, title: "Knowledge Base", body: "Topic workspaces: definitions, pro/con arguments, strategies, questions — with related items surfaced by tag." },
-  { to: "/prep/flashcards", icon: Layers, title: "Flashcards", body: "Spaced-repetition cards for arguments, evidence, and responses — generate a deck straight from your library." },
-  { to: "/prep/outlines", icon: Clock, title: "Speech Timer", body: "Section-by-section time allocation with a rehearsal clock and over/under tracking. Save templates per event." },
-  { to: "/prep/strategy", icon: Compass, title: "Strategy", body: "Compare approaches with benefits and risks — structured thinking before the round starts." }
+  { to: "/prep/cases", logo: "prepare", title: "Case Builder", body: "Structured contentions with claim, warrant, evidence, impact — plus a live completeness check, versions, and AI stress tests." },
+  { to: "/prep/library", logo: "research", title: "Argument Library", body: "Evidence, blocks, response trees, and cross-ex questions — searchable, tagged, reusable across every case." },
+  { to: "/prep/inbox", logo: "inbox", title: "Research Inbox", body: "Capture quotes, sources, and ideas fast; move them into evidence, blocks, trees, or topics later." },
+  { to: "/prep/round", logo: "practice", title: "Round Prep", body: "Timed, distraction-free prep with a persistent clock, predictions, and responses. Nothing locks when time ends." },
+  { to: "/prep/topics", logo: "methods", title: "Knowledge Base", body: "Topic workspaces: definitions, pro/con arguments, strategies, questions — with related items surfaced by tag." },
+  { to: "/prep/flashcards", logo: "cards", title: "Flashcards", body: "Spaced-repetition cards for arguments, evidence, and responses — generate a deck straight from your library." },
+  { to: "/prep/outlines", logo: "timer", title: "Speech Timer", body: "Section-by-section time allocation with a rehearsal clock and over/under tracking. Save templates per event." },
+  { to: "/prep/strategy", logo: "strategy", title: "Strategy", body: "Compare approaches with benefits and risks — structured thinking before the round starts." }
 ];
 
 const WORKFLOW = ["Research", "Collect", "Organize", "Build", "Stress test", "Prepare responses", "Practice", "Enter round"];
@@ -78,7 +76,7 @@ export default function PrepHub() {
         {HUBS.map((h) => (
           <Link key={h.to} to={h.to} className="card card-hover p-5 flex flex-col group">
             <div className="flex items-center justify-between mb-3">
-              <h.icon size={20} className="text-zinc-500 group-hover:text-zinc-950 dark:group-hover:text-zinc-100 transition-colors" />
+              <AppLogo name={h.logo} size={34} className="drop-shadow-sm" />
               <span className="faint opacity-0 group-hover:opacity-100 transition-opacity"><ArrowRight size={14} /></span>
             </div>
             <h3 className="font-serif text-lg mb-1.5">{h.title}</h3>
